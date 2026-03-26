@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AnyVan Storage — Reporting</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#1C1C1C;--cl:#DAD5D0;--cd:#2A2A2A;--b:rgba(255,255,255,0.08);
+  --mid:#888;--td:#1C1C1C;--tl:#DAD5D0;
+  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+}
+body{background:var(--bg);font-family:var(--sans);color:var(--tl);min-height:100vh;padding:60px 80px}
+
+.header{margin-bottom:60px}
+.header-lbl{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:10px}
+.header-title{font-size:32px;font-weight:600;letter-spacing:-.02em;color:var(--cl)}
+
+.section-lbl{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:18px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.07)}
+
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+
+.report-card{background:var(--cd);border:1px solid var(--b);border-radius:14px;padding:28px;cursor:pointer;text-decoration:none;color:inherit;display:block;transition:transform .12s,border-color .15s}
+.report-card:hover{transform:translateY(-2px);border-color:rgba(218,213,208,0.2)}
+.report-card.live{background:var(--cl);border-color:transparent}
+.report-card.live .rc-name{color:var(--td)}
+.report-card.live .rc-desc{color:rgba(28,28,28,.55)}
+.report-card.live .rc-tag{background:rgba(0,0,0,0.12);color:var(--td)}
+.report-card.live .rc-arrow{color:rgba(28,28,28,.4)}
+
+.rc-tag{display:inline-block;font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:4px;font-weight:600;background:rgba(255,255,255,0.07);color:var(--mid);margin-bottom:18px}
+.rc-tag.live{background:rgba(0,0,0,0.12);color:rgba(28,28,28,.6)}
+.rc-name{font-size:16px;font-weight:600;letter-spacing:-.01em;margin-bottom:8px}
+.rc-desc{font-size:12px;line-height:1.6;color:var(--mid)}
+.rc-footer{display:flex;justify-content:space-between;align-items:center;margin-top:22px}
+.rc-arrow{font-size:16px;color:rgba(255,255,255,0.2)}
+.report-card.live .rc-arrow{color:rgba(28,28,28,.25)}
+
+.soon{cursor:default}
+.soon:hover{transform:none;border-color:var(--b)}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-lbl">AnyVan Storage</div>
+  <div class="header-title">Reporting</div>
+</div>
+
+<div class="section-lbl">Reports</div>
+<div class="grid">
+
+  <a class="report-card live" href="reports/mtd.html">
+    <div class="rc-tag live">Live</div>
+    <div class="rc-name">MTD Revenue Intelligence</div>
+    <div class="rc-desc">Monthly invoiced and paid revenue, transport jobs, customer counts, YoY comparisons, and fee analysis. Updated daily.</div>
+    <div class="rc-footer"><span></span><span class="rc-arrow">→</span></div>
+  </a>
+
+  <div class="report-card soon">
+    <div class="rc-tag">Coming soon</div>
+    <div class="rc-name">Daily Activity</div>
+    <div class="rc-desc">Day-by-day ops activity across the storage team — calls, tasks, emails and WhatsApp volume per agent.</div>
+    <div class="rc-footer"></div>
+  </div>
+
+  <div class="report-card soon">
+    <div class="rc-tag">Coming soon</div>
+    <div class="rc-name">CSAT &amp; NPS</div>
+    <div class="rc-desc">Customer satisfaction scores and Net Promoter Score trends. Weekly breakdown by channel and agent.</div>
+    <div class="rc-footer"></div>
+  </div>
+
+  <div class="report-card soon">
+    <div class="rc-tag">Coming soon</div>
+    <div class="rc-name">Freshdesk</div>
+    <div class="rc-desc">Daily support ticket volumes, resolution times, and open ticket breakdown by category and priority.</div>
+    <div class="rc-footer"></div>
+  </div>
+
+  <div class="report-card soon">
+    <div class="rc-tag">Coming soon</div>
+    <div class="rc-name">Voice</div>
+    <div class="rc-desc">Inbound and outbound call volumes, answer rates, and average handle time across the ops team.</div>
+    <div class="rc-footer"></div>
+  </div>
+
+  <div class="report-card soon">
+    <div class="rc-tag">Coming soon</div>
+    <div class="rc-name">WhatsApp</div>
+    <div class="rc-desc">WhatsApp message volumes, response times, and customer contact rates by agent and channel.</div>
+    <div class="rc-footer"></div>
+  </div>
+
+</div>
+
+</body>
+</html>

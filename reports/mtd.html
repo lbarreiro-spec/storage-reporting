@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MTD Revenue Intelligence — AnyVan Storage</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#1C1C1C;--cl:#DAD5D0;--cd:#2A2A2A;--b:rgba(255,255,255,0.08);
+  --mid:#888;--td:#1C1C1C;--tl:#DAD5D0;
+  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+  --green-bg:#103a10;--green-txt:#5cb85c;
+  --red-bg:#3a1010;--red-txt:#e87474;
+  --amber-bg:#2d2a1a;--amber-txt:#d4a017;
+}
+body{background:var(--bg);font-family:var(--sans);color:var(--tl);min-height:100vh;padding:44px 60px}
+
+/* NAV */
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:40px}
+.back{font-size:11px;color:var(--mid);text-decoration:none;transition:color .12s;display:flex;align-items:center;gap:6px}
+.back:hover{color:var(--tl)}
+.month-sel{background:var(--cd);border:1px solid var(--b);border-radius:8px;padding:7px 12px;font-family:var(--mono);font-size:11px;color:var(--tl);outline:none;cursor:pointer}
+.month-sel option{background:#2A2A2A}
+
+/* PAGE HEADER */
+.ph{margin-bottom:36px}
+.ph-lbl{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:7px}
+.ph-title{font-size:26px;font-weight:600;letter-spacing:-.01em}
+.ph-sub{font-size:12px;color:var(--mid);margin-top:5px;font-family:var(--mono)}
+
+/* SECTION */
+.sec{margin-bottom:36px}
+.sec-lbl{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:14px;padding-bottom:7px;border-bottom:1px solid rgba(255,255,255,0.07)}
+
+/* STAT CARDS */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.stat{background:var(--cd);border:1px solid var(--b);border-radius:13px;padding:18px 20px}
+.stat.hl{background:var(--cl);border-color:transparent}
+.stat.hl .stat-lbl{color:rgba(28,28,28,.5)}
+.stat.hl .stat-val{color:var(--td)}
+.stat.hl .stat-sub{color:rgba(28,28,28,.4)}
+.stat-lbl{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:8px}
+.stat-val{font-family:var(--mono);font-size:26px;font-weight:500;line-height:1;letter-spacing:-.02em}
+.stat-sub{font-size:11px;color:var(--mid);margin-top:5px}
+
+/* YOY GRID */
+.yoy-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.yoy-card{background:var(--cd);border:1px solid var(--b);border-radius:13px;padding:20px 22px}
+.yoy-title{font-size:11px;font-weight:600;color:var(--tl);margin-bottom:16px}
+.yoy-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.05)}
+.yoy-row:last-child{border-bottom:none}
+.yoy-lbl{font-size:11px;color:var(--mid)}
+.yoy-vals{display:flex;align-items:center;gap:10px}
+.yoy-num{font-family:var(--mono);font-size:13px;color:var(--tl)}
+.badge-up{font-size:9px;letter-spacing:.06em;padding:2px 7px;border-radius:4px;font-weight:600;background:var(--green-bg);color:var(--green-txt)}
+.badge-dn{font-size:9px;letter-spacing:.06em;padding:2px 7px;border-radius:4px;font-weight:600;background:var(--red-bg);color:var(--red-txt)}
+.badge-fl{font-size:9px;letter-spacing:.06em;padding:2px 7px;border-radius:4px;font-weight:600;background:rgba(255,255,255,0.06);color:var(--mid)}
+
+/* TRANSPORT */
+.transport-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.t-card{background:var(--cd);border:1px solid var(--b);border-radius:13px;padding:20px 22px}
+.t-title{font-size:11px;font-weight:600;color:var(--tl);margin-bottom:16px}
+.t-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)}
+.t-row:last-child{border-bottom:none}
+.t-lbl{font-size:11px;color:var(--mid)}
+.t-val{font-family:var(--mono);font-size:13px;color:var(--tl)}
+
+/* SQFT + FEES */
+.two-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.info-card{background:var(--cd);border:1px solid var(--b);border-radius:13px;padding:20px 22px}
+.info-title{font-size:11px;font-weight:600;color:var(--tl);margin-bottom:16px}
+.info-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)}
+.info-row:last-child{border-bottom:none}
+.info-lbl{font-size:11px;color:var(--mid)}
+.info-val{font-family:var(--mono);font-size:13px;color:var(--tl)}
+
+/* HISTORY TABLE */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--mid);padding:8px 12px;text-align:right;border-bottom:1px solid rgba(255,255,255,0.07);white-space:nowrap}
+th:first-child{text-align:left}
+td{font-family:var(--mono);font-size:11px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--mid);text-align:right;white-space:nowrap}
+td:first-child{font-family:var(--sans);font-size:12px;font-weight:500;color:var(--tl);text-align:left}
+tr:hover td{background:rgba(255,255,255,0.02)}
+tr.current-month td{color:var(--tl)}
+tr.current-month td:first-child{color:var(--cl)}
+
+/* LOADING / EMPTY */
+.loading{font-size:12px;color:var(--mid);padding:40px 0;text-align:center}
+
+/* MISC */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.09);border-radius:2px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="back" href="../index.html">← Reporting home</a>
+  <select class="month-sel" id="month-sel" onchange="switchMonth(this.value)"></select>
+</div>
+
+<div class="ph">
+  <div class="ph-lbl">Revenue Intelligence</div>
+  <div class="ph-title">MTD Report</div>
+  <div class="ph-sub" id="ph-sub">Loading…</div>
+</div>
+
+<!-- HEADLINE STATS -->
+<div class="sec">
+  <div class="sec-lbl">This month</div>
+  <div class="stat-row" id="headline-stats">
+    <div class="loading">Loading…</div>
+  </div>
+</div>
+
+<!-- YOY -->
+<div class="sec">
+  <div class="sec-lbl">Year on year</div>
+  <div class="yoy-grid" id="yoy-section">
+    <div class="loading">Loading…</div>
+  </div>
+</div>
+
+<!-- TRANSPORT -->
+<div class="sec">
+  <div class="sec-lbl">Transport</div>
+  <div class="transport-grid" id="transport-section">
+    <div class="loading">Loading…</div>
+  </div>
+</div>
+
+<!-- SQFT + FEES -->
+<div class="sec">
+  <div class="sec-lbl">Sq ft &amp; fees</div>
+  <div class="two-grid" id="sqft-fees-section">
+    <div class="loading">Loading…</div>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div class="sec">
+  <div class="sec-lbl">Monthly history</div>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Month</th>
+          <th>Invoiced</th>
+          <th>Paid</th>
+          <th>Invoices</th>
+          <th>Customers</th>
+          <th>Promo %</th>
+          <th>Write-offs</th>
+          <th>Collections</th>
+          <th>Redeliveries</th>
+        </tr>
+      </thead>
+      <tbody id="history-body">
+        <tr><td colspan="9" class="loading">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = '[SUPABASE_URL_REMOVED]'
+const SUPABASE_ANON_KEY = '[SUPABASE_ANON_KEY_REMOVED]'
+const { createClient } = window.supabase
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+
+let ALL_MONTHLY = []
+let ALL_TRANSPORT = []
+let ALL_FEES = []
+let YOY = null
+let SELECTED_MONTH = null
+
+function fmt(n){ if(n==null||n===undefined) return '—'; return '£'+Number(n).toLocaleString('en-GB',{minimumFractionDigits:0,maximumFractionDigits:0}) }
+function fmtN(n){ if(n==null||n===undefined) return '—'; return Number(n).toLocaleString('en-GB') }
+function fmtPct(n){ if(n==null||n===undefined) return '—'; return (n>0?'+':'')+Number(n).toFixed(1)+'%' }
+function monthLabel(s){ if(!s) return ''; const [y,m]=s.split('-'); return MO[parseInt(m)-1]+' '+y }
+
+function yoyBadge(pct){
+  if(pct==null) return '<span class="badge-fl">—</span>'
+  if(pct>0) return `<span class="badge-up">+${Number(pct).toFixed(1)}%</span>`
+  if(pct<0) return `<span class="badge-dn">${Number(pct).toFixed(1)}%</span>`
+  return '<span class="badge-fl">0%</span>'
+}
+
+async function loadAll(){
+  const [mRes, tRes, fRes, yRes] = await Promise.all([
+    db.from('mtd_monthly').select('*').order('label', { ascending: false }),
+    db.from('mtd_transport_monthly').select('*').order('label', { ascending: false }),
+    db.from('mtd_fees_monthly').select('*').order('label', { ascending: false }),
+    db.from('mtd_yoy').select('*').eq('id', 1).single(),
+  ])
+
+  ALL_MONTHLY   = mRes.data || []
+  ALL_TRANSPORT = tRes.data || []
+  ALL_FEES      = fRes.data || []
+  YOY           = yRes.data || null
+
+  if(!ALL_MONTHLY.length){
+    document.getElementById('ph-sub').textContent = 'No data loaded yet — run the fetch script to populate.'
+    document.getElementById('headline-stats').innerHTML = '<div class="loading">No data available.</div>'
+    document.getElementById('yoy-section').innerHTML = ''
+    document.getElementById('transport-section').innerHTML = ''
+    document.getElementById('sqft-fees-section').innerHTML = ''
+    document.getElementById('history-body').innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--mid);padding:20px;font-size:12px">No data yet</td></tr>'
+    return
+  }
+
+  // Populate month selector
+  const sel = document.getElementById('month-sel')
+  sel.innerHTML = ALL_MONTHLY.map(m =>
+    `<option value="${m.label}">${monthLabel(m.label)}</option>`
+  ).join('')
+
+  SELECTED_MONTH = ALL_MONTHLY[0].label
+  renderAll()
+}
+
+function switchMonth(label){
+  SELECTED_MONTH = label
+  renderAll()
+}
+
+function renderAll(){
+  const m  = ALL_MONTHLY.find(x => x.label === SELECTED_MONTH) || {}
+  const t  = ALL_TRANSPORT.find(x => x.label === SELECTED_MONTH) || {}
+  const f  = ALL_FEES.find(x => x.label === SELECTED_MONTH) || {}
+  const isLatest = SELECTED_MONTH === ALL_MONTHLY[0]?.label
+
+  document.getElementById('ph-sub').textContent =
+    `${monthLabel(SELECTED_MONTH)}${isLatest && YOY ? ` · Day ${YOY.days_elapsed} of ${YOY.days_in_month} · as of ${YOY.as_of}` : ''}`
+
+  renderHeadline(m)
+  renderYoy(m, isLatest)
+  renderTransport(t)
+  renderSqftFees(m, f)
+  renderHistory()
+}
+
+function renderHeadline(m){
+  document.getElementById('headline-stats').innerHTML = `
+    <div class="stat hl">
+      <div class="stat-lbl">Invoiced revenue</div>
+      <div class="stat-val">${fmt(m.invoiced_revenue)}</div>
+      <div class="stat-sub">${fmtN(m.invoice_count)} invoices</div>
+    </div>
+    <div class="stat">
+      <div class="stat-lbl">Paid revenue</div>
+      <div class="stat-val">${fmt(m.paid_revenue)}</div>
+      <div class="stat-sub">${fmtN(m.paid_count)} payments received</div>
+    </div>
+    <div class="stat">
+      <div class="stat-lbl">Unique customers</div>
+      <div class="stat-val">${fmtN(m.unique_customers)}</div>
+      <div class="stat-sub">invoiced this month</div>
+    </div>
+    <div class="stat">
+      <div class="stat-lbl">Promo / write-off</div>
+      <div class="stat-val">${m.promo_pct != null ? Number(m.promo_pct).toFixed(1)+'%' : '—'}</div>
+      <div class="stat-sub">${fmtN(m.writeoff_count)||'0'} write-offs · ${fmt(m.writeoff_value)}</div>
+    </div>`
+}
+
+function renderYoy(m, isLatest){
+  if(!isLatest || !YOY){
+    document.getElementById('yoy-section').innerHTML = `
+      <div style="grid-column:span 2;font-size:12px;color:var(--mid);padding:12px 0">YoY comparison only available for the current month.</div>`
+    return
+  }
+  const y = YOY
+  document.getElementById('yoy-section').innerHTML = `
+    <div class="yoy-card">
+      <div class="yoy-title">Invoiced revenue</div>
+      <div class="yoy-row">
+        <span class="yoy-lbl">Actual vs prior year same days</span>
+        <div class="yoy-vals">
+          <span class="yoy-num">${fmt(y.cy_invoiced)}</span>
+          <span style="font-size:10px;color:var(--mid)">vs ${fmt(y.py_invoiced_same_days)}</span>
+          ${yoyBadge(y.invoiced_actual_yoy_pct)}
+        </div>
+      </div>
+      <div class="yoy-row">
+        <span class="yoy-lbl">Forecast vs prior year full month</span>
+        <div class="yoy-vals">
+          <span class="yoy-num">${fmt(y.cy_invoiced_forecast)}</span>
+          <span style="font-size:10px;color:var(--mid)">vs ${fmt(y.py_invoiced_full_month)}</span>
+          ${yoyBadge(y.invoiced_forecast_yoy_pct)}
+        </div>
+      </div>
+    </div>
+    <div class="yoy-card">
+      <div class="yoy-title">Paid revenue</div>
+      <div class="yoy-row">
+        <span class="yoy-lbl">Actual vs prior year same days</span>
+        <div class="yoy-vals">
+          <span class="yoy-num">${fmt(y.cy_paid)}</span>
+          <span style="font-size:10px;color:var(--mid)">vs ${fmt(y.py_paid_same_days)}</span>
+          ${yoyBadge(y.paid_actual_yoy_pct)}
+        </div>
+      </div>
+      <div class="yoy-row">
+        <span class="yoy-lbl">Forecast vs prior year full month</span>
+        <div class="yoy-vals">
+          <span class="yoy-num">${fmt(y.cy_paid_forecast)}</span>
+          <span style="font-size:10px;color:var(--mid)">vs ${fmt(y.py_paid_full_month)}</span>
+          ${yoyBadge(y.paid_forecast_yoy_pct)}
+        </div>
+      </div>
+    </div>
+    <div class="yoy-card">
+      <div class="yoy-title">Unique customers</div>
+      <div class="yoy-row">
+        <span class="yoy-lbl">Actual vs prior year same days</span>
+        <div class="yoy-vals">
+          <span class="yoy-num">${fmtN(y.cy_unique_customers)}</span>
+          <span style="font-size:10px;color:var(--mid)">vs ${fmtN(y.py_unique_customers_same_days)}</span>
+          ${yoyBadge(y.customers_actual_yoy_pct)}
+        </div>
+      </div>
+      <div class="yoy-row">
+        <span class="yoy-lbl">Forecast vs prior year full month</span>
+        <div class="yoy-vals">
+          <span class="yoy-num">${fmtN(y.cy_customers_forecast)}</span>
+          <span style="font-size:10px;color:var(--mid)">vs ${fmtN(y.py_customers_full_month)}</span>
+          ${yoyBadge(y.customers_forecast_yoy_pct)}
+        </div>
+      </div>
+    </div>
+    <div class="yoy-card">
+      <div class="yoy-title">Transport YoY</div>
+      <div class="yoy-row">
+        <span class="yoy-lbl">Collections AV fee</span>
+        <div class="yoy-vals">
+          <span class="yoy-num">${fmt(y.coll_av_fee)}</span>
+          <span style="font-size:10px;color:var(--mid)">vs ${fmt(y.coll_av_fee_prior_year)}</span>
+          ${yoyBadge(y.coll_yoy_pct)}
+        </div>
+      </div>
+      <div class="yoy-row">
+        <span class="yoy-lbl">Redeliveries AV fee</span>
+        <div class="yoy-vals">
+          <span class="yoy-num">${fmt(y.redel_av_fee)}</span>
+          <span style="font-size:10px;color:var(--mid)">vs ${fmt(y.redel_av_fee_prior_year)}</span>
+          ${yoyBadge(y.redel_yoy_pct)}
+        </div>
+      </div>
+    </div>`
+}
+
+function renderTransport(t){
+  document.getElementById('transport-section').innerHTML = `
+    <div class="t-card">
+      <div class="t-title">Collections</div>
+      <div class="t-row"><span class="t-lbl">Total jobs</span><span class="t-val">${fmtN(t.coll_jobs)}</span></div>
+      <div class="t-row"><span class="t-lbl">Completed jobs</span><span class="t-val">${fmtN(t.coll_completed)}</span></div>
+      <div class="t-row"><span class="t-lbl">AV fee</span><span class="t-val">${fmt(t.coll_av_fee)}</span></div>
+    </div>
+    <div class="t-card">
+      <div class="t-title">Redeliveries</div>
+      <div class="t-row"><span class="t-lbl">Total jobs</span><span class="t-val">${fmtN(t.redel_jobs)}</span></div>
+      <div class="t-row"><span class="t-lbl">Completed jobs</span><span class="t-val">${fmtN(t.redel_completed)}</span></div>
+      <div class="t-row"><span class="t-lbl">AV fee</span><span class="t-val">${fmt(t.redel_av_fee)}</span></div>
+    </div>`
+}
+
+function renderSqftFees(m, f){
+  document.getElementById('sqft-fees-section').innerHTML = `
+    <div class="info-card">
+      <div class="info-title">Sq ft</div>
+      <div class="info-row"><span class="info-lbl">Booked (by deal created)</span><span class="info-val">${fmtN(m.sqft_booked)}</span></div>
+      <div class="info-row"><span class="info-lbl">Entering (by collection date)</span><span class="info-val">${fmtN(m.sqft_entering)}</span></div>
+      <div class="info-row"><span class="info-lbl">Exiting (by redelivery date)</span><span class="info-val">${fmtN(m.sqft_exiting)}</span></div>
+    </div>
+    <div class="info-card">
+      <div class="info-title">Fees</div>
+      <div class="info-row">
+        <span class="info-lbl">Overdue admin fee</span>
+        <span class="info-val">${fmt(f.overdue_admin_total)} <span style="color:var(--mid);font-size:10px">(${fmtN(f.overdue_admin_count)||0})</span></span>
+      </div>
+      <div class="info-row">
+        <span class="info-lbl">Early release fee</span>
+        <span class="info-val">${fmt(f.early_release_total)} <span style="color:var(--mid);font-size:10px">(${fmtN(f.early_release_count)||0})</span></span>
+      </div>
+    </div>`
+}
+
+function renderHistory(){
+  const latest = ALL_MONTHLY[0]?.label
+  document.getElementById('history-body').innerHTML = ALL_MONTHLY.map(m => {
+    const t = ALL_TRANSPORT.find(x => x.label === m.label) || {}
+    return `<tr class="${m.label === latest ? 'current-month' : ''}">
+      <td>${monthLabel(m.label)}</td>
+      <td>${fmt(m.invoiced_revenue)}</td>
+      <td>${fmt(m.paid_revenue)}</td>
+      <td>${fmtN(m.invoice_count)}</td>
+      <td>${fmtN(m.unique_customers)}</td>
+      <td>${m.promo_pct != null ? Number(m.promo_pct).toFixed(1)+'%' : '—'}</td>
+      <td>${fmt(m.writeoff_value)}</td>
+      <td>${fmtN(t.coll_jobs)||'—'}</td>
+      <td>${fmtN(t.redel_jobs)||'—'}</td>
+    </tr>`
+  }).join('')
+}
+
+loadAll()
+</script>
+</body>
+</html>
