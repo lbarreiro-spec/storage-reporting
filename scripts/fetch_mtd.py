@@ -22,7 +22,12 @@ from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
 
 warnings.filterwarnings("ignore")
-load_dotenv(os.path.join(os.path.dirname(__file__), '..', '..', 'anyvan-kpi', '.env'))
+# Load .env from repo root (GitHub Actions) or fall back to anyvan-kpi dir (local)
+_repo_root = os.path.join(os.path.dirname(__file__), '..')
+_local_env  = os.path.join(os.path.dirname(__file__), '..', '..', 'anyvan-kpi', '.env')
+load_dotenv(os.path.join(_repo_root, '.env'))
+if not os.getenv("ZOHO_CLIENT_ID"):
+    load_dotenv(_local_env)
 
 # ─── CONFIG ────────────────────────────────────────────────────────────────────
 
