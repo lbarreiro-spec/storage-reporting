@@ -36,7 +36,7 @@ body{background:var(--bg);font-family:var(--sans);color:var(--tl);min-height:100
 .sec-lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:14px;padding-bottom:7px;border-bottom:1px solid rgba(255,255,255,0.07)}
 
 /* STAT CARDS */
-.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.stat-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
 .stat{background:var(--cd);border:1px solid var(--b);border-radius:13px;padding:18px 20px}
 .stat.hl{background:var(--cl);border-color:transparent}
 .stat.hl .stat-lbl{color:rgba(28,28,28,.5)}
@@ -60,7 +60,7 @@ body{background:var(--bg);font-family:var(--sans);color:var(--tl);min-height:100
 .badge-fl{font-size:11px;letter-spacing:.06em;padding:2px 7px;border-radius:4px;font-weight:600;background:rgba(255,255,255,0.06);color:var(--mid)}
 
 /* TRANSPORT */
-.transport-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.transport-grid{display:grid;grid-template-columns:1fr;gap:12px}
 .t-card{background:var(--cd);border:1px solid var(--b);border-radius:13px;padding:20px 22px}
 .t-title{font-size:13px;font-weight:600;color:var(--tl);margin-bottom:16px}
 .t-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)}
@@ -248,6 +248,9 @@ function renderAll(){
 }
 
 function renderHeadline(m){
+  const t = ALL_TRANSPORT.find(x => x.label === SELECTED_MONTH) || {}
+  const totalJobs = (t.coll_jobs || 0) + (t.redel_jobs || 0)
+  const totalFee  = (t.coll_av_fee || 0) + (t.redel_av_fee || 0)
   document.getElementById('headline-stats').innerHTML = `
     <div class="stat hl">
       <div class="stat-lbl">Invoiced revenue</div>
@@ -258,6 +261,11 @@ function renderHeadline(m){
       <div class="stat-lbl">Paid revenue</div>
       <div class="stat-val">${fmt(m.paid_revenue)}</div>
       <div class="stat-sub">${fmtN(m.paid_count)} payments received</div>
+    </div>
+    <div class="stat">
+      <div class="stat-lbl">Transport</div>
+      <div class="stat-val">${fmt(totalFee)}</div>
+      <div class="stat-sub">${fmtN(totalJobs)} total jobs</div>
     </div>
     <div class="stat">
       <div class="stat-lbl">Unique customers</div>
@@ -358,18 +366,16 @@ function renderYoy(m, isLatest){
 }
 
 function renderTransport(t){
+  const totalJobs      = (t.coll_jobs      || 0) + (t.redel_jobs      || 0)
+  const totalCompleted = (t.coll_completed || 0) + (t.redel_completed || 0)
+  const totalFee       = ((t.coll_av_fee   || 0) + (t.redel_av_fee   || 0))
   document.getElementById('transport-section').innerHTML = `
     <div class="t-card">
-      <div class="t-title">Collections</div>
-      <div class="t-row"><span class="t-lbl">Total jobs</span><span class="t-val">${fmtN(t.coll_jobs)}</span></div>
-      <div class="t-row"><span class="t-lbl">Completed jobs</span><span class="t-val">${fmtN(t.coll_completed)}</span></div>
-      <div class="t-row"><span class="t-lbl">AV fee</span><span class="t-val">${fmt(t.coll_av_fee)}</span></div>
-    </div>
-    <div class="t-card">
-      <div class="t-title">Redeliveries</div>
-      <div class="t-row"><span class="t-lbl">Total jobs</span><span class="t-val">${fmtN(t.redel_jobs)}</span></div>
-      <div class="t-row"><span class="t-lbl">Completed jobs</span><span class="t-val">${fmtN(t.redel_completed)}</span></div>
-      <div class="t-row"><span class="t-lbl">AV fee</span><span class="t-val">${fmt(t.redel_av_fee)}</span></div>
+      <div class="t-row"><span class="t-lbl">Total jobs</span><span class="t-val">${fmtN(totalJobs)}</span></div>
+      <div class="t-row"><span class="t-lbl">Completed jobs</span><span class="t-val">${fmtN(totalCompleted)}</span></div>
+      <div class="t-row"><span class="t-lbl">AV fee (combined)</span><span class="t-val">${fmt(totalFee)}</span></div>
+      <div class="t-row"><span class="t-lbl">Collections — jobs / fee</span><span class="t-val">${fmtN(t.coll_jobs)} · ${fmt(t.coll_av_fee)}</span></div>
+      <div class="t-row"><span class="t-lbl">Redeliveries — jobs / fee</span><span class="t-val">${fmtN(t.redel_jobs)} · ${fmt(t.redel_av_fee)}</span></div>
     </div>`
 }
 
