@@ -94,9 +94,31 @@ create table if not exists weekly_kpi (
   updated_at       timestamptz default now()
 );
 
+-- Daily agent activity
+create table if not exists daily_activity (
+  date            date not null,
+  agent           text not null,
+  team            text not null,
+  available       integer,
+  break_time      integer,
+  lunch           integer,
+  admin           integer,
+  ob_activity     integer,
+  offline         integer,
+  personal        integer,
+  system_issue    integer,
+  ticketing       integer,
+  live_chat       integer,
+  online_duration integer,
+  first_login     text,
+  last_logout     text,
+  primary key (date, agent)
+);
+
 -- RLS: disabled — open read access (no auth in reporting app)
 alter table mtd_monthly           disable row level security;
 alter table mtd_transport_monthly  disable row level security;
 alter table mtd_fees_monthly       disable row level security;
 alter table mtd_yoy                disable row level security;
 alter table weekly_kpi             disable row level security;
+alter table daily_activity         disable row level security;

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Activity — AnyVan Storage</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#1C1C1C;--cl:#DAD5D0;--cd:#2A2A2A;--b:rgba(255,255,255,0.08);
+  --mid:#888;--td:#1C1C1C;--tl:#DAD5D0;
+  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+}
+body{background:var(--bg);font-family:var(--sans);color:var(--tl);min-height:100vh;padding:44px 60px}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:40px}
+.back{font-size:13px;color:var(--mid);text-decoration:none;transition:color .12s;display:flex;align-items:center;gap:6px}
+.back:hover{color:var(--tl)}
+.month-sel{background:var(--cd);border:1px solid var(--b);border-radius:8px;padding:7px 12px;font-family:var(--mono);font-size:13px;color:var(--tl);outline:none;cursor:pointer}
+.month-sel option{background:#2A2A2A}
+
+.ph{margin-bottom:36px}
+.ph-lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:7px}
+.ph-title{font-size:26px;font-weight:600;letter-spacing:-.01em}
+.ph-sub{font-size:14px;color:var(--mid);margin-top:5px;font-family:var(--mono)}
+
+.sec{margin-bottom:40px}
+.sec-lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:14px;padding-bottom:7px;border-bottom:1px solid rgba(255,255,255,0.07)}
+
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mid);padding:10px 14px;text-align:right;border-bottom:1px solid rgba(255,255,255,0.07);white-space:nowrap;font-weight:500}
+th:first-child,th:nth-child(2){text-align:left}
+td{font-family:var(--mono);font-size:13px;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--mid);text-align:right;white-space:nowrap}
+td:first-child{font-family:var(--sans);font-size:13px;font-weight:500;color:var(--tl);text-align:left}
+td:nth-child(2){font-family:var(--sans);font-size:13px;text-align:left;color:var(--mid)}
+tr:hover td{background:rgba(255,255,255,0.02)}
+
+/* Online duration column highlight */
+td.online{color:var(--tl);font-weight:500}
+
+/* Date separator rows */
+tr.date-sep td{background:rgba(255,255,255,0.03);font-family:var(--sans);font-size:12px;font-weight:600;color:var(--cl);text-align:left;padding:8px 14px;border-bottom:none;border-top:1px solid rgba(255,255,255,0.06)}
+
+.loading{font-size:14px;color:var(--mid);padding:40px 0;text-align:center}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.09);border-radius:2px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="back" href="../index.html">← Reporting home</a>
+  <select class="month-sel" id="month-sel" onchange="switchMonth(this.value)"></select>
+</div>
+
+<div class="ph">
+  <div class="ph-lbl">Operations</div>
+  <div class="ph-title">Daily Activity</div>
+  <div class="ph-sub" id="ph-sub">Loading…</div>
+</div>
+
+<div class="sec">
+  <div class="sec-lbl">Ops team</div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>Date</th>
+        <th>Agent</th>
+        <th>Online</th>
+        <th>Available</th>
+        <th>Break</th>
+        <th>Lunch</th>
+        <th>Admin</th>
+        <th>OB Activity</th>
+        <th>First Login</th>
+        <th>Last Logout</th>
+      </tr></thead>
+      <tbody id="ops-body"><tr><td colspan="10" class="loading">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-lbl">Sales team</div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>Date</th>
+        <th>Agent</th>
+        <th>Online</th>
+        <th>Available</th>
+        <th>Break</th>
+        <th>Lunch</th>
+        <th>Admin</th>
+        <th>OB Activity</th>
+        <th>First Login</th>
+        <th>Last Logout</th>
+      </tr></thead>
+      <tbody id="sales-body"><tr><td colspan="10" class="loading">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL      = '[SUPABASE_URL_REMOVED]'
+const SUPABASE_ANON_KEY = '[SUPABASE_ANON_KEY_REMOVED]'
+const { createClient } = window.supabase
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+const MO  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+const DAY = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+
+let ALL_DATA       = []
+let SELECTED_MONTH = null
+
+function fmtSecs(s){
+  if(s == null) return '—'
+  const m = Math.round(s / 60)
+  return `${Math.floor(m/60)}:${String(m%60).padStart(2,'0')}`
+}
+
+function fmtDate(iso){
+  const d = new Date(iso + 'T00:00:00')
+  return `${DAY[d.getDay()]} ${d.getDate()} ${MO[d.getMonth()]}`
+}
+
+function monthLabel(iso){ // 'YYYY-MM' → 'Mar 2026'
+  const [y,m] = iso.split('-')
+  return `${MO[parseInt(m)-1]} ${y}`
+}
+
+async function loadAll(){
+  // Fetch all distinct months available
+  const { data, error } = await db
+    .from('daily_activity')
+    .select('date')
+    .order('date', { ascending: false })
+
+  if(error || !data || !data.length){
+    document.getElementById('ph-sub').textContent = 'No data yet — run the fetch script to populate.'
+    document.getElementById('ops-body').innerHTML   = '<tr><td colspan="10" style="text-align:center;color:var(--mid);padding:20px;font-size:13px">No data available</td></tr>'
+    document.getElementById('sales-body').innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--mid);padding:20px;font-size:13px">No data available</td></tr>'
+    return
+  }
+
+  // Build distinct months
+  const months = [...new Set(data.map(r => r.date.slice(0,7)))].sort().reverse()
+
+  const sel = document.getElementById('month-sel')
+  sel.innerHTML = months.map(m => `<option value="${m}">${monthLabel(m)}</option>`).join('')
+
+  // Default to current month if available, else most recent
+  const now = new Date()
+  const curLabel = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
+  SELECTED_MONTH = months.includes(curLabel) ? curLabel : months[0]
+  sel.value = SELECTED_MONTH
+
+  await loadMonth()
+}
+
+async function loadMonth(){
+  const [year, month] = SELECTED_MONTH.split('-').map(Number)
+  const from = `${SELECTED_MONTH}-01`
+  const to   = new Date(year, month, 0).toISOString().slice(0,10) // last day of month
+
+  const { data, error } = await db
+    .from('daily_activity')
+    .select('*')
+    .gte('date', from)
+    .lte('date', to)
+    .order('date', { ascending: false })
+    .order('agent', { ascending: true })
+
+  ALL_DATA = data || []
+
+  const days = [...new Set(ALL_DATA.map(r => r.date))].sort().reverse()
+  document.getElementById('ph-sub').textContent =
+    `${monthLabel(SELECTED_MONTH)} · ${days.length} day${days.length !== 1 ? 's' : ''} of data`
+
+  renderTable('ops-body',   ALL_DATA.filter(r => r.team === 'ops'))
+  renderTable('sales-body', ALL_DATA.filter(r => r.team === 'sales'))
+}
+
+function switchMonth(val){
+  SELECTED_MONTH = val
+  loadMonth()
+}
+
+function renderTable(bodyId, rows){
+  const tbody = document.getElementById(bodyId)
+  if(!rows.length){
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--mid);padding:20px;font-size:13px">No data for this month</td></tr>'
+    return
+  }
+
+  const dates = [...new Set(rows.map(r => r.date))].sort().reverse()
+  let html = ''
+  for(const d of dates){
+    const dayRows = rows.filter(r => r.date === d)
+    html += `<tr class="date-sep"><td colspan="10">${fmtDate(d)}</td></tr>`
+    for(const r of dayRows){
+      html += `<tr>
+        <td></td>
+        <td>${r.agent}</td>
+        <td class="online">${fmtSecs(r.online_duration)}</td>
+        <td>${fmtSecs(r.available)}</td>
+        <td>${fmtSecs(r.break_time)}</td>
+        <td>${fmtSecs(r.lunch)}</td>
+        <td>${fmtSecs(r.admin)}</td>
+        <td>${fmtSecs(r.ob_activity)}</td>
+        <td style="font-family:var(--sans)">${r.first_login || '—'}</td>
+        <td style="font-family:var(--sans)">${r.last_logout || '—'}</td>
+      </tr>`
+    }
+  }
+  tbody.innerHTML = html
+}
+
+loadAll()
+</script>
+</body>
+</html>

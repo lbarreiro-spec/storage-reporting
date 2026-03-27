@@ -1,0 +1,31 @@
+name: Fetch Daily Activity
+
+on:
+  schedule:
+    - cron: '0 7 * * 1-5'   # 7am UTC Mon-Fri (weekdays only)
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests python-dateutil snowflake-connector-python
+
+      - name: Write Snowflake config
+        run: |
+          mkdir -p ~/.snowflake
+          cat > ~/.snowflake/connections.toml << 'EOF'
+          [connections.default]
+          token = "${{ secrets.SNOWFLAKE_PAT }}"
+          EOF
+
+      - name: Run fetch
+        run: python3 scripts/fetch_daily_activity.py
