@@ -4,15 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AnyVan Storage — Reporting</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0D1912;--cl:#E8E2D5;--cd:#141E17;--b:rgba(255,255,255,0.08);
-  --mid:#6B7D70;--td:#0D1912;--tl:#E8E2D5;--gold:#C9A84C;
-  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+  --bg:#000000;--cl:#f5f5f7;--cd:#1c1c1e;--b:rgba(255,255,255,0.08);
+  --mid:#86868b;--td:#000000;--tl:#f5f5f7;--gold:#0071e3;
+  --mono:'SF Mono','Menlo','Monaco',monospace;--sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
 }
-body{background:radial-gradient(ellipse at 30% 15%,#1C3828 0%,#0D1912 55%,#060D09 100%);font-family:var(--sans);color:var(--tl);min-height:100vh;padding:60px 80px}
+body{background:#000;font-family:var(--sans);color:var(--tl);min-height:100vh;padding:60px 80px}
 
 .header{margin-bottom:60px}
 .header-lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:10px}
@@ -29,16 +29,16 @@ body{background:radial-gradient(ellipse at 30% 15%,#1C3828 0%,#0D1912 55%,#060D0
 .report-card.live{background:var(--cd);border-color:var(--gold)}
 .report-card.live .rc-name{color:var(--tl)}
 .report-card.live .rc-desc{color:var(--mid)}
-.report-card.live .rc-tag{background:rgba(201,168,76,0.15);color:var(--gold)}
+.report-card.live .rc-tag{background:rgba(0,113,227,0.15);color:var(--gold)}
 .report-card.live .rc-arrow{color:var(--gold)}
 
 .rc-tag{display:inline-block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:4px;font-weight:600;background:rgba(255,255,255,0.07);color:var(--mid);margin-bottom:18px}
-.rc-tag.live{background:rgba(201,168,76,0.15);color:var(--gold)}
+.rc-tag.live{background:rgba(0,113,227,0.15);color:var(--gold)}
 .rc-name{font-size:18px;font-weight:600;letter-spacing:-.01em;margin-bottom:8px}
 .rc-desc{font-size:14px;line-height:1.6;color:var(--mid)}
 .rc-footer{display:flex;justify-content:space-between;align-items:center;margin-top:22px}
 .rc-arrow{font-size:18px;color:rgba(255,255,255,0.2)}
-.report-card.live .rc-arrow{color:rgba(28,28,28,.25)}
+.report-card.live .rc-arrow{color:rgba(255,255,255,0.25)}
 
 .soon{cursor:default}
 .soon:hover{transform:none;border-color:var(--b)}

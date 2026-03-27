@@ -4,15 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Freshdesk — AnyVan Storage</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0D1912;--surface:#141E17;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
-  --mid:#6B7D70;--tl:#E8E2D5;--gold:#C9A84C;--dim:#1e2e22;
-  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+  --bg:#000000;--surface:#1c1c1e;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
+  --mid:#86868b;--tl:#f5f5f7;--gold:#0071e3;--dim:#1e2e22;
+  --mono:'SF Mono','Menlo','Monaco',monospace;--sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
 }
-html,body{height:100%;background:radial-gradient(ellipse at 30% 15%,#1C3828 0%,#0D1912 55%,#060D09 100%);font-family:var(--sans);color:var(--tl);overflow:hidden}
+html,body{height:100%;background:#000;font-family:var(--sans);color:var(--tl);overflow:hidden}
 body{display:flex;flex-direction:column}
 
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--border2);background:var(--bg);flex-shrink:0;z-index:30}
@@ -22,7 +22,7 @@ body{display:flex;flex-direction:column}
 .topbar-meta{font-size:12px;color:var(--mid);font-family:var(--mono)}
 
 .month-sel{background:var(--surface);border:1px solid var(--border2);border-radius:5px;padding:4px 10px;font-family:var(--mono);font-size:13px;color:var(--tl);outline:none;cursor:pointer}
-.month-sel option{background:#141E17}
+.month-sel option{background:#1c1c1e}
 
 .matrix-wrap{flex:1;overflow:auto;position:relative}
 

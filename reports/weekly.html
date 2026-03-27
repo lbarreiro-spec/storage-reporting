@@ -4,22 +4,22 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Weekly KPI — AnyVan Storage</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0D1912;
-  --surface:#141E17;
+  --bg:#000000;
+  --surface:#1c1c1e;
   --border:rgba(255,255,255,0.07);
   --border2:rgba(255,255,255,0.12);
-  --mid:#6B7D70;
-  --dim:#1e2e22;
-  --tl:#E8E2D5;
-  --gold:#C9A84C;
-  --mono:'DM Mono',monospace;
-  --sans:'DM Sans',sans-serif;
+  --mid:#86868b;
+  --dim:#2c2c2e;
+  --tl:#f5f5f7;
+  --gold:#0071e3;
+  --mono:'SF Mono','Menlo','Monaco',monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
 }
-html,body{height:100%;background:radial-gradient(ellipse at 30% 15%,#1C3828 0%,#0D1912 55%,#060D09 100%);font-family:var(--sans);color:var(--tl);overflow:hidden}
+html,body{height:100%;background:#000;font-family:var(--sans);color:var(--tl);overflow:hidden}
 body{display:flex;flex-direction:column}
 
 /* TOP BAR */
@@ -52,7 +52,7 @@ tr.sec-hdr>td{
   padding:12px 10px 8px;
   font-size:9px;font-weight:700;
   letter-spacing:.18em;text-transform:uppercase;
-  color:rgba(232,226,213,0.25);
+  color:rgba(255,255,255,0.2);
   border-top:2px solid var(--border2);
   border-bottom:1px solid var(--border2);
 }
@@ -116,7 +116,7 @@ tr.dr:hover>td.c-metric{background:rgba(255,255,255,0.03)}
 td.c-val{
   font-family:var(--mono);
   font-size:18px;
-  color:#7a8c80;
+  color:#86868b;
   text-align:right;
   padding:7px 12px;
   min-width:100px;

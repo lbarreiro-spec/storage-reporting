@@ -4,23 +4,23 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WhatsApp Activity — AnyVan Storage</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0D1912;--cl:#E8E2D5;--cd:#141E17;--b:rgba(255,255,255,0.08);
-  --mid:#6B7D70;--td:#0D1912;--tl:#E8E2D5;--gold:#C9A84C;
+  --bg:#000000;--cl:#f5f5f7;--cd:#1c1c1e;--b:rgba(255,255,255,0.08);
+  --mid:#86868b;--td:#000000;--tl:#f5f5f7;--gold:#0071e3;
   --wa:#25D366;
-  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+  --mono:'SF Mono','Menlo','Monaco',monospace;--sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
 }
-body{background:radial-gradient(ellipse at 30% 15%,#1C3828 0%,#0D1912 55%,#060D09 100%);font-family:var(--sans);color:var(--tl);min-height:100vh;padding:44px 60px}
+body{background:#000;font-family:var(--sans);color:var(--tl);min-height:100vh;padding:44px 60px}
 
 .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:40px}
 .back{font-size:15px;color:var(--mid);text-decoration:none;transition:color .12s;display:flex;align-items:center;gap:6px}
 .back:hover{color:var(--tl)}
 .month-sel{background:var(--cd);border:1px solid var(--b);border-radius:8px;padding:7px 12px;font-family:var(--mono);font-size:15px;color:var(--tl);outline:none;cursor:pointer}
-.month-sel option{background:#141E17}
+.month-sel option{background:#1c1c1e}
 
 .ph{margin-bottom:36px}
 .ph-lbl{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:7px}
@@ -41,7 +41,7 @@ td:nth-child(2){font-family:var(--sans);font-size:14px;text-align:left;color:var
 tr:hover td{background:rgba(255,255,255,0.02)}
 
 /* Column group dividers */
-th.grp-ib,td.grp-ib{border-left:2px solid rgba(201,168,76,0.2)}
+th.grp-ib,td.grp-ib{border-left:2px solid rgba(0,113,227,0.2)}
 th.grp-ob,td.grp-ob{border-left:2px solid rgba(255,255,255,0.07)}
 th.grp-eng,td.grp-eng{border-left:2px solid rgba(37,211,102,0.2)}
 
@@ -59,7 +59,7 @@ tr.date-sep td{background:rgba(255,255,255,0.03);font-family:var(--sans);font-si
 .toggle-group{display:flex;gap:6px}
 .toggle-btn{background:var(--cd);border:1px solid var(--b);border-radius:7px;padding:6px 16px;font-family:var(--sans);font-size:15px;color:var(--mid);cursor:pointer;transition:all .12s}
 .toggle-btn:hover{border-color:rgba(232,226,213,0.2);color:var(--tl)}
-.toggle-btn.active{background:var(--gold);border-color:transparent;color:#0D1912;font-weight:600}
+.toggle-btn.active{background:var(--gold);border-color:transparent;color:#000000;font-weight:600}
 
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}

@@ -4,16 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Monthly Trends — AnyVan Storage</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0D1912;--cl:#E8E2D5;--cd:#141E17;--b:rgba(255,255,255,0.08);
-  --mid:#6B7D70;--tl:#E8E2D5;--gold:#C9A84C;
-  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+  --bg:#000000;--cl:#f5f5f7;--cd:#1c1c1e;--b:rgba(255,255,255,0.08);
+  --mid:#86868b;--tl:#f5f5f7;--gold:#0071e3;
+  --mono:'SF Mono','Menlo','Monaco',monospace;--sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
 }
-html,body{height:100%;background:radial-gradient(ellipse at 30% 15%,#1C3828 0%,#0D1912 55%,#060D09 100%);font-family:var(--sans);color:var(--tl)}
+html,body{height:100%;background:#000;font-family:var(--sans);color:var(--tl)}
 body{display:flex;flex-direction:column;min-height:100vh}
 
 /* TOP BAR */
@@ -108,7 +108,7 @@ const YEAR_STYLES = {
   '2023': { color: 'rgba(107,125,112,0.6)',  border: 'rgba(107,125,112,0.6)',  width: 1.5 },
   '2024': { color: 'rgba(145,163,148,0.75)', border: 'rgba(145,163,148,0.75)', width: 1.5 },
   '2025': { color: 'rgba(232,226,213,0.9)',  border: 'rgba(232,226,213,0.9)',  width: 2 },
-  '2026': { color: '#C9A84C',                border: '#C9A84C',                width: 2.5 },
+  '2026': { color: '#0071e3',                border: '#0071e3',                width: 2.5 },
 }
 
 let _data       = null
@@ -186,7 +186,7 @@ function renderMetric(idx){
             backgroundColor: '#1a2d1f',
             borderColor: 'rgba(255,255,255,0.12)',
             borderWidth: 1,
-            titleColor: '#E8E2D5',
+            titleColor: '#f5f5f7',
             bodyColor: '#9aaa9e',
             titleFont: { family: "'DM Sans', sans-serif", size: 13, weight: '600' },
             bodyFont: { family: "'DM Mono', monospace", size: 13 },
@@ -199,13 +199,13 @@ function renderMetric(idx){
         scales: {
           x: {
             grid: { color: 'rgba(255,255,255,0.04)' },
-            ticks: { color: '#6B7D70', font: { family: "'DM Mono', monospace", size: 12 } },
+            ticks: { color: '#86868b', font: { family: "'DM Mono', monospace", size: 12 } },
             border: { color: 'rgba(255,255,255,0.08)' }
           },
           y: {
             grid: { color: 'rgba(255,255,255,0.04)' },
             ticks: {
-              color: '#6B7D70',
+              color: '#86868b',
               font: { family: "'DM Mono', monospace", size: 12 },
               callback: (v) => fmt(v, m.format)
             },
