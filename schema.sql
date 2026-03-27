@@ -154,6 +154,24 @@ create table if not exists voice_daily (
   primary key (date, agent)
 );
 
+-- Daily WhatsApp activity (IB + OB + engagement, seconds stored as integers)
+create table if not exists whatsapp_daily (
+  date                   date not null,
+  agent                  text not null,
+  team                   text not null,
+  ib_chats               integer,
+  ib_avg_wait            integer,   -- seconds
+  ib_avg_first_response  integer,   -- seconds
+  ib_avg_wrap            integer,   -- seconds
+  ib_talk_time           integer,   -- seconds
+  ob_chats               integer,
+  ob_talk_time           integer,   -- seconds
+  eng_convos_initiated   integer,
+  eng_messages_sent      integer,
+  eng_customers_replied  integer,
+  primary key (date, agent)
+);
+
 -- RLS: disabled — open read access (no auth in reporting app)
 alter table mtd_monthly           disable row level security;
 alter table mtd_transport_monthly  disable row level security;
@@ -162,3 +180,4 @@ alter table mtd_yoy                disable row level security;
 alter table weekly_kpi             disable row level security;
 alter table daily_activity         disable row level security;
 alter table voice_daily            disable row level security;
+alter table whatsapp_daily         disable row level security;
