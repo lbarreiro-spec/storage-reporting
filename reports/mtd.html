@@ -376,6 +376,7 @@ function renderTransport(t){
       <div class="t-row"><span class="t-lbl">AV fee (combined)</span><span class="t-val">${fmt(totalFee)}</span></div>
       <div class="t-row"><span class="t-lbl">Collections — jobs / fee</span><span class="t-val">${fmtN(t.coll_jobs)} · ${fmt(t.coll_av_fee)}</span></div>
       <div class="t-row"><span class="t-lbl">Redeliveries — jobs / fee</span><span class="t-val">${fmtN(t.redel_jobs)} · ${fmt(t.redel_av_fee)}</span></div>
+      <div class="t-row"><span class="t-lbl">Net customers (in − out)</span><span class="t-val" style="color:${(t.coll_completed||0)-(t.redel_completed||0)>=0?'var(--green-txt)':'var(--red-txt)'}">${((t.coll_completed||0)-(t.redel_completed||0))>0?'+':''}${fmtN((t.coll_completed||0)-(t.redel_completed||0))}</span></div>
     </div>`
 }
 
@@ -386,6 +387,7 @@ function renderSqftFees(m, f){
       <div class="info-row"><span class="info-lbl">Booked (by deal created)</span><span class="info-val">${fmtN(m.sqft_booked)}</span></div>
       <div class="info-row"><span class="info-lbl">Entering (by collection date)</span><span class="info-val">${fmtN(m.sqft_entering)}</span></div>
       <div class="info-row"><span class="info-lbl">Exiting (by redelivery date)</span><span class="info-val">${fmtN(m.sqft_exiting)}</span></div>
+      <div class="info-row"><span class="info-lbl">Net sq ft (in − out)</span><span class="info-val" style="color:${(m.sqft_entering||0)-(m.sqft_exiting||0)>=0?'var(--green-txt)':'var(--red-txt)'}">${((m.sqft_entering||0)-(m.sqft_exiting||0))>0?'+':''}${fmtN(Math.round((m.sqft_entering||0)-(m.sqft_exiting||0)))}</span></div>
     </div>
     <div class="info-card">
       <div class="info-title">Fees</div>
