@@ -35,12 +35,16 @@ body{display:flex;flex-direction:column}
 .back:hover{color:var(--tl)}
 .topbar-title{font-size:13px;font-weight:600;color:var(--tl);letter-spacing:-.01em}
 .topbar-meta{font-size:10px;color:var(--mid);font-family:var(--mono)}
+.window-btns{display:flex;gap:4px}
+.wbtn{font-size:11px;font-family:var(--mono);color:var(--mid);background:none;border:1px solid var(--border);border-radius:4px;padding:3px 9px;cursor:pointer;transition:color .1s,border-color .1s}
+.wbtn:hover{color:var(--tl);border-color:var(--border2)}
+.wbtn.active{color:var(--gold);border-color:var(--gold)}
 
 /* MATRIX WRAPPER */
 .matrix-wrap{flex:1;overflow:auto;position:relative}
 
 /* TABLE */
-table{border-collapse:collapse;white-space:nowrap;font-size:12px}
+table{border-collapse:collapse;white-space:nowrap;font-size:16px}
 
 /* ── HEADER ROW ── */
 thead th{
@@ -49,11 +53,11 @@ thead th{
   border-bottom:1px solid var(--border2);
   padding:9px 10px 7px;
   font-family:var(--mono);
-  font-size:10px;font-weight:500;
+  font-size:14px;font-weight:500;
   letter-spacing:.06em;
   text-align:right;
   color:var(--mid);
-  min-width:78px;
+  min-width:88px;
 }
 thead th.th-section{
   width:64px;min-width:64px;max-width:64px;
@@ -64,7 +68,7 @@ thead th.th-section{
 thead th.th-metric{
   width:218px;min-width:218px;max-width:218px;
   text-align:left;padding-left:10px;
-  font-family:var(--sans);font-size:9px;
+  font-family:var(--sans);font-size:11px;
   text-transform:uppercase;letter-spacing:.12em;
   position:sticky;left:64px;z-index:20;
   background:var(--surface);
@@ -113,7 +117,7 @@ td.c-metric{
   background:var(--bg);
   width:218px;min-width:218px;max-width:218px;
   padding:6px 14px 6px 10px;
-  font-size:12px;color:var(--tl);
+  font-size:16px;color:var(--tl);
   border-right:1px solid var(--border2);
 }
 tr.dr:hover>td.c-section,
@@ -121,11 +125,11 @@ tr.dr:hover>td.c-metric{background:rgba(255,255,255,0.03)}
 
 td.c-val{
   font-family:var(--mono);
-  font-size:12px;
+  font-size:16px;
   color:#7a8c80;
   text-align:right;
   padding:6px 12px;
-  min-width:78px;
+  min-width:88px;
 }
 td.c-val.empty{color:var(--dim)}
 
@@ -146,6 +150,11 @@ td.c-val.empty{color:var(--dim)}
 <div class="topbar">
   <a class="back" href="../index.html">← Reporting home</a>
   <span class="topbar-title">Weekly KPI</span>
+  <div class="window-btns" id="wbtns" style="display:none">
+    <button class="wbtn" data-w="8">Last 8w</button>
+    <button class="wbtn active" data-w="12">Last 12w</button>
+    <button class="wbtn" data-w="0">All</button>
+  </div>
   <span class="topbar-meta" id="meta">Loading…</span>
 </div>
 
@@ -154,6 +163,36 @@ td.c-val.empty{color:var(--dim)}
 </div>
 
 <script>
+let _tableData = null
+let _activeWindow = 12
+
+function applyWindow(w){
+  _activeWindow = w
+  document.querySelectorAll('.wbtn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.w) === w)
+  })
+  if(!_tableData) return
+
+  const total = _tableData.weeks.length
+  const start = (w === 0 || w >= total) ? 0 : total - w
+
+  // Show/hide header th cells (skip first 2: section + metric)
+  const ths = document.querySelectorAll('thead th')
+  ths.forEach((th, i) => {
+    if(i < 2) return
+    th.style.display = (i - 2) >= start ? '' : 'none'
+  })
+
+  // Show/hide data cells and section-hdr cells
+  document.querySelectorAll('tr.dr, tr.sec-hdr').forEach(tr => {
+    const tds = tr.querySelectorAll('td')
+    tds.forEach((td, i) => {
+      if(i < 2) return
+      td.style.display = (i - 2) >= start ? '' : 'none'
+    })
+  })
+}
+
 async function load(){
   let data
   try{
@@ -164,6 +203,8 @@ async function load(){
     document.getElementById('state').textContent = 'Failed to load data/weekly.json'
     return
   }
+
+  _tableData = data
 
   document.getElementById('meta').textContent =
     `${data.weeks[0].label} – ${data.weeks[data.weeks.length-1].label}  ·  updated ${data.updated}`
@@ -233,6 +274,16 @@ async function load(){
   })
 
   wrap.appendChild(table)
+
+  // Show window buttons and wire up
+  const wbtns = document.getElementById('wbtns')
+  wbtns.style.display = ''
+  wbtns.querySelectorAll('.wbtn').forEach(b => {
+    b.addEventListener('click', () => applyWindow(parseInt(b.dataset.w)))
+  })
+
+  // Apply default window
+  applyWindow(_activeWindow)
 }
 
 load()
