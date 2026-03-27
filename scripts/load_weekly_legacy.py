@@ -110,11 +110,19 @@ def main():
             if val is not None:
                 weekly[i][col_key] = val
 
+    # All rows must have identical keys for Supabase batch upsert
+    all_cols = ["invoice_revenue","cash_collected","transport_net_rev","total_sales",
+                "total_leads","bau_leads","inbound_calls","answer_rate",
+                "tickets_raised","tickets_resolved","csat"]
+
     upsert_rows = []
     for i, data in enumerate(weekly):
         if not data:
             continue
-        upsert_rows.append({"week_commencing": week_date(i), **data})
+        row = {"week_commencing": week_date(i)}
+        for col in all_cols:
+            row[col] = data.get(col)  # None for missing values
+        upsert_rows.append(row)
 
     print(f"  {len(upsert_rows)} weeks with data to upsert")
 
