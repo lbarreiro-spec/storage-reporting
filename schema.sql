@@ -77,8 +77,26 @@ create table if not exists mtd_yoy (
   updated_at                      timestamptz default now()
 );
 
+-- Weekly KPI — legacy data seeded from Google Sheet, future data from live sources
+create table if not exists weekly_kpi (
+  week_commencing  date primary key,  -- Monday of each week, e.g. 2025-01-06
+  invoice_revenue  numeric,
+  cash_collected   numeric,
+  transport_net_rev numeric,
+  total_sales      integer,           -- new storage deals booked
+  total_leads      integer,
+  bau_leads        integer,           -- BAU website leads only
+  inbound_calls    integer,
+  answer_rate      numeric,           -- % e.g. 92.5
+  tickets_raised   integer,
+  tickets_resolved integer,
+  csat             numeric,           -- /5 scale
+  updated_at       timestamptz default now()
+);
+
 -- RLS: disabled — open read access (no auth in reporting app)
-alter table mtd_monthly          disable row level security;
-alter table mtd_transport_monthly disable row level security;
-alter table mtd_fees_monthly     disable row level security;
-alter table mtd_yoy              disable row level security;
+alter table mtd_monthly           disable row level security;
+alter table mtd_transport_monthly  disable row level security;
+alter table mtd_fees_monthly       disable row level security;
+alter table mtd_yoy                disable row level security;
+alter table weekly_kpi             disable row level security;
