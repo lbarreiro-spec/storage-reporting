@@ -102,8 +102,9 @@ tr.date-sep td{background:rgba(255,255,255,0.03);font-family:var(--sans);font-si
         <th>OB Answered</th>
         <th>OB Talk Time</th>
         <th>OB AHT</th>
+        <th class="grp-ob">Total Talk</th>
       </tr></thead>
-      <tbody id="voice-body"><tr><td colspan="11" class="loading">Loading…</td></tr></tbody>
+      <tbody id="voice-body"><tr><td colspan="12" class="loading">Loading…</td></tr></tbody>
     </table>
   </div>
 </div>
@@ -154,7 +155,7 @@ async function loadAll(){
 
   if(error || !data || !data.length){
     document.getElementById('ph-sub').textContent = 'No data yet — run the fetch script to populate.'
-    document.getElementById('voice-body').innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--mid);padding:20px;font-size:15px">No data available</td></tr>'
+    document.getElementById('voice-body').innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--mid);padding:20px;font-size:15px">No data available</td></tr>'
     return
   }
 
@@ -214,7 +215,7 @@ function renderTable(){
 
   const tbody = document.getElementById('voice-body')
   if(!rows.length){
-    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--mid);padding:20px;font-size:15px">No data for this selection</td></tr>'
+    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--mid);padding:20px;font-size:15px">No data for this selection</td></tr>'
     return
   }
 
@@ -222,8 +223,9 @@ function renderTable(){
   let html = ''
   for(const d of dates){
     const dayRows = rows.filter(r => r.date === d)
-    html += `<tr class="date-sep"><td colspan="11">${fmtDate(d)}</td></tr>`
+    html += `<tr class="date-sep"><td colspan="12">${fmtDate(d)}</td></tr>`
     for(const r of dayRows){
+      const totalTalk = (r.ib_talktime || 0) + (r.ob_talktime || 0)
       html += `<tr>
         <td></td>
         <td>${r.agent}</td>
@@ -236,6 +238,7 @@ function renderTable(){
         <td>${r.ob_answered ?? '—'}</td>
         <td>${fmtSecs(r.ob_talktime)}</td>
         <td>${fmtSecs(r.ob_aht)}</td>
+        <td class="grp-ob" style="color:var(--tl);font-weight:500">${fmtSecs(totalTalk)}</td>
       </tr>`
     }
   }
