@@ -3,257 +3,238 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Weekly Revenue Intelligence — AnyVan Storage</title>
+<title>Weekly KPI — AnyVan Storage</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#1C1C1C;--cl:#DAD5D0;--cd:#2A2A2A;--b:rgba(255,255,255,0.08);
-  --mid:#888;--td:#1C1C1C;--tl:#DAD5D0;
-  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
-  --green-bg:#103a10;--green-txt:#5cb85c;
-  --red-bg:#3a1010;--red-txt:#e87474;
+  --bg:#1C1C1C;
+  --surface:#222;
+  --border:rgba(255,255,255,0.07);
+  --border2:rgba(255,255,255,0.12);
+  --mid:#666;
+  --dim:#383838;
+  --tl:#DAD5D0;
+  --mono:'DM Mono',monospace;
+  --sans:'DM Sans',sans-serif;
 }
-body{background:var(--bg);font-family:var(--sans);color:var(--tl);min-height:100vh;padding:44px 60px}
+html,body{height:100%;background:var(--bg);font-family:var(--sans);color:var(--tl);overflow:hidden}
+body{display:flex;flex-direction:column}
 
-/* NAV */
-.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:40px}
-.back{font-size:13px;color:var(--mid);text-decoration:none;transition:color .12s;display:flex;align-items:center;gap:6px}
+/* TOP BAR */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 20px;
+  border-bottom:1px solid var(--border2);
+  background:var(--bg);
+  flex-shrink:0;
+  z-index:30;
+}
+.back{font-size:12px;color:var(--mid);text-decoration:none;letter-spacing:.04em;transition:color .1s}
 .back:hover{color:var(--tl)}
-.week-sel{background:var(--cd);border:1px solid var(--b);border-radius:8px;padding:7px 12px;font-family:var(--mono);font-size:13px;color:var(--tl);outline:none;cursor:pointer}
-.week-sel option{background:#2A2A2A}
+.topbar-title{font-size:13px;font-weight:600;color:var(--tl);letter-spacing:-.01em}
+.topbar-meta{font-size:10px;color:var(--mid);font-family:var(--mono)}
 
-/* PAGE HEADER */
-.ph{margin-bottom:36px}
-.ph-lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:7px}
-.ph-title{font-size:28px;font-weight:600;letter-spacing:-.01em}
-.ph-sub{font-size:14px;color:var(--mid);margin-top:5px;font-family:var(--mono)}
+/* MATRIX WRAPPER */
+.matrix-wrap{flex:1;overflow:auto;position:relative}
 
-/* SECTION */
-.sec{margin-bottom:36px}
-.sec-lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:14px;padding-bottom:7px;border-bottom:1px solid rgba(255,255,255,0.07)}
+/* TABLE */
+table{border-collapse:collapse;white-space:nowrap;font-size:12px}
 
-/* STAT CARDS */
-.stat-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
-.stat{background:var(--cd);border:1px solid var(--b);border-radius:13px;padding:18px 20px}
-.stat.hl{background:var(--cl);border-color:transparent}
-.stat.hl .stat-lbl{color:rgba(28,28,28,.5)}
-.stat.hl .stat-val{color:var(--td)}
-.stat.hl .stat-sub{color:rgba(28,28,28,.4)}
-.stat-lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:8px}
-.stat-val{font-family:var(--mono);font-size:28px;font-weight:500;line-height:1;letter-spacing:-.02em}
-.stat-sub{font-size:13px;color:var(--mid);margin-top:5px}
+/* ── HEADER ROW ── */
+thead th{
+  position:sticky;top:0;z-index:10;
+  background:var(--surface);
+  border-bottom:1px solid var(--border2);
+  padding:9px 10px 7px;
+  font-family:var(--mono);
+  font-size:10px;font-weight:500;
+  letter-spacing:.06em;
+  text-align:right;
+  color:var(--mid);
+  min-width:78px;
+}
+thead th.th-section{
+  width:64px;min-width:64px;max-width:64px;
+  text-align:left;padding-left:14px;
+  position:sticky;left:0;z-index:20;
+  background:var(--surface);
+}
+thead th.th-metric{
+  width:218px;min-width:218px;max-width:218px;
+  text-align:left;padding-left:10px;
+  font-family:var(--sans);font-size:9px;
+  text-transform:uppercase;letter-spacing:.12em;
+  position:sticky;left:64px;z-index:20;
+  background:var(--surface);
+  border-right:1px solid var(--border2);
+}
 
-/* OPS CARDS */
-.ops-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
-.ops-card{background:var(--cd);border:1px solid var(--b);border-radius:13px;padding:18px 20px}
-.ops-lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:8px}
-.ops-val{font-family:var(--mono);font-size:24px;font-weight:500;line-height:1;letter-spacing:-.02em}
-.ops-sub{font-size:12px;color:var(--mid);margin-top:6px}
+/* ── SECTION DIVIDER ROWS ── */
+tr.sec-hdr>td{
+  background:var(--bg);
+  padding:14px 10px 4px;
+  font-size:9px;font-weight:700;
+  letter-spacing:.18em;text-transform:uppercase;
+  color:rgba(218,213,208,0.28);
+  border-top:1px solid var(--border2);
+}
+tr.sec-hdr>td.sec-label{
+  position:sticky;left:0;z-index:9;
+  background:var(--bg);
+  padding-left:14px;
+}
+tr.sec-hdr>td.sec-metric{
+  position:sticky;left:64px;z-index:9;
+  background:var(--bg);
+  border-right:1px solid var(--border2);
+  padding-left:10px;
+}
 
-/* HISTORY TABLE */
-.tbl-wrap{overflow-x:auto}
-table{width:100%;border-collapse:collapse}
-th{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--mid);padding:8px 12px;text-align:right;border-bottom:1px solid rgba(255,255,255,0.07);white-space:nowrap}
-th:first-child{text-align:left}
-td{font-family:var(--mono);font-size:13px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--mid);text-align:right;white-space:nowrap}
-td:first-child{font-family:var(--sans);font-size:14px;font-weight:500;color:var(--tl);text-align:left}
-tr:hover td{background:rgba(255,255,255,0.02)}
-tr.selected-week td{color:var(--tl)}
-tr.selected-week td:first-child{color:var(--cl)}
+/* ── DATA ROWS ── */
+tr.dr>td{
+  border-bottom:1px solid rgba(255,255,255,0.035);
+  vertical-align:middle;
+}
+tr.dr:hover>td{background:rgba(255,255,255,0.03) !important}
 
-/* MISC */
-.loading{font-size:14px;color:var(--mid);padding:40px 0;text-align:center}
-::-webkit-scrollbar{width:4px;height:4px}
+td.c-section{
+  position:sticky;left:0;z-index:9;
+  background:var(--bg);
+  width:64px;min-width:64px;max-width:64px;
+  padding:5px 6px 5px 14px;
+  font-size:7px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+  color:transparent; /* section name shown in sec-hdr only */
+  vertical-align:top;
+}
+td.c-metric{
+  position:sticky;left:64px;z-index:9;
+  background:var(--bg);
+  width:218px;min-width:218px;max-width:218px;
+  padding:6px 14px 6px 10px;
+  font-size:12px;color:var(--tl);
+  border-right:1px solid var(--border2);
+}
+tr.dr:hover>td.c-section,
+tr.dr:hover>td.c-metric{background:rgba(255,255,255,0.03)}
+
+td.c-val{
+  font-family:var(--mono);
+  font-size:12px;
+  color:#9a9590;
+  text-align:right;
+  padding:6px 12px;
+  min-width:78px;
+}
+td.c-val.empty{color:var(--dim)}
+
+/* STATE */
+.state{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;color:var(--mid);
+}
+
+::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.09);border-radius:2px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.09);border-radius:3px}
 </style>
 </head>
 <body>
 
 <div class="topbar">
   <a class="back" href="../index.html">← Reporting home</a>
-  <select class="week-sel" id="week-sel" onchange="switchWeek(this.value)"></select>
+  <span class="topbar-title">Weekly KPI</span>
+  <span class="topbar-meta" id="meta">Loading…</span>
 </div>
 
-<div class="ph">
-  <div class="ph-lbl">Revenue Intelligence</div>
-  <div class="ph-title">Weekly Report</div>
-  <div class="ph-sub" id="ph-sub">Loading…</div>
-</div>
-
-<!-- HEADLINE STATS -->
-<div class="sec">
-  <div class="sec-lbl">This week</div>
-  <div class="stat-row" id="headline-stats">
-    <div class="loading">Loading…</div>
-  </div>
-</div>
-
-<!-- OPS -->
-<div class="sec">
-  <div class="sec-lbl">Operations</div>
-  <div class="ops-grid" id="ops-section">
-    <div class="loading">Loading…</div>
-  </div>
-</div>
-
-<!-- HISTORY TABLE -->
-<div class="sec">
-  <div class="sec-lbl">Weekly history</div>
-  <div class="tbl-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Week commencing</th>
-          <th>Invoice rev</th>
-          <th>Cash collected</th>
-          <th>Sales booked</th>
-          <th>Transport</th>
-          <th>Leads</th>
-          <th>Inbound calls</th>
-          <th>Answer rate</th>
-          <th>CSAT /5</th>
-        </tr>
-      </thead>
-      <tbody id="history-body">
-        <tr><td colspan="9" class="loading">Loading…</td></tr>
-      </tbody>
-    </table>
-  </div>
+<div class="matrix-wrap" id="wrap">
+  <div class="state" id="state">Loading…</div>
 </div>
 
 <script>
-const SUPABASE_URL      = '[SUPABASE_URL_REMOVED]'
-const SUPABASE_ANON_KEY = '[SUPABASE_ANON_KEY_REMOVED]'
-const { createClient } = window.supabase
-const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-
-let ALL_WEEKS = []
-let SELECTED  = null
-
-function fmt(n){
-  if(n == null) return '—'
-  return '£' + Number(n).toLocaleString('en-GB', {minimumFractionDigits:0, maximumFractionDigits:0})
-}
-function fmtN(n){ return n == null ? '—' : Number(n).toLocaleString('en-GB') }
-function fmtPct(n){ return n == null ? '—' : Number(n).toFixed(1) + '%' }
-function fmtCsat(n){ return n == null ? '—' : Number(n).toFixed(1) + ' /5' }
-
-function weekLabel(iso){
-  const d = new Date(iso + 'T00:00:00')
-  return d.toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'})
-}
-
-async function loadAll(){
-  const { data, error } = await db
-    .from('weekly_kpi')
-    .select('*')
-    .order('week_commencing', { ascending: false })
-
-  if(error || !data?.length){
-    document.getElementById('ph-sub').textContent = 'No data — run scripts/load_weekly_legacy.py to seed.'
-    document.getElementById('headline-stats').innerHTML = '<div class="loading">No data available.</div>'
-    document.getElementById('ops-section').innerHTML = '<div class="loading">No data available.</div>'
-    document.getElementById('history-body').innerHTML =
-      '<tr><td colspan="9" style="text-align:center;color:var(--mid);padding:20px;font-size:12px">No data yet</td></tr>'
+async function load(){
+  let data
+  try{
+    const r = await fetch('../data/weekly.json?_='+Date.now())
+    if(!r.ok) throw new Error(r.status)
+    data = await r.json()
+  }catch(e){
+    document.getElementById('state').textContent = 'Failed to load data/weekly.json'
     return
   }
 
-  ALL_WEEKS = data
+  document.getElementById('meta').textContent =
+    `${data.weeks[0].label} – ${data.weeks[data.weeks.length-1].label}  ·  updated ${data.updated}`
 
-  const sel = document.getElementById('week-sel')
-  sel.innerHTML = ALL_WEEKS.map(w =>
-    `<option value="${w.week_commencing}">${weekLabel(w.week_commencing)}</option>`
-  ).join('')
+  const wrap  = document.getElementById('wrap')
+  document.getElementById('state').remove()
 
-  SELECTED = ALL_WEEKS[0].week_commencing
-  renderAll()
+  const table = document.createElement('table')
+  const thead = table.createTHead()
+  const tbody = table.createTBody()
+
+  // ── Header ──────────────────────────────────────────
+  const hr = thead.insertRow()
+
+  const makeHdr = (cls, text) => {
+    const th = document.createElement('th')
+    th.className = cls
+    th.textContent = text
+    hr.appendChild(th)
+  }
+  makeHdr('th-section', '')
+  makeHdr('th-metric',  'Metric')
+  data.weeks.forEach(w => makeHdr('', w.label))
+
+  // ── Body ─────────────────────────────────────────────
+  data.sections.forEach(section => {
+
+    // Section divider
+    const sr = tbody.insertRow()
+    sr.className = 'sec-hdr'
+
+    const sdLabel = document.createElement('td')
+    sdLabel.className = 'sec-label'
+    sdLabel.textContent = section.name
+    sr.appendChild(sdLabel)
+
+    const sdMetric = document.createElement('td')
+    sdMetric.className = 'sec-metric'
+    sr.appendChild(sdMetric)
+
+    for(let i=0; i<data.weeks.length; i++){
+      sr.appendChild(document.createElement('td'))
+    }
+
+    // Data rows
+    section.rows.forEach(row => {
+      const tr = tbody.insertRow()
+      tr.className = 'dr'
+
+      const tdSec = document.createElement('td')
+      tdSec.className = 'c-section'
+      tr.appendChild(tdSec)
+
+      const tdMet = document.createElement('td')
+      tdMet.className = 'c-metric'
+      tdMet.textContent = row.metric
+      tr.appendChild(tdMet)
+
+      row.values.forEach(v => {
+        const td = document.createElement('td')
+        const empty = v === ''
+        td.className = 'c-val' + (empty ? ' empty' : '')
+        td.textContent = empty ? '—' : v
+        tr.appendChild(td)
+      })
+    })
+  })
+
+  wrap.appendChild(table)
 }
 
-function switchWeek(val){
-  SELECTED = val
-  renderAll()
-}
-
-function renderAll(){
-  const w = ALL_WEEKS.find(x => x.week_commencing === SELECTED) || {}
-  document.getElementById('ph-sub').textContent = `w/c ${weekLabel(SELECTED)}`
-  renderHeadline(w)
-  renderOps(w)
-  renderHistory()
-}
-
-function renderHeadline(w){
-  document.getElementById('headline-stats').innerHTML = `
-    <div class="stat hl">
-      <div class="stat-lbl">Invoice revenue</div>
-      <div class="stat-val">${fmt(w.invoice_revenue)}</div>
-      <div class="stat-sub">weekly invoiced</div>
-    </div>
-    <div class="stat">
-      <div class="stat-lbl">Cash collected</div>
-      <div class="stat-val">${fmt(w.cash_collected)}</div>
-      <div class="stat-sub">payments received</div>
-    </div>
-    <div class="stat">
-      <div class="stat-lbl">Sales booked</div>
-      <div class="stat-val">${fmtN(w.total_sales)}</div>
-      <div class="stat-sub">new storage deals</div>
-    </div>
-    <div class="stat">
-      <div class="stat-lbl">Transport net rev</div>
-      <div class="stat-val">${fmt(w.transport_net_rev)}</div>
-      <div class="stat-sub">collections + redeliveries</div>
-    </div>
-    <div class="stat">
-      <div class="stat-lbl">Total leads</div>
-      <div class="stat-val">${fmtN(w.total_leads)}</div>
-      <div class="stat-sub">${fmtN(w.bau_leads) === '—' ? '' : fmtN(w.bau_leads) + ' BAU website'}</div>
-    </div>`
-}
-
-function renderOps(w){
-  document.getElementById('ops-section').innerHTML = `
-    <div class="ops-card">
-      <div class="ops-lbl">Inbound calls</div>
-      <div class="ops-val">${fmtN(w.inbound_calls)}</div>
-    </div>
-    <div class="ops-card">
-      <div class="ops-lbl">Answer rate</div>
-      <div class="ops-val">${fmtPct(w.answer_rate)}</div>
-    </div>
-    <div class="ops-card">
-      <div class="ops-lbl">Tickets raised</div>
-      <div class="ops-val">${fmtN(w.tickets_raised)}</div>
-    </div>
-    <div class="ops-card">
-      <div class="ops-lbl">Tickets resolved</div>
-      <div class="ops-val">${fmtN(w.tickets_resolved)}</div>
-    </div>
-    <div class="ops-card">
-      <div class="ops-lbl">CSAT</div>
-      <div class="ops-val">${fmtCsat(w.csat)}</div>
-    </div>`
-}
-
-function renderHistory(){
-  document.getElementById('history-body').innerHTML = ALL_WEEKS.map(w => `
-    <tr class="${w.week_commencing === SELECTED ? 'selected-week' : ''}">
-      <td>${weekLabel(w.week_commencing)}</td>
-      <td>${fmt(w.invoice_revenue)}</td>
-      <td>${fmt(w.cash_collected)}</td>
-      <td>${fmtN(w.total_sales)}</td>
-      <td>${fmt(w.transport_net_rev)}</td>
-      <td>${fmtN(w.total_leads)}</td>
-      <td>${fmtN(w.inbound_calls)}</td>
-      <td>${fmtPct(w.answer_rate)}</td>
-      <td>${fmtCsat(w.csat)}</td>
-    </tr>`).join('')
-}
-
-loadAll()
+load()
 </script>
 </body>
 </html>
