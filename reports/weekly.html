@@ -46,35 +46,6 @@ body{display:flex;flex-direction:column}
 /* TABLE */
 table{border-collapse:collapse;white-space:nowrap;font-size:18px}
 
-/* ── HEADER ROW ── */
-thead th{
-  position:sticky;top:0;z-index:10;
-  background:var(--surface);
-  border-bottom:1px solid var(--border2);
-  padding:9px 12px 7px;
-  font-family:var(--mono);
-  font-size:16px;font-weight:500;
-  letter-spacing:.06em;
-  text-align:right;
-  color:var(--mid);
-  min-width:100px;
-}
-thead th.th-section{
-  width:64px;min-width:64px;max-width:64px;
-  text-align:left;padding-left:14px;
-  position:sticky;left:0;z-index:20;
-  background:var(--surface);
-}
-thead th.th-metric{
-  width:280px;min-width:280px;max-width:280px;
-  text-align:left;padding-left:10px;
-  font-family:var(--sans);font-size:13px;
-  text-transform:uppercase;letter-spacing:.12em;
-  position:sticky;left:64px;z-index:20;
-  background:var(--surface);
-  border-right:1px solid var(--border2);
-}
-
 /* ── SECTION DIVIDER ROWS ── */
 tr.sec-hdr>td{
   background:var(--surface);
@@ -195,17 +166,11 @@ function applyWindow(w){
   const total = _tableData.weeks.length
   const start = (w === 0 || w >= total) ? 0 : total - w
 
-  // Update date range label in each section header (always visible — in sticky left col)
+  // Update date range label in each section header
   const first = _tableData.weeks[start].label
   const last  = _tableData.weeks[total - 1].label
   const range = first === last ? first : `${first} – ${last}`
   document.querySelectorAll('.sec-range').forEach(el => el.textContent = range)
-
-  // Show/hide header th cells (skip first 2: section + metric)
-  document.querySelectorAll('thead th').forEach((th, i) => {
-    if(i < 2) return
-    th.style.display = (i - 2) >= start ? '' : 'none'
-  })
 
   // Show/hide data cells and section-hdr date cells
   document.querySelectorAll('tr.dr, tr.sec-hdr').forEach(tr => {
@@ -236,21 +201,7 @@ async function load(){
   document.getElementById('state').remove()
 
   const table = document.createElement('table')
-  const thead = table.createTHead()
   const tbody = table.createTBody()
-
-  // ── Header ──────────────────────────────────────────
-  const hr = thead.insertRow()
-
-  const makeHdr = (cls, text) => {
-    const th = document.createElement('th')
-    th.className = cls
-    th.textContent = text
-    hr.appendChild(th)
-  }
-  makeHdr('th-section', '')
-  makeHdr('th-metric',  'Metric')
-  data.weeks.forEach(w => makeHdr('', w.label))
 
   // ── Body ─────────────────────────────────────────────
   data.sections.forEach(section => {
