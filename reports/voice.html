@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voice Activity — AnyVan Storage</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0D1912;--cl:#E8E2D5;--cd:#141E17;--b:rgba(255,255,255,0.08);
+  --mid:#6B7D70;--td:#0D1912;--tl:#E8E2D5;--gold:#C9A84C;
+  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+}
+body{background:radial-gradient(ellipse at 30% 15%,#1C3828 0%,#0D1912 55%,#060D09 100%);font-family:var(--sans);color:var(--tl);min-height:100vh;padding:44px 60px}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:40px}
+.back{font-size:15px;color:var(--mid);text-decoration:none;transition:color .12s;display:flex;align-items:center;gap:6px}
+.back:hover{color:var(--tl)}
+.month-sel{background:var(--cd);border:1px solid var(--b);border-radius:8px;padding:7px 12px;font-family:var(--mono);font-size:15px;color:var(--tl);outline:none;cursor:pointer}
+.month-sel option{background:#141E17}
+
+.ph{margin-bottom:36px}
+.ph-lbl{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:7px}
+.ph-title{font-size:28px;font-weight:600;letter-spacing:-.01em}
+.ph-sub{font-size:16px;color:var(--mid);margin-top:5px;font-family:var(--mono)}
+
+.sec{margin-bottom:40px}
+.sec-lbl{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:14px;padding-bottom:7px;border-bottom:1px solid rgba(255,255,255,0.07)}
+
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+
+/* Column group divider */
+th.grp-ib{border-left:2px solid rgba(201,168,76,0.2)}
+th.grp-ob{border-left:2px solid rgba(255,255,255,0.07)}
+td.grp-ib{border-left:2px solid rgba(201,168,76,0.12)}
+td.grp-ob{border-left:2px solid rgba(255,255,255,0.04)}
+
+th{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--mid);padding:10px 14px;text-align:right;border-bottom:1px solid rgba(255,255,255,0.07);white-space:nowrap;font-weight:500}
+th:first-child,th:nth-child(2){text-align:left}
+td{font-family:var(--mono);font-size:15px;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--mid);text-align:right;white-space:nowrap}
+td:first-child{font-family:var(--sans);font-size:15px;font-weight:500;color:var(--tl);text-align:left}
+td:nth-child(2){font-family:var(--sans);font-size:15px;text-align:left;color:var(--mid)}
+tr:hover td{background:rgba(255,255,255,0.02)}
+
+/* Answer rate colouring */
+td.rate-good{color:#5cb85c;font-weight:600}
+td.rate-warn{color:#d4a017;font-weight:600}
+td.rate-bad{color:#e87474;font-weight:600}
+
+/* Date separator rows */
+tr.date-sep td{background:rgba(255,255,255,0.03);font-family:var(--sans);font-size:14px;font-weight:600;color:var(--cl);text-align:left;padding:8px 14px;border-bottom:none;border-top:1px solid rgba(255,255,255,0.06)}
+
+.loading{font-size:16px;color:var(--mid);padding:40px 0;text-align:center}
+
+/* Team toggle */
+.toggle-group{display:flex;gap:6px}
+.toggle-btn{background:var(--cd);border:1px solid var(--b);border-radius:7px;padding:6px 16px;font-family:var(--sans);font-size:15px;color:var(--mid);cursor:pointer;transition:all .12s}
+.toggle-btn:hover{border-color:rgba(232,226,213,0.2);color:var(--tl)}
+.toggle-btn.active{background:var(--gold);border-color:transparent;color:#0D1912;font-weight:600}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.09);border-radius:2px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="back" href="../index.html">← Reporting home</a>
+  <div style="display:flex;gap:12px;align-items:center">
+    <div class="toggle-group">
+      <button class="toggle-btn active" onclick="setTeam('all',this)">All</button>
+      <button class="toggle-btn" onclick="setTeam('ops',this)">Ops</button>
+      <button class="toggle-btn" onclick="setTeam('sales',this)">Sales</button>
+    </div>
+    <select class="month-sel" id="month-sel" onchange="switchMonth(this.value)"></select>
+  </div>
+</div>
+
+<div class="ph">
+  <div class="ph-lbl">Storage</div>
+  <div class="ph-title">Voice Activity</div>
+  <div class="ph-sub" id="ph-sub">Loading…</div>
+</div>
+
+<div class="sec">
+  <div class="sec-lbl" id="table-lbl">All agents</div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>Date</th>
+        <th>Agent</th>
+        <th class="grp-ib">IB Dialled</th>
+        <th>IB Answered</th>
+        <th>IB Ans%</th>
+        <th>IB Talk Time</th>
+        <th>IB AHT</th>
+        <th class="grp-ob">OB Dialled</th>
+        <th>OB Answered</th>
+        <th>OB Talk Time</th>
+        <th>OB AHT</th>
+      </tr></thead>
+      <tbody id="voice-body"><tr><td colspan="11" class="loading">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL      = '[SUPABASE_URL_REMOVED]'
+const SUPABASE_ANON_KEY = '[SUPABASE_ANON_KEY_REMOVED]'
+const { createClient } = window.supabase
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+const MO  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+const DAY = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+
+let ALL_DATA       = []
+let SELECTED_MONTH = null
+let SELECTED_TEAM  = 'all'
+
+function fmtSecs(s){
+  if(s == null || s === 0) return '—'
+  const h   = Math.floor(s / 3600)
+  const m   = Math.floor((s % 3600) / 60)
+  const sec = s % 60
+  return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`
+}
+
+function fmtDate(iso){
+  const d = new Date(iso + 'T00:00:00')
+  return `${DAY[d.getDay()]} ${d.getDate()} ${MO[d.getMonth()]}`
+}
+
+function monthLabel(iso){
+  const [y,m] = iso.split('-')
+  return `${MO[parseInt(m)-1]} ${y}`
+}
+
+function ansRateCell(dialled, answered){
+  if(!dialled) return '<td>—</td>'
+  const pct = Math.round((answered / dialled) * 100)
+  const cls = pct >= 80 ? 'rate-good' : pct >= 65 ? 'rate-warn' : 'rate-bad'
+  return `<td class="${cls}">${pct}%</td>`
+}
+
+async function loadAll(){
+  const { data, error } = await db
+    .from('voice_daily')
+    .select('date')
+    .order('date', { ascending: false })
+
+  if(error || !data || !data.length){
+    document.getElementById('ph-sub').textContent = 'No data yet — run the fetch script to populate.'
+    document.getElementById('voice-body').innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--mid);padding:20px;font-size:15px">No data available</td></tr>'
+    return
+  }
+
+  const months = [...new Set(data.map(r => r.date.slice(0,7)))].sort().reverse()
+
+  const sel = document.getElementById('month-sel')
+  sel.innerHTML = months.map(m => `<option value="${m}">${monthLabel(m)}</option>`).join('')
+
+  const now = new Date()
+  const curLabel = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
+  SELECTED_MONTH = months.includes(curLabel) ? curLabel : months[0]
+  sel.value = SELECTED_MONTH
+
+  await loadMonth()
+}
+
+async function loadMonth(){
+  const [year, month] = SELECTED_MONTH.split('-').map(Number)
+  const from = `${SELECTED_MONTH}-01`
+  const to   = new Date(year, month, 0).toISOString().slice(0,10)
+
+  const { data, error } = await db
+    .from('voice_daily')
+    .select('*')
+    .gte('date', from)
+    .lte('date', to)
+    .order('date', { ascending: false })
+    .order('agent', { ascending: true })
+
+  ALL_DATA = data || []
+
+  const days = [...new Set(ALL_DATA.map(r => r.date))].sort().reverse()
+  document.getElementById('ph-sub').textContent =
+    `${monthLabel(SELECTED_MONTH)} · ${days.length} day${days.length !== 1 ? 's' : ''} of data`
+
+  renderTable()
+}
+
+function switchMonth(val){
+  SELECTED_MONTH = val
+  loadMonth()
+}
+
+function setTeam(team, btn){
+  SELECTED_TEAM = team
+  document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'))
+  btn.classList.add('active')
+  const labels = { all: 'All agents', ops: 'Ops team', sales: 'Sales team' }
+  document.getElementById('table-lbl').textContent = labels[team]
+  renderTable()
+}
+
+function renderTable(){
+  const rows = SELECTED_TEAM === 'all'
+    ? ALL_DATA
+    : ALL_DATA.filter(r => r.team === SELECTED_TEAM)
+
+  const tbody = document.getElementById('voice-body')
+  if(!rows.length){
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--mid);padding:20px;font-size:15px">No data for this selection</td></tr>'
+    return
+  }
+
+  const dates = [...new Set(rows.map(r => r.date))].sort().reverse()
+  let html = ''
+  for(const d of dates){
+    const dayRows = rows.filter(r => r.date === d)
+    html += `<tr class="date-sep"><td colspan="11">${fmtDate(d)}</td></tr>`
+    for(const r of dayRows){
+      html += `<tr>
+        <td></td>
+        <td>${r.agent}</td>
+        <td class="grp-ib">${r.ib_dialled ?? '—'}</td>
+        <td>${r.ib_answered ?? '—'}</td>
+        ${ansRateCell(r.ib_dialled, r.ib_answered)}
+        <td>${fmtSecs(r.ib_talktime)}</td>
+        <td>${fmtSecs(r.ib_aht)}</td>
+        <td class="grp-ob">${r.ob_dialled ?? '—'}</td>
+        <td>${r.ob_answered ?? '—'}</td>
+        <td>${fmtSecs(r.ob_talktime)}</td>
+        <td>${fmtSecs(r.ob_aht)}</td>
+      </tr>`
+    }
+  }
+  tbody.innerHTML = html
+}
+
+loadAll()
+</script>
+</body>
+</html>

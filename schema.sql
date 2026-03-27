@@ -115,6 +115,22 @@ create table if not exists daily_activity (
   primary key (date, agent)
 );
 
+-- Daily voice activity (IB + OB, seconds stored as integers)
+create table if not exists voice_daily (
+  date            date not null,
+  agent           text not null,
+  team            text not null,
+  ib_dialled      integer,
+  ib_answered     integer,
+  ib_talktime     integer,   -- seconds
+  ib_aht          integer,   -- seconds
+  ob_dialled      integer,
+  ob_answered     integer,
+  ob_talktime     integer,   -- seconds
+  ob_aht          integer,   -- seconds
+  primary key (date, agent)
+);
+
 -- RLS: disabled — open read access (no auth in reporting app)
 alter table mtd_monthly           disable row level security;
 alter table mtd_transport_monthly  disable row level security;
@@ -122,3 +138,4 @@ alter table mtd_fees_monthly       disable row level security;
 alter table mtd_yoy                disable row level security;
 alter table weekly_kpi             disable row level security;
 alter table daily_activity         disable row level security;
+alter table voice_daily            disable row level security;
