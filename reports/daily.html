@@ -16,39 +16,39 @@
 body{background:radial-gradient(ellipse at 30% 15%,#1C3828 0%,#0D1912 55%,#060D09 100%);font-family:var(--sans);color:var(--tl);min-height:100vh;padding:44px 60px}
 
 .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:40px}
-.back{font-size:13px;color:var(--mid);text-decoration:none;transition:color .12s;display:flex;align-items:center;gap:6px}
+.back{font-size:15px;color:var(--mid);text-decoration:none;transition:color .12s;display:flex;align-items:center;gap:6px}
 .back:hover{color:var(--tl)}
-.month-sel{background:var(--cd);border:1px solid var(--b);border-radius:8px;padding:7px 12px;font-family:var(--mono);font-size:13px;color:var(--tl);outline:none;cursor:pointer}
+.month-sel{background:var(--cd);border:1px solid var(--b);border-radius:8px;padding:7px 12px;font-family:var(--mono);font-size:15px;color:var(--tl);outline:none;cursor:pointer}
 .month-sel option{background:#141E17}
 
 .ph{margin-bottom:36px}
-.ph-lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:7px}
-.ph-title{font-size:26px;font-weight:600;letter-spacing:-.01em}
-.ph-sub{font-size:14px;color:var(--mid);margin-top:5px;font-family:var(--mono)}
+.ph-lbl{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:7px}
+.ph-title{font-size:28px;font-weight:600;letter-spacing:-.01em}
+.ph-sub{font-size:16px;color:var(--mid);margin-top:5px;font-family:var(--mono)}
 
 .sec{margin-bottom:40px}
-.sec-lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:14px;padding-bottom:7px;border-bottom:1px solid rgba(255,255,255,0.07)}
+.sec-lbl{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:14px;padding-bottom:7px;border-bottom:1px solid rgba(255,255,255,0.07)}
 
 .tbl-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse}
-th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mid);padding:10px 14px;text-align:right;border-bottom:1px solid rgba(255,255,255,0.07);white-space:nowrap;font-weight:500}
+th{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--mid);padding:10px 14px;text-align:right;border-bottom:1px solid rgba(255,255,255,0.07);white-space:nowrap;font-weight:500}
 th:first-child,th:nth-child(2){text-align:left}
-td{font-family:var(--mono);font-size:13px;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--mid);text-align:right;white-space:nowrap}
-td:first-child{font-family:var(--sans);font-size:13px;font-weight:500;color:var(--tl);text-align:left}
-td:nth-child(2){font-family:var(--sans);font-size:13px;text-align:left;color:var(--mid)}
+td{font-family:var(--mono);font-size:15px;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--mid);text-align:right;white-space:nowrap}
+td:first-child{font-family:var(--sans);font-size:15px;font-weight:500;color:var(--tl);text-align:left}
+td:nth-child(2){font-family:var(--sans);font-size:15px;text-align:left;color:var(--mid)}
 tr:hover td{background:rgba(255,255,255,0.02)}
 
 /* Online duration column highlight */
 td.online{color:var(--tl);font-weight:500}
 
 /* Date separator rows */
-tr.date-sep td{background:rgba(255,255,255,0.03);font-family:var(--sans);font-size:12px;font-weight:600;color:var(--cl);text-align:left;padding:8px 14px;border-bottom:none;border-top:1px solid rgba(255,255,255,0.06)}
+tr.date-sep td{background:rgba(255,255,255,0.03);font-family:var(--sans);font-size:14px;font-weight:600;color:var(--cl);text-align:left;padding:8px 14px;border-bottom:none;border-top:1px solid rgba(255,255,255,0.06)}
 
-.loading{font-size:14px;color:var(--mid);padding:40px 0;text-align:center}
+.loading{font-size:16px;color:var(--mid);padding:40px 0;text-align:center}
 
 /* Team toggle */
 .toggle-group{display:flex;gap:6px}
-.toggle-btn{background:var(--cd);border:1px solid var(--b);border-radius:7px;padding:6px 16px;font-family:var(--sans);font-size:13px;color:var(--mid);cursor:pointer;transition:all .12s}
+.toggle-btn{background:var(--cd);border:1px solid var(--b);border-radius:7px;padding:6px 16px;font-family:var(--sans);font-size:15px;color:var(--mid);cursor:pointer;transition:all .12s}
 .toggle-btn:hover{border-color:rgba(218,213,208,0.2);color:var(--tl)}
 .toggle-btn.active{background:var(--gold);border-color:transparent;color:#0D1912;font-weight:600}
 
@@ -136,7 +136,7 @@ async function loadAll(){
 
   if(error || !data || !data.length){
     document.getElementById('ph-sub').textContent = 'No data yet — run the fetch script to populate.'
-    document.getElementById('activity-body').innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--mid);padding:20px;font-size:13px">No data available</td></tr>'
+    document.getElementById('activity-body').innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--mid);padding:20px;font-size:15px">No data available</td></tr>'
     return
   }
 
@@ -198,7 +198,7 @@ function renderTable(){
 
   const tbody = document.getElementById('activity-body')
   if(!rows.length){
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--mid);padding:20px;font-size:13px">No data for this selection</td></tr>'
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--mid);padding:20px;font-size:15px">No data for this selection</td></tr>'
     return
   }
 
