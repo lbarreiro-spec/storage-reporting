@@ -276,13 +276,14 @@ def fetch_line_item_fees(invoices, token):
 
 # ─── ZOHO CRM ──────────────────────────────────────────────────────────────────
 
-SQFT_EXCLUDED_STAGES        = {'cancel', 'prospect', 'enquiry', 'estimate sent', 'quoted by sales'}
-SQFT_EXITING_EXCLUDED_STAGES = {'prospect', 'enquiry', 'estimate sent', 'quoted by sales'}  # include cancel — items left warehouse even if contract cancelled
+SQFT_EXCLUDED_STAGES = {'cancel', 'prospect', 'enquiry', 'estimate sent', 'quoted by sales'}
 
 def fetch_crm_deals(token):
     headers = {"Authorization": f"Zoho-oauthtoken {token}"}
     deals, page_token = [], None
-    print(f"📥 Fetching CRM deals from {START_DATE}...")
+    # Always fetch from HISTORY_START — a deal created in 2024 may have a
+    # redelivery date in 2026, so we cannot filter by deal creation date alone.
+    print(f"📥 Fetching CRM deals from {HISTORY_START}...")
 
     for _ in range(50):
         params = {"fields": "Deal_Name,Stage,Created_Time,Estimated_sq_ft1,Moving_Date,Confirmed_Redelivery_Date",
@@ -307,7 +308,7 @@ def fetch_crm_deals(token):
         for deal in batch:
             ct = deal.get("Created_Time", "")
             d  = date.fromisoformat(ct[:10]) if ct else None
-            if d and d >= START_DATE:
+            if d and d >= HISTORY_START:
                 deals.append(deal)
             elif d:
                 past_start = True
@@ -486,7 +487,7 @@ def aggregate_monthly(invoices, deals):
     for deal in deals:
         stage    = (deal.get("Stage") or "").strip().lower()
         sqft_ok  = stage not in SQFT_EXCLUDED_STAGES
-        exit_ok  = stage not in SQFT_EXITING_EXCLUDED_STAGES
+        exit_ok  = stage not in SQFT_EXCLUDED_STAGES
         sq       = float(deal.get("Estimated_sq_ft1") or 0)
 
         # Booked — by Created_Time
