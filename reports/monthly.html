@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monthly Trends — AnyVan Storage</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0D1912;--cl:#E8E2D5;--cd:#141E17;--b:rgba(255,255,255,0.08);
+  --mid:#6B7D70;--tl:#E8E2D5;--gold:#C9A84C;
+  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+}
+html,body{height:100%;background:radial-gradient(ellipse at 30% 15%,#1C3828 0%,#0D1912 55%,#060D09 100%);font-family:var(--sans);color:var(--tl)}
+body{display:flex;flex-direction:column;min-height:100vh}
+
+/* TOP BAR */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 28px;border-bottom:1px solid var(--b);
+  background:var(--bg);flex-shrink:0;z-index:20;
+}
+.back{font-size:14px;color:var(--mid);text-decoration:none;transition:color .1s}
+.back:hover{color:var(--tl)}
+.topbar-title{font-size:15px;font-weight:600;color:var(--tl);letter-spacing:-.01em}
+.topbar-meta{font-size:12px;color:var(--mid);font-family:var(--mono)}
+
+/* METRIC TABS */
+.tab-bar{
+  display:flex;gap:0;overflow-x:auto;flex-shrink:0;
+  border-bottom:1px solid var(--b);background:var(--bg);padding:0 20px;
+}
+.tab-bar::-webkit-scrollbar{height:3px}
+.tab-bar::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.09);border-radius:2px}
+.tab{
+  flex-shrink:0;padding:11px 16px;font-size:13px;color:var(--mid);
+  cursor:pointer;border-bottom:2px solid transparent;transition:color .1s,border-color .1s;
+  white-space:nowrap;
+}
+.tab:hover{color:var(--tl)}
+.tab.active{color:var(--tl);border-bottom-color:var(--gold)}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;padding:28px 32px;gap:24px}
+
+.chart-header{display:flex;align-items:baseline;gap:16px}
+.chart-title{font-size:22px;font-weight:600;letter-spacing:-.01em}
+.chart-updated{font-size:12px;color:var(--mid);font-family:var(--mono)}
+
+.chart-wrap{
+  background:var(--cd);border:1px solid var(--b);border-radius:14px;
+  padding:24px;position:relative;
+}
+.chart-wrap canvas{max-height:380px}
+
+/* LEGEND */
+.legend{display:flex;gap:20px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--mid);cursor:pointer;transition:opacity .15s}
+.legend-item.faded{opacity:.35}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+/* DATA TABLE */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--mid);
+   padding:9px 12px;text-align:right;border-bottom:1px solid var(--b);font-weight:500;white-space:nowrap}
+th:first-child{text-align:left}
+td{font-family:var(--mono);font-size:13px;padding:9px 12px;border-bottom:1px solid rgba(255,255,255,0.035);
+   color:var(--mid);text-align:right;white-space:nowrap}
+td:first-child{font-family:var(--sans);font-size:13px;font-weight:500;color:var(--tl);text-align:left}
+tr:hover td{background:rgba(255,255,255,0.02)}
+td.cur{color:var(--gold);font-weight:500}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="back" href="../index.html">← Reporting home</a>
+  <span class="topbar-title">Monthly Trends</span>
+  <span class="topbar-meta" id="meta">Loading…</span>
+</div>
+
+<div class="tab-bar" id="tabs"></div>
+
+<div class="main">
+  <div class="chart-header">
+    <div class="chart-title" id="chart-title">—</div>
+  </div>
+  <div class="legend" id="legend"></div>
+  <div class="chart-wrap">
+    <canvas id="chart"></canvas>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr id="tbl-head"></tr></thead>
+      <tbody id="tbl-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+
+// Year colour palette
+const YEAR_STYLES = {
+  '2023': { color: 'rgba(107,125,112,0.6)',  border: 'rgba(107,125,112,0.6)',  width: 1.5 },
+  '2024': { color: 'rgba(145,163,148,0.75)', border: 'rgba(145,163,148,0.75)', width: 1.5 },
+  '2025': { color: 'rgba(232,226,213,0.9)',  border: 'rgba(232,226,213,0.9)',  width: 2 },
+  '2026': { color: '#C9A84C',                border: '#C9A84C',                width: 2.5 },
+}
+
+let _data       = null
+let _chart      = null
+let _activeIdx  = 0
+let _hiddenYrs  = new Set()
+
+function fmt(v, format){
+  if(v == null) return '—'
+  if(format === 'money') return '£' + Math.round(v).toLocaleString('en-GB')
+  if(format === 'pct')   return v.toFixed(1) + '%'
+  if(format === 'int')   return Math.round(v).toLocaleString('en-GB')
+  if(format === 'float') return Math.round(v).toLocaleString('en-GB')
+  return v
+}
+
+function renderMetric(idx){
+  _activeIdx = idx
+  const m = _data.metrics[idx]
+
+  // Update tab highlight
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i === idx))
+  document.getElementById('chart-title').textContent = m.label
+
+  // Legend
+  const legendEl = document.getElementById('legend')
+  legendEl.innerHTML = ''
+  m.years.forEach(y => {
+    const s = YEAR_STYLES[y] || YEAR_STYLES['2025']
+    const el = document.createElement('div')
+    el.className = 'legend-item' + (_hiddenYrs.has(y) ? ' faded' : '')
+    el.innerHTML = `<div class="legend-dot" style="background:${s.color}"></div><span>${y}</span>`
+    el.addEventListener('click', () => {
+      _hiddenYrs.has(y) ? _hiddenYrs.delete(y) : _hiddenYrs.add(y)
+      renderMetric(_activeIdx)
+    })
+    legendEl.appendChild(el)
+  })
+
+  // Chart datasets
+  const datasets = m.years.map(y => {
+    const s = YEAR_STYLES[y] || YEAR_STYLES['2025']
+    return {
+      label: y,
+      data: m.series[y],
+      borderColor: s.border,
+      backgroundColor: 'transparent',
+      borderWidth: s.width,
+      pointRadius: 3,
+      pointHoverRadius: 5,
+      pointBackgroundColor: s.border,
+      tension: 0.3,
+      hidden: _hiddenYrs.has(y),
+      spanGaps: false,
+    }
+  })
+
+  if(_chart){
+    _chart.data.datasets = datasets
+    _chart.options.plugins.tooltip.callbacks.label = (ctx) => ` ${ctx.dataset.label}: ${fmt(ctx.raw, m.format)}`
+    _chart.options.scales.y.ticks.callback = (v) => fmt(v, m.format)
+    _chart.update()
+  } else {
+    const ctx = document.getElementById('chart').getContext('2d')
+    _chart = new Chart(ctx, {
+      type: 'line',
+      data: { labels: MONTHS, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1a2d1f',
+            borderColor: 'rgba(255,255,255,0.12)',
+            borderWidth: 1,
+            titleColor: '#E8E2D5',
+            bodyColor: '#9aaa9e',
+            titleFont: { family: "'DM Sans', sans-serif", size: 13, weight: '600' },
+            bodyFont: { family: "'DM Mono', monospace", size: 13 },
+            padding: 12,
+            callbacks: {
+              label: (ctx) => ` ${ctx.dataset.label}: ${fmt(ctx.raw, m.format)}`
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(255,255,255,0.04)' },
+            ticks: { color: '#6B7D70', font: { family: "'DM Mono', monospace", size: 12 } },
+            border: { color: 'rgba(255,255,255,0.08)' }
+          },
+          y: {
+            grid: { color: 'rgba(255,255,255,0.04)' },
+            ticks: {
+              color: '#6B7D70',
+              font: { family: "'DM Mono', monospace", size: 12 },
+              callback: (v) => fmt(v, m.format)
+            },
+            border: { color: 'rgba(255,255,255,0.08)' }
+          }
+        }
+      }
+    })
+  }
+
+  // Table
+  const curYear = new Date().getFullYear().toString()
+  const head = document.getElementById('tbl-head')
+  const body = document.getElementById('tbl-body')
+
+  head.innerHTML = '<th>Month</th>' + m.years.map(y =>
+    `<th style="color:${y === curYear ? 'var(--gold)' : ''}">${y}</th>`
+  ).join('')
+
+  body.innerHTML = MONTHS.map((mo, mi) => {
+    const cells = m.years.map(y => {
+      const v = m.series[y][mi]
+      const isCur = y === curYear
+      return `<td class="${isCur && v != null ? 'cur' : ''}">${fmt(v, m.format)}</td>`
+    }).join('')
+    return `<tr><td>${mo}</td>${cells}</tr>`
+  }).join('')
+}
+
+async function load(){
+  let data
+  try {
+    const r = await fetch('../data/monthly.json?_=' + Date.now())
+    if(!r.ok) throw new Error(r.status)
+    data = await r.json()
+  } catch(e) {
+    document.getElementById('meta').textContent = 'Failed to load data/monthly.json'
+    return
+  }
+  _data = data
+  document.getElementById('meta').textContent = 'updated ' + data.updated
+
+  // Build tabs
+  const tabBar = document.getElementById('tabs')
+  data.metrics.forEach((m, i) => {
+    const t = document.createElement('div')
+    t.className = 'tab' + (i === 0 ? ' active' : '')
+    t.textContent = m.label
+    t.addEventListener('click', () => renderMetric(i))
+    tabBar.appendChild(t)
+  })
+
+  renderMetric(0)
+}
+
+load()
+</script>
+</body>
+</html>

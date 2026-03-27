@@ -1,0 +1,31 @@
+name: Fetch Monthly Trends
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # 6am UTC every Monday
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run fetch
+        run: python3 scripts/fetch_monthly.py
+
+      - name: Commit and push if data changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/monthly.json
+          git diff --cached --quiet || git commit -m "chore: update monthly.json"
+          git push
