@@ -83,6 +83,7 @@ def main():
     print("Fetching CSV from Google Sheets...")
     resp = requests.get(CSV_URL, allow_redirects=True, timeout=30)
     resp.raise_for_status()
+    resp.encoding = 'utf-8'
 
     raw_rows = list(csv.reader(io.StringIO(resp.text)))
     if not raw_rows:
