@@ -118,6 +118,14 @@ tr.current-month td:first-child{color:var(--cl)}
   </div>
 </div>
 
+<!-- COMBINED REVENUE -->
+<div class="sec">
+  <div class="sec-lbl">Combined revenue (incl. transport)</div>
+  <div class="yoy-grid" id="combined-section">
+    <div class="loading">Loading…</div>
+  </div>
+</div>
+
 <!-- YOY -->
 <div class="sec">
   <div class="sec-lbl">Year on year</div>
@@ -231,6 +239,8 @@ function switchMonth(label){
   renderAll()
 }
 
+function yoyCalc(cy, py){ if(!py || py===0) return null; return Math.round((cy-py)/Math.abs(py)*1000)/10 }
+
 function renderAll(){
   const m  = ALL_MONTHLY.find(x => x.label === SELECTED_MONTH) || {}
   const t  = ALL_TRANSPORT.find(x => x.label === SELECTED_MONTH) || {}
@@ -241,10 +251,83 @@ function renderAll(){
     `${monthLabel(SELECTED_MONTH)}${isLatest && YOY ? ` · Day ${YOY.days_elapsed} of ${YOY.days_in_month} · as of ${YOY.as_of}` : ''}`
 
   renderHeadline(m)
+  renderCombined(m, t, isLatest)
   renderYoy(m, isLatest)
   renderTransport(t)
   renderSqftFees(m, f)
   renderHistory()
+}
+
+function renderCombined(m, t, isLatest){
+  const tFee    = (t.coll_av_fee||0) + (t.redel_av_fee||0)
+  const cyInvT  = (m.invoiced_revenue||0) + tFee
+  const cyPaidT = (m.paid_revenue||0) + tFee
+
+  if(!isLatest || !YOY){
+    document.getElementById('combined-section').innerHTML = `
+      <div class="yoy-card">
+        <div class="yoy-title">Invoiced + Transport</div>
+        <div class="yoy-row"><span class="yoy-lbl">Combined MTD</span><div class="yoy-vals"><span class="yoy-num">${fmt(cyInvT)}</span></div></div>
+      </div>
+      <div class="yoy-card">
+        <div class="yoy-title">Paid + Transport</div>
+        <div class="yoy-row"><span class="yoy-lbl">Combined MTD</span><div class="yoy-vals"><span class="yoy-num">${fmt(cyPaidT)}</span></div></div>
+      </div>`
+    return
+  }
+
+  const y = YOY
+  const pyTSameDay  = (y.coll_av_fee_prior_year||0) + (y.redel_av_fee_prior_year||0)
+  const tForecast   = y.days_elapsed ? tFee / y.days_elapsed * y.days_in_month : 0
+  const pyTFullEst  = y.days_elapsed ? pyTSameDay / y.days_elapsed * y.days_in_month : 0
+
+  const pyInvTSameDay  = (y.py_invoiced_same_days||0) + pyTSameDay
+  const cyInvTForecast = (y.cy_invoiced_forecast||0)  + tForecast
+  const pyInvTFull     = (y.py_invoiced_full_month||0) + pyTFullEst
+
+  const pyPaidTSameDay  = (y.py_paid_same_days||0)   + pyTSameDay
+  const cyPaidTForecast = (y.cy_paid_forecast||0)    + tForecast
+  const pyPaidTFull     = (y.py_paid_full_month||0)  + pyTFullEst
+
+  document.getElementById('combined-section').innerHTML = `
+    <div class="yoy-card">
+      <div class="yoy-title">Invoiced + Transport</div>
+      <div class="yoy-row">
+        <span class="yoy-lbl">Actual vs prior year same days</span>
+        <div class="yoy-vals">
+          <span class="yoy-num">${fmt(cyInvT)}</span>
+          <span style="font-size:11px;color:var(--mid)">vs ${fmt(pyInvTSameDay)}</span>
+          ${yoyBadge(yoyCalc(cyInvT, pyInvTSameDay))}
+        </div>
+      </div>
+      <div class="yoy-row">
+        <span class="yoy-lbl">Forecast vs prior year full month</span>
+        <div class="yoy-vals">
+          <span class="yoy-num">${fmt(cyInvTForecast)}</span>
+          <span style="font-size:11px;color:var(--mid)">vs ${fmt(pyInvTFull)}</span>
+          ${yoyBadge(yoyCalc(cyInvTForecast, pyInvTFull))}
+        </div>
+      </div>
+    </div>
+    <div class="yoy-card">
+      <div class="yoy-title">Paid + Transport</div>
+      <div class="yoy-row">
+        <span class="yoy-lbl">Actual vs prior year same days</span>
+        <div class="yoy-vals">
+          <span class="yoy-num">${fmt(cyPaidT)}</span>
+          <span style="font-size:11px;color:var(--mid)">vs ${fmt(pyPaidTSameDay)}</span>
+          ${yoyBadge(yoyCalc(cyPaidT, pyPaidTSameDay))}
+        </div>
+      </div>
+      <div class="yoy-row">
+        <span class="yoy-lbl">Forecast vs prior year full month</span>
+        <div class="yoy-vals">
+          <span class="yoy-num">${fmt(cyPaidTForecast)}</span>
+          <span style="font-size:11px;color:var(--mid)">vs ${fmt(pyPaidTFull)}</span>
+          ${yoyBadge(yoyCalc(cyPaidTForecast, pyPaidTFull))}
+        </div>
+      </div>
+    </div>`
 }
 
 function renderHeadline(m){
