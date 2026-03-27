@@ -4,31 +4,37 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Freshdesk — AnyVan Storage</title>
-
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#000000;--surface:#1c1c1e;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
-  --mid:#86868b;--tl:#f5f5f7;--gold:#0071e3;--dim:#1e2e22;
-  --mono:'SF Mono','Menlo','Monaco',monospace;--sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
+  --bg:#0D1912;--surface:#141E17;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
+  --mid:#6B7D70;--tl:#E8E2D5;--gold:#C9A84C;--dim:#1e2e22;
+  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
 }
-html,body{height:100%;background:#000;font-family:var(--sans);color:var(--tl);overflow:hidden}
+html,body{height:100%;background:radial-gradient(ellipse at 30% 15%,#1C3828 0%,#0D1912 55%,#060D09 100%);font-family:var(--sans);color:var(--tl);overflow:hidden}
 body{display:flex;flex-direction:column}
 
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--border2);background:var(--bg);flex-shrink:0;z-index:30}
 .back{font-size:14px;color:var(--mid);text-decoration:none;letter-spacing:.04em;transition:color .1s}
 .back:hover{color:var(--tl)}
 .topbar-title{font-size:15px;font-weight:600;color:var(--tl);letter-spacing:-.01em}
+.topbar-right{display:flex;align-items:center;gap:12px}
 .topbar-meta{font-size:12px;color:var(--mid);font-family:var(--mono)}
 
 .month-sel{background:var(--surface);border:1px solid var(--border2);border-radius:5px;padding:4px 10px;font-family:var(--mono);font-size:13px;color:var(--tl);outline:none;cursor:pointer}
-.month-sel option{background:#1c1c1e}
+.month-sel option{background:#141E17}
+
+.refresh-btn{display:flex;align-items:center;gap:6px;background:none;border:1px solid var(--border2);border-radius:5px;padding:4px 12px;font-family:var(--sans);font-size:13px;color:var(--mid);cursor:pointer;transition:all .12s}
+.refresh-btn:hover:not(:disabled){border-color:var(--gold);color:var(--gold)}
+.refresh-btn:disabled{opacity:0.5;cursor:default}
+.spin{display:inline-block;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 
 .matrix-wrap{flex:1;overflow:auto;position:relative}
 
 table{border-collapse:collapse;white-space:nowrap;font-size:13px}
 
-/* Sticky header row */
 thead tr.day-hdr th{
   position:sticky;top:0;z-index:20;
   background:var(--bg);
@@ -52,7 +58,6 @@ thead tr.day-hdr th.wknd{color:rgba(107,125,112,0.4)}
 .day-date{display:block;font-size:12px;margin-top:2px;color:var(--tl)}
 thead tr.day-hdr th.wknd .day-date{color:rgba(232,226,213,0.3)}
 
-/* Section header rows */
 tr.sec-hdr>td{
   background:var(--surface);
   padding:10px 10px 7px;
@@ -68,7 +73,6 @@ tr.sec-hdr>td.c-metric{
   border-right:1px solid var(--border2);
 }
 
-/* Sub-section header rows (queue/agent names) */
 tr.sub-hdr>td{
   background:rgba(255,255,255,0.025);
   padding:7px 10px 5px;
@@ -84,7 +88,6 @@ tr.sub-hdr>td.c-metric{
   border-right:1px solid var(--border2);
 }
 
-/* Data rows */
 tr.dr>td{border-bottom:1px solid rgba(255,255,255,0.03);vertical-align:middle}
 tr.dr:hover>td{background:rgba(255,255,255,0.03) !important}
 
@@ -92,7 +95,7 @@ td.c-metric{
   position:sticky;left:0;z-index:9;
   background:var(--bg);
   min-width:180px;width:180px;
-  padding:6px 14px 6px 14px;
+  padding:6px 14px;
   font-size:13px;color:var(--tl);
   border-right:1px solid var(--border2);
 }
@@ -122,8 +125,11 @@ td.c-val.hl{color:var(--tl)}
 <div class="topbar">
   <a class="back" href="../index.html">← Reporting home</a>
   <span class="topbar-title">Freshdesk</span>
-  <select class="month-sel" id="month-sel" onchange="switchMonth(this.value)"></select>
-  <span class="topbar-meta" id="meta">Loading…</span>
+  <div class="topbar-right">
+    <select class="month-sel" id="month-sel" onchange="switchMonth(this.value)"></select>
+    <button class="refresh-btn" id="refresh-btn" onclick="triggerRefresh()">↻ Refresh</button>
+    <span class="topbar-meta" id="meta">Loading…</span>
+  </div>
 </div>
 
 <div class="matrix-wrap" id="wrap">
@@ -131,8 +137,13 @@ td.c-val.hl{color:var(--tl)}
 </div>
 
 <script>
-const DAY_ABBR  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
-const MO_LABEL  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+// ── Set your GitHub fine-grained PAT here (actions:write on this repo only) ──
+const GITHUB_PAT  = 'PASTE_YOUR_PAT_HERE'
+const GITHUB_REPO = 'Robbosd/storage-reporting'
+const WORKFLOW_ID = 'refresh-freshdesk.yml'
+
+const DAY_ABBR    = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+const MO_LABEL    = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 const QUEUE_NAMES = ['Storage Support','Storage Warehouse','Storage','Whs. Redeliveries','Storage Complaints']
 const AGENT_NAMES = ['Shaun Gae','Emmanuel Nsenga','Theo J','Shafwaan Titus']
 
@@ -153,23 +164,14 @@ function daysInMonth(mk){
   return days
 }
 
-function val(v, highlight=false){
-  if(v==null||v===''||v==='—') return {txt:'—', cls:'empty'}
-  return {txt: String(v), cls: highlight ? 'hl' : ''}
-}
-
 function buildTable(days){
   const table = document.createElement('table')
-
-  // ── THEAD ──────────────────────────────────────────────────────────────────
   const thead = table.createTHead()
   const hdr   = thead.insertRow()
   hdr.className = 'day-hdr'
-
   const thMet = document.createElement('th')
   thMet.className = 'c-metric'
   hdr.appendChild(thMet)
-
   days.forEach(d => {
     const th = document.createElement('th')
     th.className = d.wknd ? 'wknd' : ''
@@ -177,57 +179,50 @@ function buildTable(days){
     hdr.appendChild(th)
   })
 
-  // ── TBODY ──────────────────────────────────────────────────────────────────
   const tbody = table.createTBody()
-  const ncols = days.length + 1
 
   function secRow(label){
     const tr = tbody.insertRow(); tr.className='sec-hdr'
     const td = document.createElement('td'); td.className='c-metric'; td.textContent=label; tr.appendChild(td)
     for(let i=0;i<days.length;i++){ const t=document.createElement('td'); tr.appendChild(t) }
   }
-
   function subRow(label){
     const tr = tbody.insertRow(); tr.className='sub-hdr'
     const td = document.createElement('td'); td.className='c-metric'; td.textContent=label; tr.appendChild(td)
     for(let i=0;i<days.length;i++){ const t=document.createElement('td'); tr.appendChild(t) }
   }
-
   function dataRow(metric, getter, highlight=false){
     const tr = tbody.insertRow(); tr.className='dr'
     const tdM = document.createElement('td'); tdM.className='c-metric'; tdM.textContent=metric; tr.appendChild(tdM)
     days.forEach(d => {
-      const td = document.createElement('td')
+      const td  = document.createElement('td')
       const rec = ALL_DATA[d.iso]
-      const v   = rec ? getter(rec) : null
-      const {txt, cls} = val(v, highlight)
-      td.className = 'c-val' + (cls?' '+cls:'') + (d.wknd?' wknd':'')
-      td.textContent = txt
+      const raw = rec ? getter(rec) : null
+      const empty = raw==null||raw===''||raw==='—'
+      td.className = 'c-val' + (empty?' empty': highlight?' hl':'') + (d.wknd?' wknd':'')
+      td.textContent = empty ? '—' : String(raw)
       tr.appendChild(td)
     })
   }
 
-  // ── OVERVIEW ───────────────────────────────────────────────────────────────
   secRow('Overview')
-  dataRow('Tickets In',    r => r.inn, true)
+  dataRow('Tickets In',       r => r.inn, true)
   dataRow('Tickets Resolved', r => r.resolved)
-  dataRow('Backlog',       r => r.backlog)
-  dataRow('FR SLA %',      r => r.fr_sla  != null ? r.fr_sla.toFixed(1)+'%'  : null)
-  dataRow('Res SLA %',     r => r.res_sla != null ? r.res_sla.toFixed(1)+'%' : null)
-  dataRow('Avg Resolve',   r => r.avg_r || null)
-  dataRow('p90 Resolve',   r => r.p90   || null)
+  dataRow('Backlog',          r => r.backlog)
+  dataRow('FR SLA %',         r => r.fr_sla  != null ? r.fr_sla.toFixed(1)+'%'  : null)
+  dataRow('Res SLA %',        r => r.res_sla != null ? r.res_sla.toFixed(1)+'%' : null)
+  dataRow('Avg Resolve',      r => r.avg_r || null)
+  dataRow('p90 Resolve',      r => r.p90   || null)
 
-  // ── BY QUEUE ───────────────────────────────────────────────────────────────
   secRow('By Queue')
   QUEUE_NAMES.forEach((qname, qi) => {
     subRow(qname)
-    dataRow('In',        r => r.queues[qi]?.in  ?? null, true)
-    dataRow('Resolved',  r => r.queues[qi]?.res ?? null)
-    dataRow('Backlog',   r => r.queues[qi]?.blg ?? null)
-    dataRow('FR SLA %',  r => r.queues[qi]?.fr  != null ? r.queues[qi].fr.toFixed(1)+'%' : null)
+    dataRow('In',       r => r.queues[qi]?.in  ?? null, true)
+    dataRow('Resolved', r => r.queues[qi]?.res ?? null)
+    dataRow('Backlog',  r => r.queues[qi]?.blg ?? null)
+    dataRow('FR SLA %', r => r.queues[qi]?.fr  != null ? r.queues[qi].fr.toFixed(1)+'%' : null)
   })
 
-  // ── BY AGENT ───────────────────────────────────────────────────────────────
   secRow('By Agent (Ops)')
   AGENT_NAMES.forEach((aname, ai) => {
     subRow(aname)
@@ -243,45 +238,101 @@ function buildTable(days){
 }
 
 function render(){
-  const days = daysInMonth(SELECTED_MONTH)
+  const days    = daysInMonth(SELECTED_MONTH)
   const present = days.filter(d => ALL_DATA[d.iso]).length
-
   document.getElementById('meta').textContent =
-    `${monthLabel(SELECTED_MONTH)} · ${present} day${present!==1?'s':''} of data · updated ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}`
-
+    `${monthLabel(SELECTED_MONTH)} · ${present} day${present!==1?'s':''} of data`
   const wrap = document.getElementById('wrap')
   const existing = wrap.querySelector('table')
   if(existing) existing.remove()
-
   wrap.appendChild(buildTable(days))
 }
 
 function switchMonth(val){ SELECTED_MONTH=val; render() }
 
+async function loadData(){
+  const r = await fetch('../data/freshdesk_data.json?_='+Date.now())
+  if(!r.ok) throw new Error(r.status)
+  ALL_DATA = await r.json()
+}
+
 async function init(){
-  try{
-    const r = await fetch('../data/freshdesk_data.json?_='+Date.now())
-    if(!r.ok) throw new Error(r.status)
-    ALL_DATA = await r.json()
-  }catch(e){
-    document.getElementById('state').textContent='Failed to load freshdesk_data.json'
-    return
+  try{ await loadData() }catch(e){
+    document.getElementById('state').textContent='Failed to load freshdesk_data.json'; return
   }
-
   document.getElementById('state').remove()
-
-  const allDates = Object.keys(ALL_DATA).sort().reverse()
-  const months   = [...new Set(allDates.map(d=>d.slice(0,7)))].sort().reverse()
-
+  const months = [...new Set(Object.keys(ALL_DATA).sort().reverse().map(d=>d.slice(0,7)))].sort().reverse()
   const sel = document.getElementById('month-sel')
   sel.innerHTML = months.map(m=>`<option value="${m}">${monthLabel(m)}</option>`).join('')
-
-  const now   = new Date()
+  const now = new Date()
   const curMk = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
   SELECTED_MONTH = months.includes(curMk) ? curMk : months[0]
   sel.value = SELECTED_MONTH
-
   render()
+}
+
+// ── Refresh via GitHub Actions ────────────────────────────────────────────────
+async function triggerRefresh(){
+  if(!GITHUB_PAT || GITHUB_PAT === 'PASTE_YOUR_PAT_HERE'){
+    alert('Add your GitHub PAT to the GITHUB_PAT constant in reports/freshdesk.html')
+    return
+  }
+  const btn  = document.getElementById('refresh-btn')
+  const meta = document.getElementById('meta')
+  btn.disabled = true
+  btn.innerHTML = '<span class="spin">↻</span> Refreshing…'
+  meta.textContent = 'Triggering workflow…'
+
+  try{
+    // 1. Dispatch
+    const dispatch = await fetch(
+      `https://api.github.com/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/dispatches`,
+      { method:'POST', headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'}, body:JSON.stringify({ref:'main'}) }
+    )
+    if(!dispatch.ok) throw new Error(`Dispatch failed: ${dispatch.status}`)
+
+    // 2. Wait for run to register, then find it
+    await new Promise(r=>setTimeout(r,5000))
+    let runId = null
+    for(let i=0;i<12;i++){
+      const runs = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/runs?per_page=1`,
+        {headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json'}})
+      const data = await runs.json()
+      const run  = data.workflow_runs?.[0]
+      if(run){ runId=run.id; break }
+      await new Promise(r=>setTimeout(r,3000))
+    }
+    if(!runId) throw new Error('Could not find workflow run')
+
+    // 3. Poll until complete
+    meta.textContent = 'Workflow running…'
+    for(let i=0;i<50;i++){
+      await new Promise(r=>setTimeout(r,6000))
+      const check = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/actions/runs/${runId}`,
+        {headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json'}})
+      const run = await check.json()
+      const elapsed = Math.round((i+1)*6/60*10)/10
+      meta.textContent = `Running… ${elapsed}m`
+      if(run.status==='completed'){
+        if(run.conclusion!=='success') throw new Error(`Workflow ${run.conclusion}`)
+        break
+      }
+    }
+
+    // 4. Wait for Pages to deploy, reload
+    meta.textContent = 'Deploying…'
+    await new Promise(r=>setTimeout(r,10000))
+    await loadData()
+    render()
+    meta.textContent = 'Updated just now ✓'
+
+  }catch(e){
+    meta.textContent = `Error: ${e.message}`
+    console.error(e)
+  }finally{
+    btn.disabled = false
+    btn.innerHTML = '↻ Refresh'
+  }
 }
 
 init()

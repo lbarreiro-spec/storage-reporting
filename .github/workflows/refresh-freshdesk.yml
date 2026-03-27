@@ -1,0 +1,32 @@
+name: Refresh Freshdesk Data
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Freshdesk KPI script
+        env:
+          FRESHDESK_API_KEY: ${{ secrets.FRESHDESK_API_KEY }}
+          FRESHDESK_DOMAIN: ${{ secrets.FRESHDESK_DOMAIN }}
+          OUTPUT_FILE: data/freshdesk_data.json
+        run: python scripts/kpi_freshdesk_daily.py
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/freshdesk_data.json
+          git diff --staged --quiet || git commit -m "auto: refresh Freshdesk $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push
