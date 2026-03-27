@@ -31,12 +31,12 @@ body{display:flex;flex-direction:column}
   flex-shrink:0;
   z-index:30;
 }
-.back{font-size:14px;color:var(--mid);text-decoration:none;letter-spacing:.04em;transition:color .1s}
+.back{font-size:18px;color:var(--mid);text-decoration:none;letter-spacing:.04em;transition:color .1s}
 .back:hover{color:var(--tl)}
-.topbar-title{font-size:15px;font-weight:600;color:var(--tl);letter-spacing:-.01em}
-.topbar-meta{font-size:12px;color:var(--mid);font-family:var(--mono)}
+.topbar-title{font-size:19px;font-weight:600;color:var(--tl);letter-spacing:-.01em}
+.topbar-meta{font-size:16px;color:var(--mid);font-family:var(--mono)}
 .window-btns{display:flex;gap:4px}
-.wbtn{font-size:13px;font-family:var(--mono);color:var(--mid);background:none;border:1px solid var(--border);border-radius:4px;padding:3px 9px;cursor:pointer;transition:color .1s,border-color .1s}
+.wbtn{font-size:17px;font-family:var(--mono);color:var(--mid);background:none;border:1px solid var(--border);border-radius:4px;padding:3px 9px;cursor:pointer;transition:color .1s,border-color .1s}
 .wbtn:hover{color:var(--tl);border-color:var(--border2)}
 .wbtn.active{color:var(--gold);border-color:var(--gold)}
 
@@ -44,7 +44,7 @@ body{display:flex;flex-direction:column}
 .matrix-wrap{flex:1;overflow:auto;position:relative}
 
 /* TABLE */
-table{border-collapse:collapse;white-space:nowrap;font-size:20px}
+table{border-collapse:collapse;white-space:nowrap;font-size:24px}
 
 /* ── HEADER ROW ── */
 thead th{
@@ -53,7 +53,7 @@ thead th{
   border-bottom:1px solid var(--border2);
   padding:9px 10px 7px;
   font-family:var(--mono);
-  font-size:18px;font-weight:500;
+  font-size:22px;font-weight:500;
   letter-spacing:.06em;
   text-align:right;
   color:var(--mid);
@@ -68,7 +68,7 @@ thead th.th-section{
 thead th.th-metric{
   width:218px;min-width:218px;max-width:218px;
   text-align:left;padding-left:10px;
-  font-family:var(--sans);font-size:15px;
+  font-family:var(--sans);font-size:19px;
   text-transform:uppercase;letter-spacing:.12em;
   position:sticky;left:64px;z-index:20;
   background:var(--surface);
@@ -79,7 +79,7 @@ thead th.th-metric{
 tr.sec-hdr>td{
   background:var(--surface);
   padding:14px 10px 6px;
-  font-size:11px;font-weight:700;
+  font-size:15px;font-weight:700;
   letter-spacing:.18em;text-transform:uppercase;
   color:rgba(232,226,213,0.25);
   border-top:2px solid var(--border2);
@@ -98,7 +98,7 @@ tr.sec-hdr>td.sec-metric{
 }
 tr.sec-hdr>td.sec-date{
   font-family:var(--mono);
-  font-size:18px;font-weight:500;
+  font-size:22px;font-weight:500;
   letter-spacing:.06em;
   color:var(--mid);
   text-align:right;
@@ -117,7 +117,7 @@ td.c-section{
   background:var(--bg);
   width:64px;min-width:64px;max-width:64px;
   padding:5px 6px 5px 14px;
-  font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+  font-size:13px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
   color:transparent; /* section name shown in sec-hdr only */
   vertical-align:top;
 }
@@ -126,7 +126,7 @@ td.c-metric{
   background:var(--bg);
   width:218px;min-width:218px;max-width:218px;
   padding:6px 14px 6px 10px;
-  font-size:20px;color:var(--tl);
+  font-size:24px;color:var(--tl);
   border-right:1px solid var(--border2);
 }
 tr.dr:hover>td.c-section,
@@ -134,7 +134,7 @@ tr.dr:hover>td.c-metric{background:rgba(255,255,255,0.03)}
 
 td.c-val{
   font-family:var(--mono);
-  font-size:20px;
+  font-size:24px;
   color:#7a8c80;
   text-align:right;
   padding:6px 12px;
@@ -146,7 +146,7 @@ td.c-val.empty{color:var(--dim)}
 .state{
   position:absolute;inset:0;
   display:flex;align-items:center;justify-content:center;
-  font-size:15px;color:var(--mid);
+  font-size:19px;color:var(--mid);
 }
 
 ::-webkit-scrollbar{width:5px;height:5px}
