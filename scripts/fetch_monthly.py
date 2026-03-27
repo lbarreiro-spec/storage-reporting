@@ -59,6 +59,22 @@ def main():
     rows = list(csv.reader(io.StringIO(resp.text)))
 
     output_metrics = []
+
+    # GP: embedded in Invoice Revenue section — cols 14,15,16 = 2024,2025,2026
+    # Jan data starts at row 4 (col 13 = month name, cols 14-16 = values)
+    gp_years = ["2024", "2025", "2026"]
+    gp_series = {y: [] for y in gp_years}
+    for m in range(12):
+        data_row = rows[4 + m]   # rows 4-15
+        for col, year in zip([14, 15, 16], gp_years):
+            val = parse_val(data_row[col], "money") if col < len(data_row) else None
+            gp_series[year].append(val)
+    output_metrics.append({
+        "key": "gross_profit", "label": "Gross Profit", "format": "money",
+        "years": gp_years, "series": gp_series,
+    })
+    print("  Gross Profit: ['2024', '2025', '2026']")
+
     for row_idx, key, label, fmt, years in SECTIONS:
         # Data rows are row_idx+2 through row_idx+13 (Jan-Dec)
         series = {y: [] for y in years}
