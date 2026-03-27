@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSAT & NPS — AnyVan Storage</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0D1912;--cl:#E8E2D5;--cd:#141E17;--b:rgba(255,255,255,0.08);
+  --mid:#6B7D70;--td:#0D1912;--tl:#E8E2D5;--gold:#C9A84C;
+  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+  --green-bg:#0d2d18;--green-txt:#5cb85c;
+  --amber-bg:#2d2a1a;--amber-txt:#d4a017;
+  --red-bg:#3a1010;--red-txt:#e87474;
+}
+body{background:radial-gradient(ellipse at 30% 15%,#1C3828 0%,#0D1912 55%,#060D09 100%);font-family:var(--sans);color:var(--tl);min-height:100vh;padding:44px 60px}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:40px}
+.back{font-size:15px;color:var(--mid);text-decoration:none;transition:color .12s;display:flex;align-items:center;gap:6px}
+.back:hover{color:var(--tl)}
+.year-sel{background:var(--cd);border:1px solid var(--b);border-radius:8px;padding:7px 12px;font-family:var(--mono);font-size:15px;color:var(--tl);outline:none;cursor:pointer}
+.year-sel option{background:#141E17}
+
+.ph{margin-bottom:36px}
+.ph-lbl{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:7px}
+.ph-title{font-size:28px;font-weight:600;letter-spacing:-.01em}
+.ph-sub{font-size:16px;color:var(--mid);margin-top:5px;font-family:var(--mono)}
+
+.sec{margin-bottom:48px}
+.sec-lbl{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:14px;padding-bottom:7px;border-bottom:1px solid rgba(255,255,255,0.07)}
+
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--mid);padding:10px 14px;text-align:right;border-bottom:1px solid rgba(255,255,255,0.07);white-space:nowrap;font-weight:500}
+th:first-child,th:nth-child(2){text-align:left}
+td{font-family:var(--mono);font-size:15px;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--mid);text-align:right;white-space:nowrap}
+td:first-child{font-family:var(--sans);font-size:15px;font-weight:500;color:var(--tl);text-align:left}
+td:nth-child(2){font-family:var(--sans);font-size:15px;text-align:left;color:var(--mid)}
+tr:hover td{background:rgba(255,255,255,0.02)}
+
+/* Week separator rows */
+tr.week-sep td{background:rgba(255,255,255,0.03);font-family:var(--sans);font-size:14px;font-weight:600;color:var(--cl);text-align:left;padding:8px 14px;border-bottom:none;border-top:1px solid rgba(255,255,255,0.06)}
+
+/* Score badges */
+td.score-good{color:var(--green-txt);font-weight:600}
+td.score-amber{color:var(--amber-txt);font-weight:600}
+td.score-bad{color:var(--red-txt);font-weight:600}
+
+/* NPS type label */
+td.type-combined{color:var(--tl);font-weight:500}
+td.type-sub{color:var(--mid)}
+
+.loading{font-size:16px;color:var(--mid);padding:40px 0;text-align:center}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.09);border-radius:2px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="back" href="../index.html">← Reporting home</a>
+  <select class="year-sel" id="year-sel" onchange="switchYear(this.value)"></select>
+</div>
+
+<div class="ph">
+  <div class="ph-lbl">Storage</div>
+  <div class="ph-title">CSAT & NPS</div>
+  <div class="ph-sub" id="ph-sub">Loading…</div>
+</div>
+
+<!-- CSAT -->
+<div class="sec">
+  <div class="sec-lbl">CSAT — Ops team (weekly, per agent)</div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>Week</th>
+        <th>Agent</th>
+        <th>Interactions</th>
+        <th>Responses</th>
+        <th>Resp Rate</th>
+        <th>Avg CSAT /5</th>
+        <th>Resolution %</th>
+      </tr></thead>
+      <tbody id="csat-body"><tr><td colspan="7" class="loading">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- NPS -->
+<div class="sec">
+  <div class="sec-lbl">NPS — weekly (collection · redelivery · combined)</div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>Week</th>
+        <th>Type</th>
+        <th>Score</th>
+        <th>Responses</th>
+        <th>Promoters</th>
+        <th>Passives</th>
+        <th>Detractors</th>
+        <th>Prom %</th>
+        <th>Det %</th>
+      </tr></thead>
+      <tbody id="nps-body"><tr><td colspan="9" class="loading">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL      = '[SUPABASE_URL_REMOVED]'
+const SUPABASE_ANON_KEY = '[SUPABASE_ANON_KEY_REMOVED]'
+const { createClient } = window.supabase
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+const MO  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+
+let CSAT_DATA = []
+let NPS_DATA  = []
+let SEL_YEAR  = null
+
+function fmtWeek(iso){
+  const d = new Date(iso + 'T00:00:00')
+  return `w/c ${d.getDate()} ${MO[d.getMonth()]} ${d.getFullYear()}`
+}
+
+function pct(n, d){ return d ? Math.round(n / d * 100) + '%' : '—' }
+
+function csatCls(v){
+  if(v == null) return ''
+  if(v >= 4.25) return 'score-good'
+  if(v < 3.75)  return 'score-amber'
+  return ''
+}
+
+function resCls(v){
+  if(v == null) return ''
+  if(v >= 80) return 'score-good'
+  if(v < 65)  return 'score-amber'
+  return ''
+}
+
+function npsCls(score){
+  if(score >= 50) return 'score-good'
+  if(score >= 20) return 'score-amber'
+  return 'score-bad'
+}
+
+async function loadAll(){
+  // Find available years from csat_weekly
+  const { data: dates } = await db.from('csat_weekly').select('week_commencing').order('week_commencing', { ascending: false })
+  if(!dates || !dates.length){
+    document.getElementById('ph-sub').textContent = 'No data yet — run the fetch script to populate.'
+    document.getElementById('csat-body').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--mid);padding:20px;font-size:15px">No data available</td></tr>'
+    document.getElementById('nps-body').innerHTML  = '<tr><td colspan="9" style="text-align:center;color:var(--mid);padding:20px;font-size:15px">No data available</td></tr>'
+    return
+  }
+
+  const years = [...new Set(dates.map(r => r.week_commencing.slice(0,4)))].sort().reverse()
+  const sel   = document.getElementById('year-sel')
+  sel.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('')
+  SEL_YEAR = years[0]
+  sel.value = SEL_YEAR
+
+  await loadYear()
+}
+
+async function loadYear(){
+  const from = `${SEL_YEAR}-01-01`
+  const to   = `${SEL_YEAR}-12-31`
+
+  const [csatRes, npsRes] = await Promise.all([
+    db.from('csat_weekly').select('*').gte('week_commencing', from).lte('week_commencing', to).order('week_commencing', { ascending: false }).order('agent', { ascending: true }),
+    db.from('nps_weekly').select('*').gte('week_commencing', from).lte('week_commencing', to).order('week_commencing', { ascending: false }).order('type', { ascending: true })
+  ])
+
+  CSAT_DATA = csatRes.data || []
+  NPS_DATA  = npsRes.data  || []
+
+  const weeks = [...new Set(CSAT_DATA.map(r => r.week_commencing))].sort().reverse()
+  document.getElementById('ph-sub').textContent =
+    `${SEL_YEAR} · ${weeks.length} week${weeks.length !== 1 ? 's' : ''} of data`
+
+  renderCsat()
+  renderNps()
+}
+
+function switchYear(val){
+  SEL_YEAR = val
+  loadYear()
+}
+
+function renderCsat(){
+  const weeks = [...new Set(CSAT_DATA.map(r => r.week_commencing))].sort().reverse()
+  if(!weeks.length){
+    document.getElementById('csat-body').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--mid);padding:20px;font-size:15px">No CSAT data for this year</td></tr>'
+    return
+  }
+  let html = ''
+  for(const w of weeks){
+    const rows = CSAT_DATA.filter(r => r.week_commencing === w)
+    html += `<tr class="week-sep"><td colspan="7">${fmtWeek(w)}</td></tr>`
+    for(const r of rows){
+      const rate = r.interactions ? Math.round((r.responses / r.interactions) * 100) + '%' : '—'
+      const csat = r.avg_csat != null ? r.avg_csat.toFixed(1) : '—'
+      const res  = r.resolution_pct != null ? r.resolution_pct.toFixed(0) + '%' : '—'
+      html += `<tr>
+        <td></td>
+        <td>${r.agent}</td>
+        <td>${r.interactions ?? '—'}</td>
+        <td>${r.responses ?? '—'}</td>
+        <td>${rate}</td>
+        <td class="${csatCls(r.avg_csat)}">${csat}</td>
+        <td class="${resCls(r.resolution_pct)}">${res}</td>
+      </tr>`
+    }
+  }
+  document.getElementById('csat-body').innerHTML = html
+}
+
+function renderNps(){
+  const weeks = [...new Set(NPS_DATA.map(r => r.week_commencing))].sort().reverse()
+  if(!weeks.length){
+    document.getElementById('nps-body').innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--mid);padding:20px;font-size:15px">No NPS data for this year</td></tr>'
+    return
+  }
+  const ORDER = ['combined','collection','redelivery']
+  let html = ''
+  for(const w of weeks){
+    const rows = NPS_DATA.filter(r => r.week_commencing === w)
+      .sort((a,b) => ORDER.indexOf(a.type) - ORDER.indexOf(b.type))
+    html += `<tr class="week-sep"><td colspan="9">${fmtWeek(w)}</td></tr>`
+    for(const r of rows){
+      const promPct = pct(r.promoters,  r.responses)
+      const detPct  = pct(r.detractors, r.responses)
+      const typeCls = r.type === 'combined' ? 'type-combined' : 'type-sub'
+      const label   = r.type.charAt(0).toUpperCase() + r.type.slice(1)
+      html += `<tr>
+        <td></td>
+        <td class="${typeCls}">${label}</td>
+        <td class="${npsCls(r.score)}">${r.score}</td>
+        <td>${r.responses}</td>
+        <td>${r.promoters}</td>
+        <td>${r.passives}</td>
+        <td>${r.detractors}</td>
+        <td>${promPct}</td>
+        <td>${detPct}</td>
+      </tr>`
+    }
+  }
+  document.getElementById('nps-body').innerHTML = html
+}
+
+loadAll()
+</script>
+</body>
+</html>

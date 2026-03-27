@@ -1,0 +1,31 @@
+name: Fetch CSAT & NPS Weekly
+
+on:
+  schedule:
+    - cron: '0 8 * * 1'   # 8am UTC every Monday (after last week closes)
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests snowflake-connector-python
+
+      - name: Write Snowflake config
+        run: |
+          mkdir -p ~/.snowflake
+          cat > ~/.snowflake/connections.toml << 'EOF'
+          [connections.default]
+          token = "${{ secrets.SNOWFLAKE_PAT }}"
+          EOF
+
+      - name: Run fetch
+        run: python3 scripts/fetch_csat.py

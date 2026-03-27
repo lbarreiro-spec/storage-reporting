@@ -115,6 +115,29 @@ create table if not exists daily_activity (
   primary key (date, agent)
 );
 
+-- Weekly CSAT per ops agent (Shafwaan, Shaun, Emmanuel, Theo)
+create table if not exists csat_weekly (
+  week_commencing  date not null,
+  agent            text not null,
+  interactions     integer,
+  responses        integer,
+  avg_csat         numeric,     -- /5 scale
+  resolution_pct   numeric,     -- 0-100
+  primary key (week_commencing, agent)
+);
+
+-- Weekly NPS (collection / redelivery / combined)
+create table if not exists nps_weekly (
+  week_commencing  date not null,
+  type             text not null,   -- 'collection', 'redelivery', 'combined'
+  score            integer,         -- -100 to +100
+  responses        integer,
+  promoters        integer,
+  passives         integer,
+  detractors       integer,
+  primary key (week_commencing, type)
+);
+
 -- Daily voice activity (IB + OB, seconds stored as integers)
 create table if not exists voice_daily (
   date            date not null,
