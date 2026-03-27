@@ -4940,25 +4940,25 @@
     ]
   },
   "2026-03-26": {
-    "inn": 183,
-    "resolved": 53,
-    "backlog": 369,
-    "fr_sla": 96.7,
-    "res_sla": 96.2,
-    "avg_r": "12.6h",
-    "p90": "31.6h",
+    "inn": 211,
+    "resolved": 52,
+    "backlog": 347,
+    "fr_sla": 95.3,
+    "res_sla": 98.1,
+    "avg_r": "11.3h",
+    "p90": "31.3h",
     "queues": [
       {
-        "in": 82,
+        "in": 94,
         "res": 21,
-        "blg": 37,
-        "fr": 96.3
+        "blg": 23,
+        "fr": 93.6
       },
       {
-        "in": 77,
-        "res": 17,
-        "blg": 23,
-        "fr": 96.1
+        "in": 90,
+        "res": 16,
+        "blg": 17,
+        "fr": 95.6
       },
       {
         "in": 21,
@@ -4967,9 +4967,9 @@
         "fr": 100.0
       },
       {
-        "in": 3,
+        "in": 6,
         "res": 2,
-        "blg": 8,
+        "blg": 6,
         "fr": 100.0
       },
       {
@@ -4981,9 +4981,9 @@
     ],
     "agents": [
       {
-        "assigned": 83,
+        "assigned": 109,
         "resolved": 24,
-        "backlog": 8,
+        "backlog": 3,
         "fr": 100.0,
         "avg": "16.2h",
         "p90": "46.1h",
@@ -4994,10 +4994,10 @@
         "fast": 8
       },
       {
-        "assigned": 21,
+        "assigned": 23,
         "resolved": 1,
-        "backlog": 16,
-        "fr": 81.0,
+        "backlog": 0,
+        "fr": 87.0,
         "avg": "0.0h",
         "p90": "0.0h",
         "replied": 0,
@@ -5008,22 +5008,22 @@
       },
       {
         "assigned": 31,
-        "resolved": 15,
-        "backlog": 9,
+        "resolved": 14,
+        "backlog": 1,
         "fr": 93.5,
-        "avg": "16.4h",
-        "p90": "72.7h",
-        "replied": 7,
+        "avg": "12.1h",
+        "p90": "31.6h",
+        "replied": 6,
         "note_only": 5,
         "nothing": 3,
-        "reply_rate": "47%",
+        "reply_rate": "43%",
         "fast": 2
       },
       {
-        "assigned": 31,
+        "assigned": 30,
         "resolved": 13,
         "backlog": 15,
-        "fr": 100.0,
+        "fr": 86.7,
         "avg": "2.5h",
         "p90": "2.5h",
         "replied": 1,
