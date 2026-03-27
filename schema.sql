@@ -15,6 +15,9 @@ create table if not exists mtd_monthly (
   sqft_booked        numeric,
   sqft_entering      numeric,
   sqft_exiting       numeric,
+  customers_booked   integer,
+  customers_entering integer,
+  customers_exiting  integer,
   updated_at         timestamptz default now()
 );
 

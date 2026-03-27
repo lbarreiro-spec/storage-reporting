@@ -69,7 +69,7 @@ body{background:var(--bg);font-family:var(--sans);color:var(--tl);min-height:100
 .t-val{font-family:var(--mono);font-size:15px;color:var(--tl)}
 
 /* SQFT + FEES */
-.two-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.two-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
 .info-card{background:var(--cd);border:1px solid var(--b);border-radius:13px;padding:20px 22px}
 .info-title{font-size:13px;font-weight:600;color:var(--tl);margin-bottom:16px}
 .info-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)}
@@ -376,18 +376,29 @@ function renderTransport(t){
       <div class="t-row"><span class="t-lbl">AV fee (combined)</span><span class="t-val">${fmt(totalFee)}</span></div>
       <div class="t-row"><span class="t-lbl">Collections — jobs / fee</span><span class="t-val">${fmtN(t.coll_jobs)} · ${fmt(t.coll_av_fee)}</span></div>
       <div class="t-row"><span class="t-lbl">Redeliveries — jobs / fee</span><span class="t-val">${fmtN(t.redel_jobs)} · ${fmt(t.redel_av_fee)}</span></div>
-      <div class="t-row"><span class="t-lbl">Net customers (in − out)</span><span class="t-val" style="color:${(t.coll_completed||0)-(t.redel_completed||0)>=0?'var(--green-txt)':'var(--red-txt)'}">${((t.coll_completed||0)-(t.redel_completed||0))>0?'+':''}${fmtN((t.coll_completed||0)-(t.redel_completed||0))}</span></div>
     </div>`
 }
 
+function netCol(val){ return val >= 0 ? 'var(--green-txt)' : 'var(--red-txt)' }
+function netFmt(val){ return (val > 0 ? '+' : '') + fmtN(val) }
+
 function renderSqftFees(m, f){
+  const netSqft  = Math.round((m.sqft_entering||0) - (m.sqft_exiting||0))
+  const netCust  = (m.customers_entering||0) - (m.customers_exiting||0)
   document.getElementById('sqft-fees-section').innerHTML = `
     <div class="info-card">
       <div class="info-title">Sq ft</div>
       <div class="info-row"><span class="info-lbl">Booked (by deal created)</span><span class="info-val">${fmtN(m.sqft_booked)}</span></div>
       <div class="info-row"><span class="info-lbl">Entering (by collection date)</span><span class="info-val">${fmtN(m.sqft_entering)}</span></div>
       <div class="info-row"><span class="info-lbl">Exiting (by redelivery date)</span><span class="info-val">${fmtN(m.sqft_exiting)}</span></div>
-      <div class="info-row"><span class="info-lbl">Net sq ft (in − out)</span><span class="info-val" style="color:${(m.sqft_entering||0)-(m.sqft_exiting||0)>=0?'var(--green-txt)':'var(--red-txt)'}">${((m.sqft_entering||0)-(m.sqft_exiting||0))>0?'+':''}${fmtN(Math.round((m.sqft_entering||0)-(m.sqft_exiting||0)))}</span></div>
+      <div class="info-row"><span class="info-lbl">Net (in − out)</span><span class="info-val" style="color:${netCol(netSqft)}">${netFmt(netSqft)}</span></div>
+    </div>
+    <div class="info-card">
+      <div class="info-title">Customers (CRM)</div>
+      <div class="info-row"><span class="info-lbl">Booked (by deal created)</span><span class="info-val">${fmtN(m.customers_booked)}</span></div>
+      <div class="info-row"><span class="info-lbl">Entering (by collection date)</span><span class="info-val">${fmtN(m.customers_entering)}</span></div>
+      <div class="info-row"><span class="info-lbl">Exiting (by redelivery date)</span><span class="info-val">${fmtN(m.customers_exiting)}</span></div>
+      <div class="info-row"><span class="info-lbl">Net (in − out)</span><span class="info-val" style="color:${netCol(netCust)}">${netFmt(netCust)}</span></div>
     </div>
     <div class="info-card">
       <div class="info-title">Fees</div>

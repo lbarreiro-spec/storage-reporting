@@ -276,7 +276,8 @@ def fetch_line_item_fees(invoices, token):
 
 # ─── ZOHO CRM ──────────────────────────────────────────────────────────────────
 
-SQFT_EXCLUDED_STAGES = {'cancel', 'prospect', 'enquiry', 'estimate sent', 'quoted by sales'}
+SQFT_EXCLUDED_STAGES        = {'cancel', 'prospect', 'enquiry', 'estimate sent', 'quoted by sales'}
+SQFT_EXITING_EXCLUDED_STAGES = {'prospect', 'enquiry', 'estimate sent', 'quoted by sales'}  # include cancel — items left warehouse even if contract cancelled
 
 def fetch_crm_deals(token):
     headers = {"Authorization": f"Zoho-oauthtoken {token}"}
@@ -443,7 +444,8 @@ def aggregate_monthly(invoices, deals):
                    "paid_revenue": 0.0, "paid_count": 0,
                    "promo_count": 0,
                    "writeoff_count": 0, "writeoff_value": 0.0,
-                   "sqft_booked": 0.0, "sqft_entering": 0.0, "sqft_exiting": 0.0}
+                   "sqft_booked": 0.0, "sqft_entering": 0.0, "sqft_exiting": 0.0,
+                   "customers_booked": 0, "customers_entering": 0, "customers_exiting": 0}
                for k, v in build_month_buckets(START_DATE).items()}
 
     for inv in invoices:
@@ -482,40 +484,52 @@ def aggregate_monthly(invoices, deals):
                 pass
 
     for deal in deals:
-        stage  = (deal.get("Stage") or "").strip().lower()
-        sqft_ok = stage not in SQFT_EXCLUDED_STAGES
-        sq     = float(deal.get("Estimated_sq_ft1") or 0)
+        stage    = (deal.get("Stage") or "").strip().lower()
+        sqft_ok  = stage not in SQFT_EXCLUDED_STAGES
+        exit_ok  = stage not in SQFT_EXITING_EXCLUDED_STAGES
+        sq       = float(deal.get("Estimated_sq_ft1") or 0)
 
+        # Booked — by Created_Time
         ct = deal.get("Created_Time", "")
         if ct:
             try:
                 d = date.fromisoformat(ct[:10])
                 mo = month_label(d)
-                if mo in month_m and sqft_ok and sq > 0:
-                    month_m[mo]["sqft_booked"] += sq
+                if mo in month_m:
+                    if sqft_ok and sq > 0:
+                        month_m[mo]["sqft_booked"] += sq
+                    if sqft_ok:
+                        month_m[mo]["customers_booked"] += 1
             except ValueError:
                 pass
 
-        if sqft_ok and sq > 0:
-            md = deal.get("Moving_Date", "")
-            if md:
-                try:
-                    d = date.fromisoformat(str(md)[:10])
-                    mo = month_label(d)
-                    if mo in month_m:
+        # Entering — by Moving_Date
+        md = deal.get("Moving_Date", "")
+        if md:
+            try:
+                d = date.fromisoformat(str(md)[:10])
+                mo = month_label(d)
+                if mo in month_m:
+                    if sqft_ok and sq > 0:
                         month_m[mo]["sqft_entering"] += sq
-                except ValueError:
-                    pass
+                    if sqft_ok:
+                        month_m[mo]["customers_entering"] += 1
+            except ValueError:
+                pass
 
-            rd = deal.get("Confirmed_Redelivery_Date", "")
-            if rd:
-                try:
-                    d = date.fromisoformat(str(rd)[:10])
-                    mo = month_label(d)
-                    if mo in month_m:
+        # Exiting — by Confirmed_Redelivery_Date (includes cancelled deals — items left warehouse)
+        rd = deal.get("Confirmed_Redelivery_Date", "")
+        if rd:
+            try:
+                d = date.fromisoformat(str(rd)[:10])
+                mo = month_label(d)
+                if mo in month_m:
+                    if exit_ok and sq > 0:
                         month_m[mo]["sqft_exiting"] += sq
-                except ValueError:
-                    pass
+                    if exit_ok:
+                        month_m[mo]["customers_exiting"] += 1
+            except ValueError:
+                pass
 
     result = sorted(month_m.values(), key=lambda x: x["from"])
     for r in result:
@@ -663,9 +677,12 @@ def main():
             "promo_pct":        m.get("promo_pct"),
             "writeoff_count":   m["writeoff_count"],
             "writeoff_value":   m["writeoff_value"],
-            "sqft_booked":      round(m["sqft_booked"], 1),
-            "sqft_entering":    round(m["sqft_entering"], 1),
-            "sqft_exiting":     round(m["sqft_exiting"], 1),
+            "sqft_booked":        round(m["sqft_booked"], 1),
+            "sqft_entering":      round(m["sqft_entering"], 1),
+            "sqft_exiting":       round(m["sqft_exiting"], 1),
+            "customers_booked":   m["customers_booked"],
+            "customers_entering": m["customers_entering"],
+            "customers_exiting":  m["customers_exiting"],
         })
 
     # Build Supabase rows for mtd_transport_monthly
