@@ -9,21 +9,21 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#1C1C1C;--cl:#DAD5D0;--cd:#2A2A2A;--b:rgba(255,255,255,0.08);
-  --mid:#888;--td:#1C1C1C;--tl:#DAD5D0;
+  --bg:#0D1912;--cl:#E8E2D5;--cd:#141E17;--b:rgba(255,255,255,0.08);
+  --mid:#6B7D70;--td:#0D1912;--tl:#E8E2D5;--gold:#C9A84C;
   --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
-  --green-bg:#103a10;--green-txt:#5cb85c;
+  --green-bg:#0d2d18;--green-txt:#5cb85c;
   --red-bg:#3a1010;--red-txt:#e87474;
   --amber-bg:#2d2a1a;--amber-txt:#d4a017;
 }
-body{background:var(--bg);font-family:var(--sans);color:var(--tl);min-height:100vh;padding:44px 60px}
+body{background:radial-gradient(ellipse at 30% 15%,#1C3828 0%,#0D1912 55%,#060D09 100%);font-family:var(--sans);color:var(--tl);min-height:100vh;padding:44px 60px}
 
 /* NAV */
 .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:40px}
 .back{font-size:15px;color:var(--mid);text-decoration:none;transition:color .12s;display:flex;align-items:center;gap:6px}
 .back:hover{color:var(--tl)}
 .month-sel{background:var(--cd);border:1px solid var(--b);border-radius:8px;padding:7px 12px;font-family:var(--mono);font-size:15px;color:var(--tl);outline:none;cursor:pointer}
-.month-sel option{background:#2A2A2A}
+.month-sel option{background:#141E17}
 
 /* PAGE HEADER */
 .ph{margin-bottom:36px}
@@ -38,10 +38,10 @@ body{background:var(--bg);font-family:var(--sans);color:var(--tl);min-height:100
 /* STAT CARDS */
 .stat-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
 .stat{background:var(--cd);border:1px solid var(--b);border-radius:13px;padding:18px 20px}
-.stat.hl{background:var(--cl);border-color:transparent}
-.stat.hl .stat-lbl{color:rgba(28,28,28,.5)}
-.stat.hl .stat-val{color:var(--td)}
-.stat.hl .stat-sub{color:rgba(28,28,28,.4)}
+.stat.hl{background:var(--gold);border-color:transparent}
+.stat.hl .stat-lbl{color:rgba(13,25,18,.65)}
+.stat.hl .stat-val{color:#0D1912}
+.stat.hl .stat-sub{color:rgba(13,25,18,.5)}
 .stat-lbl{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:8px}
 .stat-val{font-family:var(--mono);font-size:30px;font-weight:500;line-height:1;letter-spacing:-.02em}
 .stat-sub{font-size:15px;color:var(--mid);margin-top:5px}
@@ -86,7 +86,7 @@ td{font-family:var(--mono);font-size:15px;padding:10px 12px;border-bottom:1px so
 td:first-child{font-family:var(--sans);font-size:16px;font-weight:500;color:var(--tl);text-align:left}
 tr:hover td{background:rgba(255,255,255,0.02)}
 tr.current-month td{color:var(--tl)}
-tr.current-month td:first-child{color:var(--cl)}
+tr.current-month td:first-child{color:var(--gold)}
 
 /* LOADING / EMPTY */
 .loading{font-size:16px;color:var(--mid);padding:40px 0;text-align:center}

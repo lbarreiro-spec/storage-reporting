@@ -8,17 +8,18 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#1C1C1C;
-  --surface:#222;
+  --bg:#0D1912;
+  --surface:#141E17;
   --border:rgba(255,255,255,0.07);
   --border2:rgba(255,255,255,0.12);
-  --mid:#666;
-  --dim:#383838;
-  --tl:#DAD5D0;
+  --mid:#6B7D70;
+  --dim:#1e2e22;
+  --tl:#E8E2D5;
+  --gold:#C9A84C;
   --mono:'DM Mono',monospace;
   --sans:'DM Sans',sans-serif;
 }
-html,body{height:100%;background:var(--bg);font-family:var(--sans);color:var(--tl);overflow:hidden}
+html,body{height:100%;background:radial-gradient(ellipse at 30% 15%,#1C3828 0%,#0D1912 55%,#060D09 100%);font-family:var(--sans);color:var(--tl);overflow:hidden}
 body{display:flex;flex-direction:column}
 
 /* TOP BAR */
@@ -76,7 +77,7 @@ tr.sec-hdr>td{
   padding:14px 10px 4px;
   font-size:9px;font-weight:700;
   letter-spacing:.18em;text-transform:uppercase;
-  color:rgba(218,213,208,0.28);
+  color:rgba(232,226,213,0.25);
   border-top:1px solid var(--border2);
 }
 tr.sec-hdr>td.sec-label{
@@ -121,7 +122,7 @@ tr.dr:hover>td.c-metric{background:rgba(255,255,255,0.03)}
 td.c-val{
   font-family:var(--mono);
   font-size:12px;
-  color:#9a9590;
+  color:#7a8c80;
   text-align:right;
   padding:6px 12px;
   min-width:78px;
