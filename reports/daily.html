@@ -46,6 +46,12 @@ tr.date-sep td{background:rgba(255,255,255,0.03);font-family:var(--sans);font-si
 
 .loading{font-size:14px;color:var(--mid);padding:40px 0;text-align:center}
 
+/* Team toggle */
+.toggle-group{display:flex;gap:6px}
+.toggle-btn{background:var(--cd);border:1px solid var(--b);border-radius:7px;padding:6px 16px;font-family:var(--sans);font-size:13px;color:var(--mid);cursor:pointer;transition:all .12s}
+.toggle-btn:hover{border-color:rgba(218,213,208,0.2);color:var(--tl)}
+.toggle-btn.active{background:var(--cl);border-color:transparent;color:var(--td);font-weight:600}
+
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.09);border-radius:2px}
@@ -55,17 +61,24 @@ tr.date-sep td{background:rgba(255,255,255,0.03);font-family:var(--sans);font-si
 
 <div class="topbar">
   <a class="back" href="../index.html">← Reporting home</a>
-  <select class="month-sel" id="month-sel" onchange="switchMonth(this.value)"></select>
+  <div style="display:flex;gap:12px;align-items:center">
+    <div class="toggle-group">
+      <button class="toggle-btn active" onclick="setTeam('all')">All</button>
+      <button class="toggle-btn" onclick="setTeam('ops')">Ops</button>
+      <button class="toggle-btn" onclick="setTeam('sales')">Sales</button>
+    </div>
+    <select class="month-sel" id="month-sel" onchange="switchMonth(this.value)"></select>
+  </div>
 </div>
 
 <div class="ph">
-  <div class="ph-lbl">Operations</div>
+  <div class="ph-lbl">Storage</div>
   <div class="ph-title">Daily Activity</div>
   <div class="ph-sub" id="ph-sub">Loading…</div>
 </div>
 
 <div class="sec">
-  <div class="sec-lbl">Ops team</div>
+  <div class="sec-lbl" id="table-lbl">All agents</div>
   <div class="tbl-wrap">
     <table>
       <thead><tr>
@@ -80,28 +93,7 @@ tr.date-sep td{background:rgba(255,255,255,0.03);font-family:var(--sans);font-si
         <th>First Login</th>
         <th>Last Logout</th>
       </tr></thead>
-      <tbody id="ops-body"><tr><td colspan="10" class="loading">Loading…</td></tr></tbody>
-    </table>
-  </div>
-</div>
-
-<div class="sec">
-  <div class="sec-lbl">Sales team</div>
-  <div class="tbl-wrap">
-    <table>
-      <thead><tr>
-        <th>Date</th>
-        <th>Agent</th>
-        <th>Online</th>
-        <th>Available</th>
-        <th>Break</th>
-        <th>Lunch</th>
-        <th>Admin</th>
-        <th>OB Activity</th>
-        <th>First Login</th>
-        <th>Last Logout</th>
-      </tr></thead>
-      <tbody id="sales-body"><tr><td colspan="10" class="loading">Loading…</td></tr></tbody>
+      <tbody id="activity-body"><tr><td colspan="10" class="loading">Loading…</td></tr></tbody>
     </table>
   </div>
 </div>
@@ -117,6 +109,7 @@ const DAY = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 
 let ALL_DATA       = []
 let SELECTED_MONTH = null
+let SELECTED_TEAM  = 'all'
 
 function fmtSecs(s){
   if(s == null) return '—'
@@ -143,8 +136,7 @@ async function loadAll(){
 
   if(error || !data || !data.length){
     document.getElementById('ph-sub').textContent = 'No data yet — run the fetch script to populate.'
-    document.getElementById('ops-body').innerHTML   = '<tr><td colspan="10" style="text-align:center;color:var(--mid);padding:20px;font-size:13px">No data available</td></tr>'
-    document.getElementById('sales-body').innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--mid);padding:20px;font-size:13px">No data available</td></tr>'
+    document.getElementById('activity-body').innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--mid);padding:20px;font-size:13px">No data available</td></tr>'
     return
   }
 
@@ -182,8 +174,7 @@ async function loadMonth(){
   document.getElementById('ph-sub').textContent =
     `${monthLabel(SELECTED_MONTH)} · ${days.length} day${days.length !== 1 ? 's' : ''} of data`
 
-  renderTable('ops-body',   ALL_DATA.filter(r => r.team === 'ops'))
-  renderTable('sales-body', ALL_DATA.filter(r => r.team === 'sales'))
+  renderTable()
 }
 
 function switchMonth(val){
@@ -191,10 +182,23 @@ function switchMonth(val){
   loadMonth()
 }
 
-function renderTable(bodyId, rows){
-  const tbody = document.getElementById(bodyId)
+function setTeam(team){
+  SELECTED_TEAM = team
+  document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'))
+  event.target.classList.add('active')
+  const labels = { all: 'All agents', ops: 'Ops team', sales: 'Sales team' }
+  document.getElementById('table-lbl').textContent = labels[team]
+  renderTable()
+}
+
+function renderTable(){
+  const rows = SELECTED_TEAM === 'all'
+    ? ALL_DATA
+    : ALL_DATA.filter(r => r.team === SELECTED_TEAM)
+
+  const tbody = document.getElementById('activity-body')
   if(!rows.length){
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--mid);padding:20px;font-size:13px">No data for this month</td></tr>'
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--mid);padding:20px;font-size:13px">No data for this selection</td></tr>'
     return
   }
 
