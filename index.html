@@ -22,7 +22,9 @@ body{background:radial-gradient(ellipse at 30% 15%,#1C3828 0%,#0D1912 55%,#060D0
 
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 
-.report-card{background:var(--cd);border:1px solid var(--b);border-radius:14px;padding:28px;cursor:pointer;text-decoration:none;color:inherit;display:block;transition:transform .12s,border-color .15s}
+.report-card{background:var(--cd);border:1px solid var(--b);border-radius:14px;padding:28px;cursor:pointer;text-decoration:none;color:inherit;display:block;transition:transform .12s,border-color .15s;position:relative}
+.rc-verified{position:absolute;top:14px;right:14px;width:20px;height:20px;background:#1D9BF0;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.rc-verified svg{width:12px;height:12px;fill:#fff}
 .report-card:hover{transform:translateY(-2px);border-color:rgba(218,213,208,0.2)}
 .report-card.live{background:var(--cd);border-color:var(--gold)}
 .report-card.live .rc-name{color:var(--tl)}
@@ -53,6 +55,7 @@ body{background:radial-gradient(ellipse at 30% 15%,#1C3828 0%,#0D1912 55%,#060D0
 <div class="grid">
 
   <a class="report-card live" href="reports/mtd.html">
+    <div class="rc-verified"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
     <div class="rc-tag live">Live</div>
     <div class="rc-name">MTD Revenue Intelligence</div>
     <div class="rc-desc">Monthly invoiced and paid revenue, transport jobs, customer counts, YoY comparisons, and fee analysis. Updated daily.</div>
@@ -60,6 +63,7 @@ body{background:radial-gradient(ellipse at 30% 15%,#1C3828 0%,#0D1912 55%,#060D0
   </a>
 
   <a class="report-card live" href="reports/weekly.html">
+    <div class="rc-verified"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
     <div class="rc-tag live">Live</div>
     <div class="rc-name">Weekly Revenue Intelligence</div>
     <div class="rc-desc">Week-by-week invoiced and paid revenue, transport jobs, leads, and ops metrics. History from Jan 2025.</div>
@@ -67,6 +71,7 @@ body{background:radial-gradient(ellipse at 30% 15%,#1C3828 0%,#0D1912 55%,#060D0
   </a>
 
   <a class="report-card live" href="reports/daily.html">
+    <div class="rc-verified"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
     <div class="rc-tag live">Live</div>
     <div class="rc-name">Daily Activity</div>
     <div class="rc-desc">Agent activity time by day — online duration, available, break, lunch, admin and OB activity. Ops and Sales split.</div>
@@ -74,6 +79,7 @@ body{background:radial-gradient(ellipse at 30% 15%,#1C3828 0%,#0D1912 55%,#060D0
   </a>
 
   <a class="report-card live" href="reports/csat.html">
+    <div class="rc-verified"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
     <div class="rc-tag live">Live</div>
     <div class="rc-name">CSAT &amp; NPS</div>
     <div class="rc-desc">Weekly CSAT scores and resolution rates per ops agent, plus NPS by collection and redelivery.</div>
@@ -81,6 +87,7 @@ body{background:radial-gradient(ellipse at 30% 15%,#1C3828 0%,#0D1912 55%,#060D0
   </a>
 
   <a class="report-card live" href="reports/freshdesk.html">
+    <div class="rc-verified"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
     <div class="rc-tag live">Live</div>
     <div class="rc-name">Freshdesk</div>
     <div class="rc-desc">Daily ticket volumes, resolution times, SLA rates, and breakdown by queue and agent.</div>
@@ -88,6 +95,7 @@ body{background:radial-gradient(ellipse at 30% 15%,#1C3828 0%,#0D1912 55%,#060D0
   </a>
 
   <a class="report-card live" href="reports/voice.html">
+    <div class="rc-verified"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
     <div class="rc-tag live">Live</div>
     <div class="rc-name">Voice Activity</div>
     <div class="rc-desc">Daily inbound and outbound call volumes, answer rates, and average handle time. Ops and Sales split.</div>
@@ -95,6 +103,7 @@ body{background:radial-gradient(ellipse at 30% 15%,#1C3828 0%,#0D1912 55%,#060D0
   </a>
 
   <a class="report-card live" href="reports/monthly.html">
+    <div class="rc-verified"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
     <div class="rc-tag live">Live</div>
     <div class="rc-name">Monthly Trends</div>
     <div class="rc-desc">Year-over-year monthly charts for revenue, cash, transport, customers, sq ft, and more. 2023–2026 in a single view.</div>
@@ -102,6 +111,7 @@ body{background:radial-gradient(ellipse at 30% 15%,#1C3828 0%,#0D1912 55%,#060D0
   </a>
 
   <a class="report-card live" href="reports/whatsapp.html">
+    <div class="rc-verified"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
     <div class="rc-tag live">Live</div>
     <div class="rc-name">WhatsApp Activity</div>
     <div class="rc-desc">Daily inbound chats, response times, outbound activity, and engagement — convos initiated, messages sent, and customer reply rates by agent.</div>
