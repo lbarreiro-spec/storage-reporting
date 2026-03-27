@@ -266,7 +266,7 @@ function renderNps(){
   document.getElementById('nps-body').innerHTML = html
 }
 
-const GITHUB_PAT  = atob('Z2l0aHViX3BhdF8xMUI3UFBFSVEwMFNHQm9maVp3QXcyX0YyVk1YTHB2RmdBV2syZGYydzBsMEF3YmFhQlVwbVo3aHpvaEo2MGk0ZE5LNUdSNkhRQnJMQ0dNdlZ0')
+const GITHUB_PAT  = 'worker-handles-auth'
 const GITHUB_REPO = 'Robbosd/storage-reporting'
 const WORKFLOW_ID = 'fetch_csat.yml'
 
@@ -276,14 +276,14 @@ async function triggerRefresh(){
   btn.innerHTML = '<span class="spin">↻</span> Refreshing…'
   try{
     const dispatch = await fetch(
-      `https://api.github.com/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/dispatches`,
+      `https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/dispatches`,
       {method:'POST',headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify({ref:'main'})}
     )
     if(!dispatch.ok) throw new Error(`Dispatch failed: ${dispatch.status}`)
     await new Promise(r=>setTimeout(r,5000))
     let runId = null
     for(let i=0;i<12;i++){
-      const runs = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/runs?per_page=1`,
+      const runs = await fetch(`https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/runs?per_page=1`,
         {headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json'}})
       const d = await runs.json()
       if(d.workflow_runs?.[0]){runId=d.workflow_runs[0].id;break}
@@ -292,7 +292,7 @@ async function triggerRefresh(){
     if(!runId) throw new Error('Could not find workflow run')
     for(let i=0;i<50;i++){
       await new Promise(r=>setTimeout(r,6000))
-      const check = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/actions/runs/${runId}`,
+      const check = await fetch(`https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/runs/${runId}`,
         {headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json'}})
       const run = await check.json()
       if(run.status==='completed'){

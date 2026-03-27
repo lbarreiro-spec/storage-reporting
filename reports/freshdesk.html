@@ -138,7 +138,7 @@ td.c-val.hl{color:var(--tl)}
 
 <script>
 // ── Set your GitHub fine-grained PAT here (actions:write on this repo only) ──
-const GITHUB_PAT  = atob('Z2l0aHViX3BhdF8xMUI3UFBFSVEwMFNHQm9maVp3QXcyX0YyVk1YTHB2RmdBV2syZGYydzBsMEF3YmFhQlVwbVo3aHpvaEo2MGk0ZE5LNUdSNkhRQnJMQ0dNdlZ0')
+const GITHUB_PAT  = 'worker-handles-auth'
 const GITHUB_REPO = 'Robbosd/storage-reporting'
 const WORKFLOW_ID = 'refresh-freshdesk.yml'
 
@@ -273,10 +273,7 @@ async function init(){
 
 // ── Refresh via GitHub Actions ────────────────────────────────────────────────
 async function triggerRefresh(){
-  if(!GITHUB_PAT || GITHUB_PAT === 'PASTE_YOUR_PAT_HERE'){
-    alert('Add your GitHub PAT to the GITHUB_PAT constant in reports/freshdesk.html')
     return
-  }
   const btn  = document.getElementById('refresh-btn')
   const meta = document.getElementById('meta')
   btn.disabled = true
@@ -286,7 +283,7 @@ async function triggerRefresh(){
   try{
     // 1. Dispatch
     const dispatch = await fetch(
-      `https://api.github.com/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/dispatches`,
+      `https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/dispatches`,
       { method:'POST', headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'}, body:JSON.stringify({ref:'main'}) }
     )
     if(!dispatch.ok) throw new Error(`Dispatch failed: ${dispatch.status}`)
@@ -295,7 +292,7 @@ async function triggerRefresh(){
     await new Promise(r=>setTimeout(r,5000))
     let runId = null
     for(let i=0;i<12;i++){
-      const runs = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/runs?per_page=1`,
+      const runs = await fetch(`https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/runs?per_page=1`,
         {headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json'}})
       const data = await runs.json()
       const run  = data.workflow_runs?.[0]
@@ -308,7 +305,7 @@ async function triggerRefresh(){
     meta.textContent = 'Workflow running…'
     for(let i=0;i<50;i++){
       await new Promise(r=>setTimeout(r,6000))
-      const check = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/actions/runs/${runId}`,
+      const check = await fetch(`https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/runs/${runId}`,
         {headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json'}})
       const run = await check.json()
       const elapsed = Math.round((i+1)*6/60*10)/10
