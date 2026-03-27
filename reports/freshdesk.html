@@ -8,272 +8,280 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0D1912;--cl:#E8E2D5;--cd:#141E17;--b:rgba(255,255,255,0.08);
-  --mid:#6B7D70;--td:#0D1912;--tl:#E8E2D5;--gold:#C9A84C;
-  --green-bg:rgba(52,199,89,0.12);--green-txt:#34C759;
-  --red-bg:rgba(255,69,58,0.12);--red-txt:#FF453A;
+  --bg:#0D1912;--surface:#141E17;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
+  --mid:#6B7D70;--tl:#E8E2D5;--gold:#C9A84C;--dim:#1e2e22;
   --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
 }
-body{background:radial-gradient(ellipse at 30% 15%,#1C3828 0%,#0D1912 55%,#060D09 100%);font-family:var(--sans);color:var(--tl);min-height:100vh;padding:44px 60px}
+html,body{height:100%;background:radial-gradient(ellipse at 30% 15%,#1C3828 0%,#0D1912 55%,#060D09 100%);font-family:var(--sans);color:var(--tl);overflow:hidden}
+body{display:flex;flex-direction:column}
 
-.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:40px}
-.back{font-size:15px;color:var(--mid);text-decoration:none;transition:color .12s;display:flex;align-items:center;gap:6px}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--border2);background:var(--bg);flex-shrink:0;z-index:30}
+.back{font-size:14px;color:var(--mid);text-decoration:none;letter-spacing:.04em;transition:color .1s}
 .back:hover{color:var(--tl)}
-.month-sel{background:var(--cd);border:1px solid var(--b);border-radius:8px;padding:7px 12px;font-family:var(--mono);font-size:15px;color:var(--tl);outline:none;cursor:pointer}
+.topbar-title{font-size:15px;font-weight:600;color:var(--tl);letter-spacing:-.01em}
+.topbar-meta{font-size:12px;color:var(--mid);font-family:var(--mono)}
+
+.month-sel{background:var(--surface);border:1px solid var(--border2);border-radius:5px;padding:4px 10px;font-family:var(--mono);font-size:13px;color:var(--tl);outline:none;cursor:pointer}
 .month-sel option{background:#141E17}
 
-.ph{margin-bottom:36px}
-.ph-lbl{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:7px}
-.ph-title{font-size:28px;font-weight:600;letter-spacing:-.01em}
-.ph-sub{font-size:16px;color:var(--mid);margin-top:5px;font-family:var(--mono)}
+.matrix-wrap{flex:1;overflow:auto;position:relative}
 
-.sec{margin-bottom:40px}
-.sec-lbl{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:14px;padding-bottom:7px;border-bottom:1px solid rgba(255,255,255,0.07)}
+table{border-collapse:collapse;white-space:nowrap;font-size:13px}
 
-.tbl-wrap{overflow-x:auto}
-table{width:100%;border-collapse:collapse}
-th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mid);padding:10px 14px;text-align:right;border-bottom:1px solid rgba(255,255,255,0.07);white-space:nowrap;font-weight:500}
-th:first-child{text-align:left}
-td{font-family:var(--mono);font-size:15px;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--mid);text-align:right;white-space:nowrap}
-td:first-child{font-family:var(--sans);font-size:15px;font-weight:500;color:var(--tl);text-align:left}
-tr:hover td{background:rgba(255,255,255,0.02)}
+/* Sticky header row */
+thead tr.day-hdr th{
+  position:sticky;top:0;z-index:20;
+  background:var(--bg);
+  border-bottom:2px solid var(--border2);
+  text-align:center;
+  padding:8px 10px;
+  font-family:var(--mono);
+  font-size:11px;font-weight:500;
+  color:var(--mid);
+  min-width:72px;
+}
+thead tr.day-hdr th.c-metric{
+  position:sticky;left:0;top:0;z-index:25;
+  text-align:left;
+  min-width:180px;width:180px;
+  padding-left:14px;
+  border-right:1px solid var(--border2);
+}
+thead tr.day-hdr th.wknd{color:rgba(107,125,112,0.4)}
+.day-name{display:block;letter-spacing:.1em;text-transform:uppercase;font-size:10px}
+.day-date{display:block;font-size:12px;margin-top:2px;color:var(--tl)}
+thead tr.day-hdr th.wknd .day-date{color:rgba(232,226,213,0.3)}
 
-.hl{color:var(--tl);font-weight:500}
-.good{color:var(--green-txt)}
-.bad{color:var(--red-txt)}
+/* Section header rows */
+tr.sec-hdr>td{
+  background:var(--surface);
+  padding:10px 10px 7px;
+  font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+  color:rgba(232,226,213,0.25);
+  border-top:2px solid var(--border2);
+  border-bottom:1px solid var(--border2);
+}
+tr.sec-hdr>td.c-metric{
+  position:sticky;left:0;z-index:9;
+  background:var(--surface);
+  padding-left:14px;
+  border-right:1px solid var(--border2);
+}
 
-.sla-badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:13px;font-weight:600}
-.sla-good{background:var(--green-bg);color:var(--green-txt)}
-.sla-bad{background:var(--red-bg);color:var(--red-txt)}
+/* Sub-section header rows (queue/agent names) */
+tr.sub-hdr>td{
+  background:rgba(255,255,255,0.025);
+  padding:7px 10px 5px;
+  font-size:11px;font-weight:600;letter-spacing:.06em;
+  color:rgba(232,226,213,0.5);
+  border-top:1px solid var(--border2);
+  border-bottom:1px solid rgba(255,255,255,0.04);
+}
+tr.sub-hdr>td.c-metric{
+  position:sticky;left:0;z-index:9;
+  background:rgba(20,30,23,0.98);
+  padding-left:14px;
+  border-right:1px solid var(--border2);
+}
 
-.loading{font-size:16px;color:var(--mid);padding:40px 0;text-align:center}
+/* Data rows */
+tr.dr>td{border-bottom:1px solid rgba(255,255,255,0.03);vertical-align:middle}
+tr.dr:hover>td{background:rgba(255,255,255,0.03) !important}
 
-::-webkit-scrollbar{width:4px;height:4px}
+td.c-metric{
+  position:sticky;left:0;z-index:9;
+  background:var(--bg);
+  min-width:180px;width:180px;
+  padding:6px 14px 6px 14px;
+  font-size:13px;color:var(--tl);
+  border-right:1px solid var(--border2);
+}
+tr.dr:hover>td.c-metric{background:rgba(255,255,255,0.03)}
+
+td.c-val{
+  font-family:var(--mono);
+  font-size:13px;
+  color:#7a8c80;
+  text-align:right;
+  padding:6px 12px;
+  min-width:72px;
+}
+td.c-val.wknd{color:rgba(107,125,112,0.35);background:rgba(0,0,0,0.08)}
+td.c-val.empty{color:var(--dim)}
+td.c-val.hl{color:var(--tl)}
+
+.state{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--mid)}
+
+::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.09);border-radius:2px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.09);border-radius:3px}
 </style>
 </head>
 <body>
 
 <div class="topbar">
   <a class="back" href="../index.html">← Reporting home</a>
+  <span class="topbar-title">Freshdesk</span>
   <select class="month-sel" id="month-sel" onchange="switchMonth(this.value)"></select>
+  <span class="topbar-meta" id="meta">Loading…</span>
 </div>
 
-<div class="ph">
-  <div class="ph-lbl">Storage</div>
-  <div class="ph-title">Freshdesk</div>
-  <div class="ph-sub" id="ph-sub">Loading…</div>
-</div>
-
-<!-- Day-by-day overview -->
-<div class="sec">
-  <div class="sec-lbl">Daily overview</div>
-  <div class="tbl-wrap">
-    <table>
-      <thead><tr>
-        <th>Date</th>
-        <th>In</th>
-        <th>Resolved</th>
-        <th>Backlog</th>
-        <th>FR SLA %</th>
-        <th>Res SLA %</th>
-        <th>Avg Resolve</th>
-        <th>P90</th>
-      </tr></thead>
-      <tbody id="daily-body"><tr><td colspan="8" class="loading">Loading…</td></tr></tbody>
-    </table>
-  </div>
-</div>
-
-<!-- By queue -->
-<div class="sec">
-  <div class="sec-lbl">By queue — month total</div>
-  <div class="tbl-wrap">
-    <table>
-      <thead><tr>
-        <th>Queue</th>
-        <th>In</th>
-        <th>Resolved</th>
-        <th>Backlog (latest)</th>
-        <th>FR SLA %</th>
-      </tr></thead>
-      <tbody id="queue-body"><tr><td colspan="5" class="loading">Loading…</td></tr></tbody>
-    </table>
-  </div>
-</div>
-
-<!-- By agent -->
-<div class="sec">
-  <div class="sec-lbl">By agent — month total</div>
-  <div class="tbl-wrap">
-    <table>
-      <thead><tr>
-        <th>Agent</th>
-        <th>Assigned</th>
-        <th>Resolved</th>
-        <th>Backlog (latest)</th>
-        <th>FR SLA %</th>
-        <th>Avg Resolve</th>
-        <th>P90</th>
-        <th>Reply Rate</th>
-      </tr></thead>
-      <tbody id="agent-body"><tr><td colspan="8" class="loading">Loading…</td></tr></tbody>
-    </table>
-  </div>
+<div class="matrix-wrap" id="wrap">
+  <div class="state" id="state">Loading…</div>
 </div>
 
 <script>
-const MO  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-const DAY = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+const DAY_ABBR  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+const MO_LABEL  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+const QUEUE_NAMES = ['Storage Support','Storage Warehouse','Storage','Whs. Redeliveries','Storage Complaints']
+const AGENT_NAMES = ['Shaun Gae','Emmanuel Nsenga','Theo J','Shafwaan Titus']
 
-const QUEUE_NAMES  = ['Storage Support','Storage Warehouse','Storage','Whs. Redeliveries','Storage Complaints']
-const AGENT_NAMES  = ['Shaun Gae','Emmanuel Nsenga','Theo J','Shafwaan Titus']
-
-let ALL_DATA       = {}   // full JSON keyed by date
-let MONTH_DATES    = []   // sorted dates for selected month
+let ALL_DATA = {}
 let SELECTED_MONTH = null
 
-function monthLabel(iso){
-  const [y,m] = iso.split('-')
-  return `${MO[parseInt(m)-1]} ${y}`
+function monthLabel(mk){ const [y,m]=mk.split('-'); return `${MO_LABEL[+m-1]} ${y}` }
+
+function daysInMonth(mk){
+  const [y,m] = mk.split('-').map(Number)
+  const count = new Date(y, m, 0).getDate()
+  const days = []
+  for(let d=1;d<=count;d++){
+    const iso = `${mk}-${String(d).padStart(2,'0')}`
+    const dt  = new Date(iso+'T00:00:00')
+    days.push({ iso, day: DAY_ABBR[dt.getDay()], dd: String(d).padStart(2,'0'), wknd: dt.getDay()===0||dt.getDay()===6 })
+  }
+  return days
 }
 
-function fmtDate(iso){
-  const d = new Date(iso + 'T00:00:00')
-  return `${DAY[d.getDay()]} ${d.getDate()} ${MO[d.getMonth()]}`
+function val(v, highlight=false){
+  if(v==null||v===''||v==='—') return {txt:'—', cls:'empty'}
+  return {txt: String(v), cls: highlight ? 'hl' : ''}
 }
 
-function sla(val){
-  if(val == null || val === 0) return '<span class="sla-badge sla-bad">—</span>'
-  const cls = val >= 90 ? 'sla-good' : 'sla-bad'
-  return `<span class="sla-badge ${cls}">${val.toFixed(1)}%</span>`
+function buildTable(days){
+  const table = document.createElement('table')
+
+  // ── THEAD ──────────────────────────────────────────────────────────────────
+  const thead = table.createTHead()
+  const hdr   = thead.insertRow()
+  hdr.className = 'day-hdr'
+
+  const thMet = document.createElement('th')
+  thMet.className = 'c-metric'
+  hdr.appendChild(thMet)
+
+  days.forEach(d => {
+    const th = document.createElement('th')
+    th.className = d.wknd ? 'wknd' : ''
+    th.innerHTML = `<span class="day-name">${d.day}</span><span class="day-date">${d.dd}/${SELECTED_MONTH.slice(5,7)}</span>`
+    hdr.appendChild(th)
+  })
+
+  // ── TBODY ──────────────────────────────────────────────────────────────────
+  const tbody = table.createTBody()
+  const ncols = days.length + 1
+
+  function secRow(label){
+    const tr = tbody.insertRow(); tr.className='sec-hdr'
+    const td = document.createElement('td'); td.className='c-metric'; td.textContent=label; tr.appendChild(td)
+    for(let i=0;i<days.length;i++){ const t=document.createElement('td'); tr.appendChild(t) }
+  }
+
+  function subRow(label){
+    const tr = tbody.insertRow(); tr.className='sub-hdr'
+    const td = document.createElement('td'); td.className='c-metric'; td.textContent=label; tr.appendChild(td)
+    for(let i=0;i<days.length;i++){ const t=document.createElement('td'); tr.appendChild(t) }
+  }
+
+  function dataRow(metric, getter, highlight=false){
+    const tr = tbody.insertRow(); tr.className='dr'
+    const tdM = document.createElement('td'); tdM.className='c-metric'; tdM.textContent=metric; tr.appendChild(tdM)
+    days.forEach(d => {
+      const td = document.createElement('td')
+      const rec = ALL_DATA[d.iso]
+      const v   = rec ? getter(rec) : null
+      const {txt, cls} = val(v, highlight)
+      td.className = 'c-val' + (cls?' '+cls:'') + (d.wknd?' wknd':'')
+      td.textContent = txt
+      tr.appendChild(td)
+    })
+  }
+
+  // ── OVERVIEW ───────────────────────────────────────────────────────────────
+  secRow('Overview')
+  dataRow('Tickets In',    r => r.inn, true)
+  dataRow('Tickets Resolved', r => r.resolved)
+  dataRow('Backlog',       r => r.backlog)
+  dataRow('FR SLA %',      r => r.fr_sla  != null ? r.fr_sla.toFixed(1)+'%'  : null)
+  dataRow('Res SLA %',     r => r.res_sla != null ? r.res_sla.toFixed(1)+'%' : null)
+  dataRow('Avg Resolve',   r => r.avg_r || null)
+  dataRow('p90 Resolve',   r => r.p90   || null)
+
+  // ── BY QUEUE ───────────────────────────────────────────────────────────────
+  secRow('By Queue')
+  QUEUE_NAMES.forEach((qname, qi) => {
+    subRow(qname)
+    dataRow('In',        r => r.queues[qi]?.in  ?? null, true)
+    dataRow('Resolved',  r => r.queues[qi]?.res ?? null)
+    dataRow('Backlog',   r => r.queues[qi]?.blg ?? null)
+    dataRow('FR SLA %',  r => r.queues[qi]?.fr  != null ? r.queues[qi].fr.toFixed(1)+'%' : null)
+  })
+
+  // ── BY AGENT ───────────────────────────────────────────────────────────────
+  secRow('By Agent (Ops)')
+  AGENT_NAMES.forEach((aname, ai) => {
+    subRow(aname)
+    dataRow('Assigned',    r => r.agents[ai]?.assigned ?? null, true)
+    dataRow('Resolved',    r => r.agents[ai]?.resolved ?? null)
+    dataRow('Backlog',     r => r.agents[ai]?.backlog  ?? null)
+    dataRow('FR SLA %',    r => r.agents[ai]?.fr != null ? r.agents[ai].fr.toFixed(1)+'%' : null)
+    dataRow('Avg Resolve', r => r.agents[ai]?.avg || null)
+    dataRow('p90 Resolve', r => r.agents[ai]?.p90 || null)
+  })
+
+  return table
 }
+
+function render(){
+  const days = daysInMonth(SELECTED_MONTH)
+  const present = days.filter(d => ALL_DATA[d.iso]).length
+
+  document.getElementById('meta').textContent =
+    `${monthLabel(SELECTED_MONTH)} · ${present} day${present!==1?'s':''} of data · updated ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}`
+
+  const wrap = document.getElementById('wrap')
+  const existing = wrap.querySelector('table')
+  if(existing) existing.remove()
+
+  wrap.appendChild(buildTable(days))
+}
+
+function switchMonth(val){ SELECTED_MONTH=val; render() }
 
 async function init(){
-  const res = await fetch('../data/freshdesk_data.json?_=' + Date.now())
-  ALL_DATA  = await res.json()
+  try{
+    const r = await fetch('../data/freshdesk_data.json?_='+Date.now())
+    if(!r.ok) throw new Error(r.status)
+    ALL_DATA = await r.json()
+  }catch(e){
+    document.getElementById('state').textContent='Failed to load freshdesk_data.json'
+    return
+  }
+
+  document.getElementById('state').remove()
 
   const allDates = Object.keys(ALL_DATA).sort().reverse()
-  const months   = [...new Set(allDates.map(d => d.slice(0,7)))].sort().reverse()
+  const months   = [...new Set(allDates.map(d=>d.slice(0,7)))].sort().reverse()
 
   const sel = document.getElementById('month-sel')
-  sel.innerHTML = months.map(m => `<option value="${m}">${monthLabel(m)}</option>`).join('')
+  sel.innerHTML = months.map(m=>`<option value="${m}">${monthLabel(m)}</option>`).join('')
 
-  const now = new Date()
+  const now   = new Date()
   const curMk = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
   SELECTED_MONTH = months.includes(curMk) ? curMk : months[0]
   sel.value = SELECTED_MONTH
 
   render()
-}
-
-function switchMonth(val){
-  SELECTED_MONTH = val
-  render()
-}
-
-function render(){
-  MONTH_DATES = Object.keys(ALL_DATA)
-    .filter(d => d.startsWith(SELECTED_MONTH))
-    .sort().reverse()
-
-  document.getElementById('ph-sub').textContent =
-    `${monthLabel(SELECTED_MONTH)} · ${MONTH_DATES.length} day${MONTH_DATES.length !== 1 ? 's' : ''} of data`
-
-  renderDaily()
-  renderQueues()
-  renderAgents()
-}
-
-function renderDaily(){
-  const tbody = document.getElementById('daily-body')
-  if(!MONTH_DATES.length){
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--mid);padding:20px">No data for this month</td></tr>'
-    return
-  }
-  tbody.innerHTML = MONTH_DATES.map(date => {
-    const r = ALL_DATA[date]
-    return `<tr>
-      <td>${fmtDate(date)}</td>
-      <td class="hl">${r.inn}</td>
-      <td>${r.resolved}</td>
-      <td>${r.backlog}</td>
-      <td>${sla(r.fr_sla)}</td>
-      <td>${sla(r.res_sla)}</td>
-      <td>${r.avg_r || '—'}</td>
-      <td>${r.p90 || '—'}</td>
-    </tr>`
-  }).join('')
-}
-
-function renderQueues(){
-  const tbody = document.getElementById('queue-body')
-  if(!MONTH_DATES.length){ tbody.innerHTML = ''; return }
-
-  // Sum in/resolved across month; take backlog from most recent day; avg FR SLA weighted by in
-  const totals = QUEUE_NAMES.map(() => ({in:0, res:0, blg:0, fr_num:0, fr_den:0}))
-  const latest = ALL_DATA[MONTH_DATES[0]]  // most recent day
-
-  for(const date of MONTH_DATES){
-    const r = ALL_DATA[date]
-    r.queues.forEach((q, i) => {
-      totals[i].in  += q.in  || 0
-      totals[i].res += q.res || 0
-      if(q.in > 0){ totals[i].fr_num += (q.fr || 0) * q.in; totals[i].fr_den += q.in }
-    })
-  }
-  latest.queues.forEach((q, i) => { totals[i].blg = q.blg || 0 })
-
-  tbody.innerHTML = totals.map((t, i) => {
-    const fr = t.fr_den > 0 ? t.fr_num / t.fr_den : null
-    return `<tr>
-      <td>${QUEUE_NAMES[i]}</td>
-      <td class="hl">${t.in}</td>
-      <td>${t.res}</td>
-      <td>${t.blg}</td>
-      <td>${sla(fr)}</td>
-    </tr>`
-  }).join('')
-}
-
-function renderAgents(){
-  const tbody = document.getElementById('agent-body')
-  if(!MONTH_DATES.length){ tbody.innerHTML = ''; return }
-
-  const totals = AGENT_NAMES.map(() => ({assigned:0, resolved:0, blg:0, fr_num:0, fr_den:0, replied:0, note_only:0, nothing:0}))
-  const latest = ALL_DATA[MONTH_DATES[0]]
-
-  for(const date of MONTH_DATES){
-    const r = ALL_DATA[date]
-    r.agents.forEach((a, i) => {
-      totals[i].assigned += a.assigned || 0
-      totals[i].resolved += a.resolved || 0
-      totals[i].replied  += a.replied  || 0
-      totals[i].note_only+= a.note_only|| 0
-      totals[i].nothing  += a.nothing  || 0
-      if(a.assigned > 0){ totals[i].fr_num += (a.fr || 0) * a.assigned; totals[i].fr_den += a.assigned }
-    })
-  }
-  latest.agents.forEach((a, i) => { totals[i].blg = a.backlog || 0 })
-
-  // avg resolve and p90 — pull from latest day per agent (can't aggregate hours meaningfully)
-  tbody.innerHTML = totals.map((t, i) => {
-    const fr = t.fr_den > 0 ? t.fr_num / t.fr_den : null
-    const replied = t.replied + t.note_only + t.nothing
-    const replyRate = replied > 0 ? Math.round(t.replied / replied * 100) + '%' : '—'
-    const latestAgent = latest.agents[i]
-    return `<tr>
-      <td>${AGENT_NAMES[i]}</td>
-      <td class="hl">${t.assigned}</td>
-      <td>${t.resolved}</td>
-      <td>${t.blg}</td>
-      <td>${sla(fr)}</td>
-      <td>${latestAgent ? latestAgent.avg || '—' : '—'}</td>
-      <td>${latestAgent ? latestAgent.p90 || '—' : '—'}</td>
-      <td>${replyRate}</td>
-    </tr>`
-  }).join('')
 }
 
 init()
