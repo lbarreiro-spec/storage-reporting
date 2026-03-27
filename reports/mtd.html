@@ -335,7 +335,7 @@ function renderHeadline(m){
   const totalJobs = (t.coll_jobs || 0) + (t.redel_jobs || 0)
   const totalFee  = (t.coll_av_fee || 0) + (t.redel_av_fee || 0)
   document.getElementById('headline-stats').innerHTML = `
-    <div class="stat hl">
+    <div class="stat">
       <div class="stat-lbl">Invoiced revenue</div>
       <div class="stat-val">${fmt(m.invoiced_revenue)}</div>
       <div class="stat-sub">${fmtN(m.invoice_count)} invoices</div>
