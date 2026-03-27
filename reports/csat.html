@@ -58,13 +58,22 @@ td.type-sub{color:var(--mid)}
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.09);border-radius:2px}
+
+.refresh-btn{background:none;border:1px solid var(--b);border-radius:7px;padding:5px 12px;font-family:var(--sans);font-size:13px;color:var(--mid);cursor:pointer;transition:all .12s}
+.refresh-btn:hover:not(:disabled){border-color:var(--gold);color:var(--gold)}
+.refresh-btn:disabled{opacity:0.5;cursor:default}
+.spin{display:inline-block;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
 
 <div class="topbar">
   <a class="back" href="../index.html">← Reporting home</a>
-  <select class="year-sel" id="year-sel" onchange="switchYear(this.value)"></select>
+  <div style="display:flex;align-items:center;gap:12px">
+    <select class="year-sel" id="year-sel" onchange="switchYear(this.value)"></select>
+    <button class="refresh-btn" id="refresh-btn" onclick="triggerRefresh()">↻ Refresh</button>
+  </div>
 </div>
 
 <div class="ph">
@@ -255,6 +264,51 @@ function renderNps(){
     }
   }
   document.getElementById('nps-body').innerHTML = html
+}
+
+const GITHUB_PAT  = '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'
+const GITHUB_REPO = 'Robbosd/storage-reporting'
+const WORKFLOW_ID = 'fetch_csat.yml'
+
+async function triggerRefresh(){
+  const btn = document.getElementById('refresh-btn')
+  btn.disabled = true
+  btn.innerHTML = '<span class="spin">↻</span> Refreshing…'
+  try{
+    const dispatch = await fetch(
+      `https://api.github.com/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/dispatches`,
+      {method:'POST',headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify({ref:'main'})}
+    )
+    if(!dispatch.ok) throw new Error(`Dispatch failed: ${dispatch.status}`)
+    await new Promise(r=>setTimeout(r,5000))
+    let runId = null
+    for(let i=0;i<12;i++){
+      const runs = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/runs?per_page=1`,
+        {headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json'}})
+      const d = await runs.json()
+      if(d.workflow_runs?.[0]){runId=d.workflow_runs[0].id;break}
+      await new Promise(r=>setTimeout(r,3000))
+    }
+    if(!runId) throw new Error('Could not find workflow run')
+    for(let i=0;i<50;i++){
+      await new Promise(r=>setTimeout(r,6000))
+      const check = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/actions/runs/${runId}`,
+        {headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json'}})
+      const run = await check.json()
+      if(run.status==='completed'){
+        if(run.conclusion!=='success') throw new Error(`Workflow ${run.conclusion}`)
+        break
+      }
+    }
+    await new Promise(r=>setTimeout(r,12000))
+    location.reload()
+  }catch(e){
+    alert('Refresh failed: '+e.message)
+    console.error(e)
+  }finally{
+    btn.disabled = false
+    btn.innerHTML = '↻ Refresh'
+  }
 }
 
 loadAll()

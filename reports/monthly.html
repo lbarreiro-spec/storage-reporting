@@ -72,6 +72,12 @@ td{font-family:var(--mono);font-size:13px;padding:9px 12px;border-bottom:1px sol
 td:first-child{font-family:var(--sans);font-size:13px;font-weight:500;color:var(--tl);text-align:left}
 tr:hover td{background:rgba(255,255,255,0.02)}
 td.cur{color:var(--gold);font-weight:500}
+
+.refresh-btn{background:none;border:1px solid var(--b);border-radius:7px;padding:4px 10px;font-family:var(--sans);font-size:13px;color:var(--mid);cursor:pointer;transition:all .12s}
+.refresh-btn:hover:not(:disabled){border-color:var(--gold);color:var(--gold)}
+.refresh-btn:disabled{opacity:0.5;cursor:default}
+.spin{display:inline-block;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
@@ -79,7 +85,10 @@ td.cur{color:var(--gold);font-weight:500}
 <div class="topbar">
   <a class="back" href="../index.html">← Reporting home</a>
   <span class="topbar-title">Monthly Trends</span>
-  <span class="topbar-meta" id="meta">Loading…</span>
+  <div style="display:flex;align-items:center;gap:12px">
+    <button class="refresh-btn" id="refresh-btn" onclick="triggerRefresh()">↻ Refresh</button>
+    <span class="topbar-meta" id="meta">Loading…</span>
+  </div>
 </div>
 
 <div class="tab-bar" id="tabs"></div>
@@ -259,6 +268,57 @@ async function load(){
   })
 
   renderMetric(0)
+}
+
+const GITHUB_PAT  = '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'
+const GITHUB_REPO = 'Robbosd/storage-reporting'
+const WORKFLOW_ID = 'fetch_monthly.yml'
+
+async function triggerRefresh(){
+  const btn = document.getElementById('refresh-btn')
+  const meta = document.getElementById('meta')
+  btn.disabled = true
+  btn.innerHTML = '<span class="spin">↻</span> Refreshing…'
+  try{
+    const dispatch = await fetch(
+      `https://api.github.com/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/dispatches`,
+      {method:'POST',headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify({ref:'main'})}
+    )
+    if(!dispatch.ok) throw new Error(`Dispatch failed: ${dispatch.status}`)
+    if(meta) meta.textContent = 'Triggering workflow…'
+    await new Promise(r=>setTimeout(r,5000))
+    let runId = null
+    for(let i=0;i<12;i++){
+      const runs = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/runs?per_page=1`,
+        {headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json'}})
+      const d = await runs.json()
+      if(d.workflow_runs?.[0]){runId=d.workflow_runs[0].id;break}
+      await new Promise(r=>setTimeout(r,3000))
+    }
+    if(!runId) throw new Error('Could not find workflow run')
+    if(meta) meta.textContent = 'Workflow running…'
+    for(let i=0;i<50;i++){
+      await new Promise(r=>setTimeout(r,6000))
+      const check = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/actions/runs/${runId}`,
+        {headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json'}})
+      const run = await check.json()
+      const elapsed = Math.round((i+1)*6/60*10)/10
+      if(meta) meta.textContent = `Running… ${elapsed}m`
+      if(run.status==='completed'){
+        if(run.conclusion!=='success') throw new Error(`Workflow ${run.conclusion}`)
+        break
+      }
+    }
+    if(meta) meta.textContent = 'Deploying…'
+    await new Promise(r=>setTimeout(r,12000))
+    location.reload()
+  }catch(e){
+    alert('Refresh failed: '+e.message)
+    console.error(e)
+  }finally{
+    btn.disabled = false
+    btn.innerHTML = '↻ Refresh'
+  }
 }
 
 load()
