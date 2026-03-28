@@ -4,28 +4,27 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Freshdesk — AnyVan Storage</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0D1912;--surface:#141E17;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
-  --mid:#6B7D70;--tl:#E8E2D5;--gold:#C9A84C;--dim:#1e2e22;
-  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+  --bg:#000000;--cl:#f5f5f7;--cd:#1c1c1e;--b:rgba(255,255,255,0.08);
+  --mid:#86868b;--tl:#f5f5f7;--gold:#0071e3;--dim:#1c1c1e;
+  --mono:'SF Mono','Menlo','Monaco',monospace;--sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
 }
-html,body{height:100%;background:radial-gradient(ellipse at 30% 15%,#1C3828 0%,#0D1912 55%,#060D09 100%);font-family:var(--sans);color:var(--tl);overflow:hidden}
+html,body{height:100%;background:var(--bg);font-family:var(--sans);color:var(--tl);overflow:hidden}
 body{display:flex;flex-direction:column}
 
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--border2);background:var(--bg);flex-shrink:0;z-index:30}
-.back{font-size:14px;color:var(--mid);text-decoration:none;letter-spacing:.04em;transition:color .1s}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--b);background:var(--bg);flex-shrink:0;z-index:30}
+.back{font-size:15px;color:var(--mid);text-decoration:none;transition:color .12s;display:flex;align-items:center;gap:6px}
 .back:hover{color:var(--tl)}
 .topbar-title{font-size:15px;font-weight:600;color:var(--tl);letter-spacing:-.01em}
-.topbar-right{display:flex;align-items:center;gap:12px}
-.topbar-meta{font-size:12px;color:var(--mid);font-family:var(--mono)}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.topbar-meta{font-size:13px;color:var(--mid);font-family:var(--mono)}
 
-.month-sel{background:var(--surface);border:1px solid var(--border2);border-radius:5px;padding:4px 10px;font-family:var(--mono);font-size:13px;color:var(--tl);outline:none;cursor:pointer}
-.month-sel option{background:#141E17}
+.month-sel{background:var(--cd);border:1px solid var(--b);border-radius:8px;padding:6px 12px;font-family:var(--mono);font-size:14px;color:var(--tl);outline:none;cursor:pointer}
+.month-sel option{background:#1c1c1e}
 
-.refresh-btn{display:flex;align-items:center;gap:6px;background:none;border:1px solid var(--border2);border-radius:5px;padding:4px 12px;font-family:var(--sans);font-size:13px;color:var(--mid);cursor:pointer;transition:all .12s}
+.refresh-btn{background:none;border:1px solid var(--b);border-radius:8px;padding:6px 14px;font-family:var(--sans);font-size:14px;color:var(--mid);cursor:pointer;transition:all .12s}
 .refresh-btn:hover:not(:disabled){border-color:var(--gold);color:var(--gold)}
 .refresh-btn:disabled{opacity:0.5;cursor:default}
 .spin{display:inline-block;animation:spin 1s linear infinite}
@@ -38,86 +37,87 @@ table{border-collapse:collapse;white-space:nowrap;font-size:13px}
 thead tr.day-hdr th{
   position:sticky;top:0;z-index:20;
   background:var(--bg);
-  border-bottom:2px solid var(--border2);
+  border-bottom:1px solid var(--b);
   text-align:center;
-  padding:8px 10px;
+  padding:10px 10px;
   font-family:var(--mono);
   font-size:11px;font-weight:500;
   color:var(--mid);
   min-width:72px;
+  letter-spacing:.08em;text-transform:uppercase;
 }
 thead tr.day-hdr th.c-metric{
   position:sticky;left:0;top:0;z-index:25;
   text-align:left;
   min-width:180px;width:180px;
-  padding-left:14px;
-  border-right:1px solid var(--border2);
+  padding-left:20px;
+  border-right:1px solid var(--b);
 }
-thead tr.day-hdr th.wknd{color:rgba(107,125,112,0.4)}
+thead tr.day-hdr th.wknd{color:rgba(134,134,139,0.4)}
 .day-name{display:block;letter-spacing:.1em;text-transform:uppercase;font-size:10px}
 .day-date{display:block;font-size:12px;margin-top:2px;color:var(--tl)}
-thead tr.day-hdr th.wknd .day-date{color:rgba(232,226,213,0.3)}
+thead tr.day-hdr th.wknd .day-date{color:rgba(245,245,247,0.25)}
 
 tr.sec-hdr>td{
-  background:var(--surface);
+  background:rgba(255,255,255,0.03);
   padding:10px 10px 7px;
   font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
-  color:rgba(232,226,213,0.25);
-  border-top:2px solid var(--border2);
-  border-bottom:1px solid var(--border2);
+  color:rgba(245,245,247,0.25);
+  border-top:1px solid var(--b);
+  border-bottom:1px solid rgba(255,255,255,0.04);
 }
 tr.sec-hdr>td.c-metric{
   position:sticky;left:0;z-index:9;
-  background:var(--surface);
-  padding-left:14px;
-  border-right:1px solid var(--border2);
+  background:rgba(28,28,30,0.98);
+  padding-left:20px;
+  border-right:1px solid var(--b);
 }
 
 tr.sub-hdr>td{
-  background:rgba(255,255,255,0.025);
-  padding:7px 10px 5px;
-  font-size:11px;font-weight:600;letter-spacing:.06em;
-  color:rgba(232,226,213,0.5);
-  border-top:1px solid var(--border2);
-  border-bottom:1px solid rgba(255,255,255,0.04);
+  background:rgba(255,255,255,0.015);
+  padding:8px 10px 6px;
+  font-size:11px;font-weight:600;letter-spacing:.04em;
+  color:rgba(245,245,247,0.45);
+  border-top:1px solid rgba(255,255,255,0.04);
+  border-bottom:1px solid rgba(255,255,255,0.03);
 }
 tr.sub-hdr>td.c-metric{
   position:sticky;left:0;z-index:9;
-  background:rgba(20,30,23,0.98);
-  padding-left:14px;
-  border-right:1px solid var(--border2);
+  background:rgba(10,10,10,0.98);
+  padding-left:20px;
+  border-right:1px solid var(--b);
 }
 
 tr.dr>td{border-bottom:1px solid rgba(255,255,255,0.03);vertical-align:middle}
-tr.dr:hover>td{background:rgba(255,255,255,0.03) !important}
+tr.dr:hover>td{background:rgba(255,255,255,0.025) !important}
 
 td.c-metric{
   position:sticky;left:0;z-index:9;
   background:var(--bg);
   min-width:180px;width:180px;
-  padding:6px 14px;
-  font-size:13px;color:var(--tl);
-  border-right:1px solid var(--border2);
+  padding:7px 14px 7px 20px;
+  font-size:14px;color:var(--tl);
+  border-right:1px solid var(--b);
 }
-tr.dr:hover>td.c-metric{background:rgba(255,255,255,0.03)}
+tr.dr:hover>td.c-metric{background:rgba(255,255,255,0.025)}
 
 td.c-val{
   font-family:var(--mono);
-  font-size:13px;
-  color:#7a8c80;
+  font-size:14px;
+  color:var(--mid);
   text-align:right;
-  padding:6px 12px;
+  padding:7px 14px;
   min-width:72px;
 }
-td.c-val.wknd{color:rgba(107,125,112,0.35);background:rgba(0,0,0,0.08)}
-td.c-val.empty{color:var(--dim)}
+td.c-val.wknd{color:rgba(134,134,139,0.3);background:rgba(0,0,0,0.1)}
+td.c-val.empty{color:rgba(134,134,139,0.3)}
 td.c-val.hl{color:var(--tl)}
 
-.state{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--mid)}
+.state{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--mid)}
 
-::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.09);border-radius:3px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.09);border-radius:2px}
 </style>
 </head>
 <body>
@@ -137,7 +137,6 @@ td.c-val.hl{color:var(--tl)}
 </div>
 
 <script>
-// ── Set your GitHub fine-grained PAT here (actions:write on this repo only) ──
 const GITHUB_PAT  = 'worker-handles-auth'
 const GITHUB_REPO = 'Robbosd/storage-reporting'
 const WORKFLOW_ID = 'refresh-freshdesk.yml'
@@ -271,60 +270,40 @@ async function init(){
   render()
 }
 
-// ── Refresh via GitHub Actions ────────────────────────────────────────────────
 async function triggerRefresh(){
-    return
-  const btn  = document.getElementById('refresh-btn')
-  const meta = document.getElementById('meta')
+  const btn = document.getElementById('refresh-btn')
   btn.disabled = true
   btn.innerHTML = '<span class="spin">↻</span> Refreshing…'
-  meta.textContent = 'Triggering workflow…'
-
   try{
-    // 1. Dispatch
     const dispatch = await fetch(
       `https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/dispatches`,
-      { method:'POST', headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'}, body:JSON.stringify({ref:'main'}) }
+      {method:'POST',headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify({ref:'main'})}
     )
     if(!dispatch.ok) throw new Error(`Dispatch failed: ${dispatch.status}`)
-
-    // 2. Wait for run to register, then find it
     await new Promise(r=>setTimeout(r,5000))
     let runId = null
     for(let i=0;i<12;i++){
       const runs = await fetch(`https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/runs?per_page=1`,
         {headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json'}})
-      const data = await runs.json()
-      const run  = data.workflow_runs?.[0]
-      if(run){ runId=run.id; break }
+      const d = await runs.json()
+      if(d.workflow_runs?.[0]){runId=d.workflow_runs[0].id;break}
       await new Promise(r=>setTimeout(r,3000))
     }
     if(!runId) throw new Error('Could not find workflow run')
-
-    // 3. Poll until complete
-    meta.textContent = 'Workflow running…'
     for(let i=0;i<50;i++){
       await new Promise(r=>setTimeout(r,6000))
       const check = await fetch(`https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/runs/${runId}`,
         {headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json'}})
       const run = await check.json()
-      const elapsed = Math.round((i+1)*6/60*10)/10
-      meta.textContent = `Running… ${elapsed}m`
       if(run.status==='completed'){
         if(run.conclusion!=='success') throw new Error(`Workflow ${run.conclusion}`)
         break
       }
     }
-
-    // 4. Wait for Pages to deploy, reload
-    meta.textContent = 'Deploying…'
-    await new Promise(r=>setTimeout(r,10000))
-    await loadData()
-    render()
-    meta.textContent = 'Updated just now ✓'
-
+    await new Promise(r=>setTimeout(r,12000))
+    location.reload()
   }catch(e){
-    meta.textContent = `Error: ${e.message}`
+    alert('Refresh failed: '+e.message)
     console.error(e)
   }finally{
     btn.disabled = false
