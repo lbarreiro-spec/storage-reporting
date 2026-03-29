@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Debt Intelligence — AnyVan Storage</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#000000;--cl:#f5f5f7;--cd:#1c1c1e;--b:rgba(255,255,255,0.08);
+  --mid:#86868b;--tl:#f5f5f7;--gold:#0071e3;
+  --mono:'SF Mono','Menlo','Monaco',monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
+  --green:#5cb85c;--green-bg:#0d2d18;
+  --red:#e87474;--red-bg:#3a1010;
+  --amber:#d4a017;--amber-bg:#2d2a1a;
+}
+body{background:#000;font-family:var(--sans);color:var(--tl);min-height:100vh;padding:44px 60px}
+
+/* NAV */
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:40px}
+.back{font-size:17px;color:var(--mid);text-decoration:none;transition:color .12s;display:flex;align-items:center;gap:6px}
+.back:hover{color:var(--tl)}
+.topbar-meta{font-size:12px;color:var(--mid);font-family:var(--mono)}
+
+/* PAGE HEADER */
+.ph{margin-bottom:36px}
+.ph-lbl{font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:7px}
+.ph-title{font-size:32px;font-weight:600;letter-spacing:-.01em}
+.ph-sub{font-size:18px;color:var(--mid);margin-top:5px;font-family:var(--mono)}
+
+/* SECTION */
+.sec{margin-bottom:36px}
+.sec-lbl{font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:14px;padding-bottom:7px;border-bottom:1px solid rgba(255,255,255,0.07)}
+
+/* STAT CARDS */
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.stat{background:var(--cd);border:1px solid var(--b);border-radius:13px;padding:18px 20px}
+.stat.hl{background:#3a1010;border-color:#7a2020}
+.stat-lbl{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--mid);margin-bottom:8px}
+.stat-val{font-family:var(--mono);font-size:30px;font-weight:500;line-height:1;letter-spacing:-.02em}
+.stat-sub{font-size:14px;color:var(--mid);margin-top:6px;line-height:1.5}
+.stat.hl .stat-val{color:var(--red)}
+.wow-up{color:var(--red);font-weight:600}
+.wow-dn{color:var(--green);font-weight:600}
+
+/* SEGMENTATION */
+.seg-card{background:var(--cd);border:1px solid var(--b);border-radius:13px;padding:22px 24px}
+.seg-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;margin:12px 0 20px}
+.seg-bar-active{background:var(--green)}
+.seg-bar-atrisk{background:var(--amber)}
+.seg-bar-bad{background:var(--red)}
+.seg-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.seg-item-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px}
+.seg-item-val{font-family:var(--mono);font-size:24px;font-weight:500;color:var(--tl);margin-bottom:2px}
+.seg-item-pct{font-size:13px;color:var(--mid)}
+.seg-active .seg-item-lbl{color:var(--green)}
+.seg-atrisk .seg-item-lbl{color:var(--amber)}
+.seg-bad .seg-item-lbl{color:var(--red)}
+
+/* RISK TIERS */
+.tier-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.tier-card{background:var(--cd);border:1px solid var(--b);border-radius:13px;padding:22px;text-align:center}
+.tier-card.red{background:#2a0f0f;border-color:#6b1e1e}
+.tier-card.amber{background:#261f0a;border-color:#6b4f0a}
+.tier-card.green{background:#0a1f0f;border-color:#1a5c2a}
+.tier-count{font-family:var(--mono);font-size:42px;font-weight:600;line-height:1;margin-bottom:6px}
+.tier-card.red .tier-count{color:var(--red)}
+.tier-card.amber .tier-count{color:var(--amber)}
+.tier-card.green .tier-count{color:var(--green)}
+.tier-name{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;margin-bottom:6px}
+.tier-card.red .tier-name{color:var(--red)}
+.tier-card.amber .tier-name{color:var(--amber)}
+.tier-card.green .tier-name{color:var(--green)}
+.tier-rule{font-size:12px;color:var(--mid);line-height:1.5}
+.tier-pct{font-size:14px;font-family:var(--mono);color:var(--mid);margin-top:4px}
+
+/* CURVE */
+.curve-card{background:var(--cd);border:1px solid var(--b);border-radius:13px;padding:20px 24px}
+.curve-legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px}
+.curve-note{font-size:11px;color:var(--mid);margin-top:10px}
+
+/* COHORT TABLE */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--mid);padding:8px 14px;text-align:right;border-bottom:1px solid rgba(255,255,255,0.07);white-space:nowrap}
+th:first-child{text-align:left}
+td{font-family:var(--mono);font-size:15px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--mid);text-align:right;white-space:nowrap}
+td:first-child{font-family:var(--sans);font-size:15px;font-weight:500;color:var(--tl);text-align:left}
+tr:hover td{background:rgba(255,255,255,0.02)}
+.td-green{color:var(--green)}
+.td-amber{color:var(--amber)}
+.td-red{color:var(--red)}
+.badge{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;font-family:var(--sans);vertical-align:middle;margin-left:6px}
+.badge-bad{background:#7a2020;color:#fca5a5}
+.badge-risk{background:#6b4f0a;color:#fcd34d}
+
+/* LOADING */
+.loading{font-size:18px;color:var(--mid);padding:60px 0;text-align:center}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.09);border-radius:2px}
+
+/* TOOLTIP */
+#dc-tip{display:none;position:fixed;z-index:999;background:#1c1c1e;border:1px solid rgba(255,255,255,0.12);color:var(--tl);padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.6;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="back" href="../index.html">← Reporting home</a>
+  <div class="topbar-meta" id="generated-at"></div>
+</div>
+
+<div class="ph">
+  <div class="ph-lbl">Finance</div>
+  <div class="ph-title">Debt Intelligence</div>
+  <div class="ph-sub">Live snapshot from Zoho Books</div>
+</div>
+
+<div id="content"><div class="loading">Loading debt data…</div></div>
+
+<div id="dc-tip"></div>
+
+<script>
+const BUCKETS = ["<1","1-5","6-10","11-15","16-20","21-25","26-30","31-35","36-40","41-45","46-51",">51"];
+const COLORS  = ['#41a5dd','#00b67a','#f5a623','#e8334a','#7c3aed','#059669'];
+
+function gbp(v) {
+  if (v == null) return '—';
+  return '£' + Number(v).toLocaleString('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function buildCurve(curveData) {
+  if (!curveData || !curveData.length) return '<div class="loading">No curve data yet</div>';
+  const months = curveData.slice(-6);
+  const W = 800, H = 200, PL = 50, PR = 16, PT = 14, PB = 36;
+  const iW = W-PL-PR, iH = H-PT-PB;
+  const n = BUCKETS.length;
+  const Y0 = 70, Y1 = 100;
+  const xS = i => PL + (i/(n-1))*iW;
+  const yS = p => PT + iH - ((p-Y0)/(Y1-Y0))*iH;
+
+  let grid = '';
+  [70,75,80,85,90,95,100].forEach(y => {
+    grid += `<line x1="${PL}" y1="${yS(y)}" x2="${W-PR}" y2="${yS(y)}" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>`;
+    grid += `<text x="${PL-5}" y="${yS(y)+4}" text-anchor="end" font-size="9" fill="#86868b">${y}%</text>`;
+  });
+
+  const xlabels = BUCKETS.map((b,i) =>
+    i%2===0 ? `<text x="${xS(i)}" y="${H-8}" text-anchor="middle" font-size="8" fill="#86868b">${b}</text>` : ''
+  ).join('');
+
+  let lines = '', dots = '';
+  months.forEach((m, mi) => {
+    const c = COLORS[mi % COLORS.length];
+    const pts = m.buckets.map((bk,i) => `${xS(i)},${yS(bk.cumulative_pct)}`).join(' ');
+    const dash = m.is_mtd ? ' stroke-dasharray="5,3"' : '';
+    lines += `<polyline points="${pts}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"${dash}/>`;
+    m.buckets.forEach((bk,i) => {
+      const cx = xS(i).toFixed(1), cy = yS(bk.cumulative_pct).toFixed(1);
+      dots += `<circle cx="${cx}" cy="${cy}" r="3" fill="${c}" pointer-events="none"/>`;
+      dots += `<circle cx="${cx}" cy="${cy}" r="9" fill="transparent"
+        onmouseenter="dcTip(event,'${m.label}','${bk.bucket}',${bk.cumulative_pct},${bk.amount},'${c}')"
+        onmouseleave="dcHide()" style="cursor:crosshair"/>`;
+    });
+  });
+
+  const legend = months.map((m,mi) => {
+    const c = COLORS[mi % COLORS.length];
+    const ls = m.is_mtd
+      ? `background:repeating-linear-gradient(90deg,${c} 0,${c} 5px,transparent 5px,transparent 8px);height:2px;width:22px`
+      : `background:${c};height:2px;width:22px`;
+    const mtd = m.is_mtd ? ' <span style="font-size:9px;background:var(--amber);color:#000;padding:1px 5px;border-radius:3px;font-weight:700">MTD</span>' : '';
+    const unc = m.uncollected_pct != null ? m.uncollected_pct : (m.writeoff_rate != null ? m.writeoff_rate : '—');
+    return `<span style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--tl)">
+      <span style="display:inline-block;${ls};border-radius:2px;flex-shrink:0"></span>
+      ${m.label}${mtd} <span style="color:var(--mid)">(${unc}% uncollected)</span></span>`;
+  }).join('');
+
+  return `
+  <div class="curve-card">
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">${grid}${xlabels}${lines}${dots}</svg>
+    <div class="curve-legend">${legend}</div>
+    <div class="curve-note">x = days from invoice date to payment · y = cumulative % of that month's total invoiced collected · gap to 100% = uncollected</div>
+  </div>`;
+}
+
+function dcTip(e, label, bucket, cumPct, amount, color) {
+  const tip = document.getElementById('dc-tip');
+  tip.innerHTML = `<div style="font-weight:700;color:${color};margin-bottom:3px">${label}</div>
+    <div>Paid within <strong>${bucket} days</strong></div>
+    <div>Cumulative collected: <strong>${cumPct}%</strong></div>
+    <div>This bucket: <strong>${gbp(amount)}</strong></div>`;
+  tip.style.display = 'block';
+  tip.style.left = (e.clientX+14)+'px';
+  tip.style.top  = (e.clientY-10)+'px';
+}
+function dcHide() { document.getElementById('dc-tip').style.display='none'; }
+
+function render(d) {
+  const s  = d.summary || {};
+  const wow = s.wow || {};
+  const bd  = d.bad_debt_segmentation || {};
+  const rt  = d.customer_risk_tiers || {};
+
+  // Generated at
+  if (d.generated_at) {
+    document.getElementById('generated-at').textContent = 'Updated ' + d.generated_at.replace('T',' ').slice(0,16) + ' UTC';
+  }
+
+  // WoW
+  let wowHtml = '';
+  if (wow.wow_value != null) {
+    const up   = wow.wow_value >= 0;
+    const sign = up ? '+' : '';
+    const cls  = up ? 'wow-up' : 'wow-dn';
+    const arr  = up ? '▲' : '▼';
+    wowHtml = `<span class="${cls}">${arr} ${sign}${gbp(Math.abs(wow.wow_value))} (${sign}${wow.wow_pct}%)</span> vs ${wow.vs_date}`;
+  } else {
+    wowHtml = '<span style="color:var(--mid)">WoW builds after first week</span>';
+  }
+
+  // Segmentation bar widths
+  const aP = bd.active_pct || 0, rP = bd.at_risk_pct || 0, bP = bd.bad_debt_pct || 0;
+
+  // Cohort rows
+  const cohortRows = (d.outstanding_by_cohort || []).map(m => {
+    const pct    = m.collection_pct;
+    const pctCls = pct >= 98 ? 'td-green' : pct >= 90 ? 'td-amber' : 'td-red';
+    const outCls = m.outstanding <= 0 ? 'td-green' : m.flag === 'bad_debt' ? 'td-red' : m.flag === 'at_risk' ? 'td-amber' : '';
+    const badge  = m.outstanding > 0 && m.flag !== 'active'
+      ? `<span class="badge ${m.flag === 'bad_debt' ? 'badge-bad' : 'badge-risk'}">${m.flag === 'bad_debt' ? 'BAD DEBT' : 'AT RISK'}</span>`
+      : '';
+    const label = m.is_partial ? `${m.label} <span style="font-size:11px;color:var(--mid);font-weight:400">MTD</span>` : m.label;
+    const wo    = m.written_off > 0 ? ` <span style="font-size:11px;color:var(--mid)">(+${gbp(m.written_off)} w/o)</span>` : '';
+    const out   = m.outstanding > 0 ? `<span class="${outCls}">${gbp(m.outstanding)}</span>` : '<span class="td-green">—</span>';
+    return `<tr>
+      <td>${label}${badge}</td>
+      <td>${gbp(m.invoiced)}</td>
+      <td><span class="td-green">${gbp(m.collected)}</span>${wo}</td>
+      <td class="${pctCls}">${pct}%</td>
+      <td>${out}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('content').innerHTML = `
+
+  <!-- Summary -->
+  <div class="sec">
+    <div class="sec-lbl">Summary</div>
+    <div class="stat-row">
+      <div class="stat hl">
+        <div class="stat-lbl">Total Overdue</div>
+        <div class="stat-val">${gbp(s.total_overdue_balance)}</div>
+        <div class="stat-sub">${s.overdue_invoice_count} invoices · ${s.unique_overdue_customers} customers<br>${wowHtml}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-lbl">Avg Days Overdue</div>
+        <div class="stat-val" style="color:var(--amber)">${s.avg_days_overdue}d</div>
+        <div class="stat-sub">Oldest: ${s.oldest_overdue_days} days overdue</div>
+      </div>
+      <div class="stat">
+        <div class="stat-lbl">Outstanding Balance</div>
+        <div class="stat-val">${gbp(bd.total)}</div>
+        <div class="stat-sub">incl. partially paid · excl. write-offs</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Debt segmentation -->
+  <div class="sec">
+    <div class="sec-lbl">Outstanding Debt Segmentation</div>
+    <div class="seg-card">
+      <div class="seg-bar">
+        <div class="seg-bar-active" style="width:${aP}%"></div>
+        <div class="seg-bar-atrisk" style="width:${rP}%"></div>
+        <div class="seg-bar-bad"    style="width:${bP}%"></div>
+      </div>
+      <div class="seg-grid">
+        <div class="seg-active">
+          <div class="seg-item-lbl">Active <span style="font-weight:400;color:var(--mid)">&lt; 4 months</span></div>
+          <div class="seg-item-val">${gbp(bd.active)}</div>
+          <div class="seg-item-pct">${aP}% of outstanding</div>
+        </div>
+        <div class="seg-atrisk">
+          <div class="seg-item-lbl">At Risk <span style="font-weight:400;color:var(--mid)">4–6 months</span></div>
+          <div class="seg-item-val">${gbp(bd.at_risk)}</div>
+          <div class="seg-item-pct">${rP}% of outstanding</div>
+        </div>
+        <div class="seg-bad">
+          <div class="seg-item-lbl">Bad Debt <span style="font-weight:400;color:var(--mid)">6+ months</span></div>
+          <div class="seg-item-val">${gbp(bd.bad_debt)}</div>
+          <div class="seg-item-pct">${bP}% of outstanding</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Customer risk tiers -->
+  <div class="sec">
+    <div class="sec-lbl">Customer Risk Tiers <span style="font-size:13px;text-transform:none;letter-spacing:0;font-weight:400;color:var(--mid)">${rt.total_customers || 0} customers with outstanding balance</span></div>
+    <div class="tier-grid">
+      <div class="tier-card red">
+        <div class="tier-count">${rt.red || 0}</div>
+        <div class="tier-name">Red</div>
+        <div class="tier-pct">${rt.red_pct || 0}%</div>
+        <div class="tier-rule">5+ invoices or any invoice &gt;28 days overdue</div>
+      </div>
+      <div class="tier-card amber">
+        <div class="tier-count">${rt.amber || 0}</div>
+        <div class="tier-name">Amber</div>
+        <div class="tier-pct">${rt.amber_pct || 0}%</div>
+        <div class="tier-rule">3–4 invoices, all ≤28 days overdue</div>
+      </div>
+      <div class="tier-card green">
+        <div class="tier-count">${rt.green || 0}</div>
+        <div class="tier-name">Green</div>
+        <div class="tier-pct">${rt.green_pct || 0}%</div>
+        <div class="tier-rule">1–2 invoices, all ≤28 days overdue</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Collection rate curve -->
+  <div class="sec">
+    <div class="sec-lbl">Collection Rate Curve — Last 6 Months</div>
+    ${buildCurve(d.debt_curve)}
+  </div>
+
+  <!-- Outstanding by cohort -->
+  <div class="sec">
+    <div class="sec-lbl">Outstanding by Invoice Cohort — Last 12 Months</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th style="text-align:left">Month</th>
+          <th>Invoiced</th>
+          <th>Collected</th>
+          <th>Coll. %</th>
+          <th>Outstanding</th>
+        </tr></thead>
+        <tbody>${cohortRows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+async function load() {
+  try {
+    const r = await fetch('../data/debt_data.json?t=' + Date.now());
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    render(await r.json());
+  } catch(e) {
+    document.getElementById('content').innerHTML =
+      `<div class="loading">Could not load debt_data.json — run <code>python scripts/kpi_debt.py</code> first</div>`;
+  }
+}
+
+load();
+</script>
+</body>
+</html>

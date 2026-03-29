@@ -1,0 +1,45 @@
+name: Fetch Debt Data
+
+on:
+  schedule:
+    - cron: '0 8 * * *'   # 8am UTC daily (9am BST / 8am GMT)
+  workflow_dispatch:        # allow manual trigger from GitHub UI
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Write Zoho credentials
+        run: |
+          cat > .env << 'EOF'
+          ZOHO_CLIENT_ID=${{ secrets.ZOHO_CLIENT_ID }}
+          ZOHO_CLIENT_SECRET=${{ secrets.ZOHO_CLIENT_SECRET }}
+          ZOHO_REFRESH_TOKEN=${{ secrets.ZOHO_REFRESH_TOKEN }}
+          EOF
+
+      - name: Run debt fetch
+        env:
+          OUTPUT_FILE: data/debt_data.json
+          HISTORY_FILE: data/debt_history.json
+        run: python3 scripts/kpi_debt.py
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/debt_data.json data/debt_history.json
+          git diff --staged --quiet || git commit -m "auto: refresh debt data $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push
