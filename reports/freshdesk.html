@@ -56,6 +56,24 @@ thead tr.day-hdr th.c-metric{
 .day-name{display:block;letter-spacing:.1em;text-transform:uppercase;font-size:10px}
 .day-date{display:block;font-size:12px;margin-top:2px;color:var(--tl)}
 
+tr.date-repeat>td{
+  background:rgba(0,0,0,0.7);
+  border-top:1px solid var(--b);border-bottom:1px solid var(--b);
+  text-align:center;
+  padding:7px 10px;
+  font-family:var(--mono);
+  font-size:11px;font-weight:500;
+  color:var(--mid);
+  letter-spacing:.06em;
+}
+tr.date-repeat>td.c-metric{
+  position:sticky;left:0;z-index:9;
+  background:rgba(0,0,0,0.85);
+  border-right:1px solid var(--b);
+  text-align:left;padding-left:20px;
+}
+tr.date-repeat>td.wknd{color:rgba(134,134,139,0.3)}
+
 tr.sec-hdr>td{
   background:rgba(255,255,255,0.03);
   padding:10px 10px 7px;
@@ -177,6 +195,16 @@ function buildTable(days){
 
   const tbody = table.createTBody()
 
+  function dateHdrRow(){
+    const tr = tbody.insertRow(); tr.className='date-repeat'
+    const td = document.createElement('td'); td.className='c-metric'; tr.appendChild(td)
+    days.forEach(d => {
+      const t = document.createElement('td')
+      t.className = d.wknd ? 'wknd' : ''
+      t.innerHTML = `<span class="day-name">${d.day}</span><span class="day-date" style="display:block;font-size:11px;color:var(--tl)">${d.dd}/${SELECTED_MONTH.slice(5,7)}</span>`
+      tr.appendChild(t)
+    })
+  }
   function secRow(label){
     const tr = tbody.insertRow(); tr.className='sec-hdr'
     const td = document.createElement('td'); td.className='c-metric'; td.textContent=label; tr.appendChild(td)
@@ -201,6 +229,7 @@ function buildTable(days){
     })
   }
 
+  dateHdrRow()
   secRow('Overview')
   dataRow('Tickets In',       r => r.inn, true)
   dataRow('Tickets Resolved', r => r.resolved)
@@ -210,6 +239,7 @@ function buildTable(days){
   dataRow('Avg Resolve',      r => r.avg_r || null)
   dataRow('p90 Resolve',      r => r.p90   || null)
 
+  dateHdrRow()
   secRow('By Queue')
   QUEUE_NAMES.forEach((qname, qi) => {
     subRow(qname)
@@ -219,6 +249,7 @@ function buildTable(days){
     dataRow('FR SLA %', r => r.queues[qi]?.fr  != null ? r.queues[qi].fr.toFixed(1)+'%' : null)
   })
 
+  dateHdrRow()
   secRow('By Agent (Ops)')
   AGENT_NAMES.forEach((aname, ai) => {
     subRow(aname)
