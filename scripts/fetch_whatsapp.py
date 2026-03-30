@@ -72,6 +72,9 @@ TODAY = date.today()
 def resolve_dates():
     arg = sys.argv[1].strip() if len(sys.argv) > 1 else None
     if not arg:
+        # On Mondays, backfill Friday + Saturday + Sunday
+        if TODAY.weekday() == 0:
+            return [TODAY - timedelta(days=3), TODAY - timedelta(days=2), TODAY - timedelta(days=1)]
         return [TODAY - timedelta(days=1)]
     try:
         parts = arg.split("-")
