@@ -1,6 +1,8 @@
 name: Refresh Freshdesk Data
 
 on:
+  schedule:
+    - cron: '0 8 * * 1-5'   # 8am UTC Mon-Fri
   workflow_dispatch:
 
 permissions:
@@ -21,7 +23,17 @@ jobs:
           FRESHDESK_API_KEY: ${{ secrets.FRESHDESK_API_KEY }}
           FRESHDESK_DOMAIN: ${{ secrets.FRESHDESK_DOMAIN }}
           OUTPUT_FILE: data/freshdesk_data.json
-        run: python scripts/kpi_freshdesk_daily.py
+        run: |
+          PY=python3
+          SCRIPT=scripts/kpi_freshdesk_daily.py
+          if [ "$(date +%u)" = "1" ]; then
+            echo "Monday — backfilling Friday, Saturday, Sunday"
+            $PY $SCRIPT $(date -d '3 days ago' +%Y-%m-%d)
+            $PY $SCRIPT $(date -d '2 days ago' +%Y-%m-%d)
+            $PY $SCRIPT $(date -d '1 day ago' +%Y-%m-%d)
+          else
+            $PY $SCRIPT $(date -d '1 day ago' +%Y-%m-%d)
+          fi
 
       - name: Commit and push
         run: |
