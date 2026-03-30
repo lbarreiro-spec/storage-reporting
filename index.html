@@ -8,135 +8,182 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#000000;--cl:#f5f5f7;--cd:#1c1c1e;--b:rgba(255,255,255,0.08);
-  --mid:#86868b;--td:#000000;--tl:#f5f5f7;--gold:#0071e3;
-  --mono:'SF Mono','Menlo','Monaco',monospace;--sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
+  --mono:'SF Mono','Menlo','Monaco',monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
 }
-body{background:#000;font-family:var(--sans);color:var(--tl);min-height:100vh;padding:60px 80px}
+body{display:flex;min-height:100vh;font-family:var(--sans);background:#f6f7ed}
 
-.header{margin-bottom:60px}
-.header-lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:10px}
-.header-title{font-size:34px;font-weight:600;letter-spacing:-.02em;color:var(--cl)}
+/* SIDEBAR */
+.sidebar{
+  width:220px;min-width:220px;background:#1f1f1f;
+  display:flex;flex-direction:column;
+  padding:24px 0;position:fixed;top:0;left:0;height:100vh;z-index:100;
+}
+.sidebar-brand{padding:0 24px 28px}
+.sidebar-label{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.5);margin-bottom:4px}
+.sidebar-title{font-size:16px;font-weight:600;color:#fff}
 
-.section-lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:18px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.07)}
+.nav-link{
+  display:block;padding:10px 24px;font-size:13px;color:rgba(255,255,255,0.65);
+  text-decoration:none;transition:color .12s,background .12s;border-left:3px solid transparent;
+}
+.nav-link:hover{color:rgba(255,255,255,0.85)}
+.nav-link.active{color:#fff;border-left-color:#fff;background:rgba(255,255,255,0.06)}
+
+.sidebar-bottom{margin-top:auto;padding:16px 24px;border-top:1px solid rgba(255,255,255,0.08)}
+.sidebar-home-dim{font-size:13px;color:rgba(255,255,255,0.25)}
+
+/* MAIN CONTENT */
+.main{margin-left:220px;padding:32px 40px;flex:1;min-height:100vh}
+
+.page-header{margin-bottom:32px}
+.page-header-lbl{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#6b7280;margin-bottom:8px}
+.page-header-title{font-size:24px;font-weight:700;color:#111827}
+
+.section-lbl{
+  font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#6b7280;
+  border-bottom:1px solid #e2e2e2;padding-bottom:8px;margin-bottom:16px;
+}
 
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 
-.report-card{background:var(--cd);border:1px solid var(--b);border-radius:14px;padding:28px;cursor:pointer;text-decoration:none;color:inherit;display:block;transition:transform .12s,border-color .15s;position:relative}
-.rc-verified{position:absolute;top:14px;right:14px;width:20px;height:20px;background:#1D9BF0;border-radius:50%;display:flex;align-items:center;justify-content:center}
-.rc-verified svg{width:12px;height:12px;fill:#fff}
-.report-card:hover{transform:translateY(-2px);border-color:rgba(218,213,208,0.2)}
-.report-card.live{background:var(--cd);border-color:var(--gold)}
-.report-card.live .rc-name{color:var(--tl)}
-.report-card.live .rc-desc{color:var(--mid)}
-.report-card.live .rc-tag{background:rgba(0,113,227,0.15);color:var(--gold)}
-.report-card.live .rc-arrow{color:var(--gold)}
+.report-card{
+  background:#fff;border:1px solid #e2e2e2;border-radius:12px;padding:24px;
+  cursor:pointer;text-decoration:none;color:inherit;display:block;
+  transition:transform .12s,border-color .15s;
+}
+.report-card:hover{border-color:#1f1f1f;transform:translateY(-1px)}
 
-.rc-tag{display:inline-block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:4px;font-weight:600;background:rgba(255,255,255,0.07);color:var(--mid);margin-bottom:18px}
-.rc-tag.live{background:rgba(0,113,227,0.15);color:var(--gold)}
-.rc-name{font-size:18px;font-weight:600;letter-spacing:-.01em;margin-bottom:8px}
-.rc-desc{font-size:14px;line-height:1.6;color:var(--mid)}
-.rc-footer{display:flex;justify-content:space-between;align-items:center;margin-top:22px}
-.rc-arrow{font-size:18px;color:rgba(255,255,255,0.2)}
-.report-card.live .rc-arrow{color:rgba(255,255,255,0.25)}
+.rc-tag{
+  display:inline-block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  padding:3px 8px;border-radius:4px;font-weight:600;margin-bottom:18px;
+  background:#f4f4f4;color:#6b7280;
+}
+.rc-tag.live{background:#f0fdf4;color:#16a34a}
+.rc-name{font-size:16px;font-weight:600;color:#111827;margin-bottom:8px}
+.rc-desc{font-size:13px;line-height:1.6;color:#6b7280}
+.rc-footer{display:flex;justify-content:space-between;align-items:center;margin-top:20px}
+.rc-arrow{font-size:16px;color:#d1d5db}
 
-.soon{cursor:default}
-.soon:hover{transform:none;border-color:var(--b)}
+.footer-divider{margin-top:48px;padding-top:28px;border-top:1px solid #e2e2e2}
+.project-card{
+  display:inline-flex;align-items:center;gap:14px;padding:18px 24px;
+  border-radius:12px;text-decoration:none;color:inherit;max-width:320px;
+  background:#fff;border:1px solid #e2e2e2;transition:border-color .15s,transform .12s;
+}
+.project-card:hover{border-color:#1f1f1f;transform:translateY(-1px)}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#e2e2e2;border-radius:2px}
 </style>
 </head>
 <body>
 
-<div class="header">
-  <div class="header-lbl">AnyVan Storage</div>
-  <div class="header-title">Reporting</div>
-</div>
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-label">AnyVan Storage</div>
+    <div class="sidebar-title">Reporting</div>
+  </div>
+  <a class="nav-link active" href="index.html">Home</a>
+  <a class="nav-link" href="reports/mtd.html">MTD Revenue</a>
+  <a class="nav-link" href="reports/weekly.html">Weekly Revenue</a>
+  <a class="nav-link" href="reports/daily.html">Daily Activity</a>
+  <a class="nav-link" href="reports/csat.html">CSAT &amp; NPS</a>
+  <a class="nav-link" href="reports/freshdesk.html">Freshdesk</a>
+  <a class="nav-link" href="reports/voice.html">Voice Activity</a>
+  <a class="nav-link" href="reports/monthly.html">Monthly Trends</a>
+  <a class="nav-link" href="reports/whatsapp.html">WhatsApp</a>
+  <a class="nav-link" href="reports/debt.html">Debt Intelligence</a>
+  <div class="sidebar-bottom">
+    <span class="sidebar-home-dim">← Home</span>
+  </div>
+</nav>
 
-<div class="section-lbl">Reports</div>
-<div class="grid">
+<div class="main">
+  <div class="page-header">
+    <div class="page-header-lbl">AnyVan Storage</div>
+    <div class="page-header-title">Reporting</div>
+  </div>
 
-  <a class="report-card live" href="reports/mtd.html">
-    <div class="rc-verified"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
-    <div class="rc-tag live">Live</div>
-    <div class="rc-name">MTD Revenue Intelligence</div>
-    <div class="rc-desc">Monthly invoiced and paid revenue, transport jobs, customer counts, YoY comparisons, and fee analysis. Updated daily.</div>
-    <div class="rc-footer"><span></span><span class="rc-arrow">→</span></div>
-  </a>
+  <div class="section-lbl">Reports</div>
+  <div class="grid">
 
-  <a class="report-card live" href="reports/weekly.html">
-    <div class="rc-verified"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
-    <div class="rc-tag live">Live</div>
-    <div class="rc-name">Weekly Revenue Intelligence</div>
-    <div class="rc-desc">Week-by-week invoiced and paid revenue, transport jobs, leads, and ops metrics. History from Jan 2025.</div>
-    <div class="rc-footer"><span></span><span class="rc-arrow">→</span></div>
-  </a>
+    <a class="report-card" href="reports/mtd.html">
+      <div class="rc-tag live">Live</div>
+      <div class="rc-name">MTD Revenue Intelligence</div>
+      <div class="rc-desc">Monthly invoiced and paid revenue, transport jobs, customer counts, YoY comparisons, and fee analysis. Updated daily.</div>
+      <div class="rc-footer"><span></span><span class="rc-arrow">→</span></div>
+    </a>
 
-  <a class="report-card live" href="reports/daily.html">
-    <div class="rc-verified"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
-    <div class="rc-tag live">Live</div>
-    <div class="rc-name">Daily Activity</div>
-    <div class="rc-desc">Agent activity time by day — online duration, available, break, lunch, admin and OB activity. Ops and Sales split.</div>
-    <div class="rc-footer"><span></span><span class="rc-arrow">→</span></div>
-  </a>
+    <a class="report-card" href="reports/weekly.html">
+      <div class="rc-tag live">Live</div>
+      <div class="rc-name">Weekly Revenue Intelligence</div>
+      <div class="rc-desc">Week-by-week invoiced and paid revenue, transport jobs, leads, and ops metrics. History from Jan 2025.</div>
+      <div class="rc-footer"><span></span><span class="rc-arrow">→</span></div>
+    </a>
 
-  <a class="report-card live" href="reports/csat.html">
-    <div class="rc-verified"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
-    <div class="rc-tag live">Live</div>
-    <div class="rc-name">CSAT &amp; NPS</div>
-    <div class="rc-desc">Weekly CSAT scores and resolution rates per ops agent, plus NPS by collection and redelivery.</div>
-    <div class="rc-footer"><span></span><span class="rc-arrow">→</span></div>
-  </a>
+    <a class="report-card" href="reports/daily.html">
+      <div class="rc-tag live">Live</div>
+      <div class="rc-name">Daily Activity</div>
+      <div class="rc-desc">Agent activity time by day — online duration, available, break, lunch, admin and OB activity. Ops and Sales split.</div>
+      <div class="rc-footer"><span></span><span class="rc-arrow">→</span></div>
+    </a>
 
-  <a class="report-card live" href="reports/freshdesk.html">
-    <div class="rc-verified"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
-    <div class="rc-tag live">Live</div>
-    <div class="rc-name">Freshdesk</div>
-    <div class="rc-desc">Daily ticket volumes, resolution times, SLA rates, and breakdown by queue and agent.</div>
-    <div class="rc-footer"><span></span><span class="rc-arrow">→</span></div>
-  </a>
+    <a class="report-card" href="reports/csat.html">
+      <div class="rc-tag live">Live</div>
+      <div class="rc-name">CSAT &amp; NPS</div>
+      <div class="rc-desc">Weekly CSAT scores and resolution rates per ops agent, plus NPS by collection and redelivery.</div>
+      <div class="rc-footer"><span></span><span class="rc-arrow">→</span></div>
+    </a>
 
-  <a class="report-card live" href="reports/voice.html">
-    <div class="rc-verified"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
-    <div class="rc-tag live">Live</div>
-    <div class="rc-name">Voice Activity</div>
-    <div class="rc-desc">Daily inbound and outbound call volumes, answer rates, and average handle time. Ops and Sales split.</div>
-    <div class="rc-footer"><span></span><span class="rc-arrow">→</span></div>
-  </a>
+    <a class="report-card" href="reports/freshdesk.html">
+      <div class="rc-tag live">Live</div>
+      <div class="rc-name">Freshdesk</div>
+      <div class="rc-desc">Daily ticket volumes, resolution times, SLA rates, and breakdown by queue and agent.</div>
+      <div class="rc-footer"><span></span><span class="rc-arrow">→</span></div>
+    </a>
 
-  <a class="report-card live" href="reports/monthly.html">
-    <div class="rc-verified"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
-    <div class="rc-tag live">Live</div>
-    <div class="rc-name">Monthly Trends</div>
-    <div class="rc-desc">Year-over-year monthly charts for revenue, cash, transport, customers, sq ft, and more. 2023–2026 in a single view.</div>
-    <div class="rc-footer"><span></span><span class="rc-arrow">→</span></div>
-  </a>
+    <a class="report-card" href="reports/voice.html">
+      <div class="rc-tag live">Live</div>
+      <div class="rc-name">Voice Activity</div>
+      <div class="rc-desc">Daily inbound and outbound call volumes, answer rates, and average handle time. Ops and Sales split.</div>
+      <div class="rc-footer"><span></span><span class="rc-arrow">→</span></div>
+    </a>
 
-  <a class="report-card live" href="reports/whatsapp.html">
-    <div class="rc-verified"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
-    <div class="rc-tag live">Live</div>
-    <div class="rc-name">WhatsApp Activity</div>
-    <div class="rc-desc">Daily inbound chats, response times, outbound activity, and engagement — convos initiated, messages sent, and customer reply rates by agent.</div>
-    <div class="rc-footer"><span></span><span class="rc-arrow">→</span></div>
-  </a>
+    <a class="report-card" href="reports/monthly.html">
+      <div class="rc-tag live">Live</div>
+      <div class="rc-name">Monthly Trends</div>
+      <div class="rc-desc">Year-over-year monthly charts for revenue, cash, transport, customers, sq ft, and more. 2023–2026 in a single view.</div>
+      <div class="rc-footer"><span></span><span class="rc-arrow">→</span></div>
+    </a>
 
-  <a class="report-card live" href="reports/debt.html">
-    <div class="rc-verified"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
-    <div class="rc-tag live">Live</div>
-    <div class="rc-name">Debt Intelligence</div>
-    <div class="rc-desc">Total overdue balance, customer risk tiers, bad debt segmentation, collection rate curve, and outstanding by invoice cohort.</div>
-    <div class="rc-footer"><span></span><span class="rc-arrow">→</span></div>
-  </a>
+    <a class="report-card" href="reports/whatsapp.html">
+      <div class="rc-tag live">Live</div>
+      <div class="rc-name">WhatsApp Activity</div>
+      <div class="rc-desc">Daily inbound chats, response times, outbound activity, and engagement — convos initiated, messages sent, and customer reply rates by agent.</div>
+      <div class="rc-footer"><span></span><span class="rc-arrow">→</span></div>
+    </a>
 
-</div>
+    <a class="report-card" href="reports/debt.html">
+      <div class="rc-tag live">Live</div>
+      <div class="rc-name">Debt Intelligence</div>
+      <div class="rc-desc">Total overdue balance, customer risk tiers, bad debt segmentation, collection rate curve, and outstanding by invoice cohort.</div>
+      <div class="rc-footer"><span></span><span class="rc-arrow">→</span></div>
+    </a>
 
-<div style="margin-top:60px;padding-top:30px;border-top:1px solid rgba(255,255,255,0.07)">
-  <a href="https://robbosd.github.io/av-project-tracker/" class="report-card" style="display:inline-flex;align-items:center;gap:14px;padding:18px 24px;border-radius:12px;text-decoration:none;color:inherit;max-width:320px">
-    <span style="font-size:20px">📋</span>
-    <span>
-      <div style="font-size:13px;font-weight:600;color:var(--cl)">Project Tracker</div>
-      <div style="font-size:12px;color:var(--mid);margin-top:2px">AnyVan initiative tracking</div>
-    </span>
-    <span class="rc-arrow" style="margin-left:auto">→</span>
-  </a>
+  </div>
+
+  <div class="footer-divider">
+    <a href="https://robbosd.github.io/av-project-tracker/" class="project-card">
+      <span style="font-size:20px">📋</span>
+      <span>
+        <div style="font-size:13px;font-weight:600;color:#111827">Project Tracker</div>
+        <div style="font-size:12px;color:#6b7280;margin-top:2px">AnyVan initiative tracking</div>
+      </span>
+      <span class="rc-arrow" style="margin-left:auto">→</span>
+    </a>
+  </div>
 </div>
 
 </body>

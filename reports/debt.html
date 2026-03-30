@@ -7,61 +7,85 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#000000;--cl:#f5f5f7;--cd:#1c1c1e;--b:rgba(255,255,255,0.08);
-  --mid:#86868b;--tl:#f5f5f7;--gold:#0071e3;
   --mono:'SF Mono','Menlo','Monaco',monospace;
   --sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
-  --green:#5cb85c;--green-bg:#0d2d18;
-  --red:#e87474;--red-bg:#3a1010;
-  --amber:#d4a017;--amber-bg:#2d2a1a;
+  --green:#16a34a;--green-bg:#f0fdf4;
+  --red:#dc2626;--red-bg:#fef2f2;
+  --amber:#d97706;--amber-bg:#fffbeb;
 }
-html,body{height:100%;background:var(--bg);font-family:var(--sans);color:var(--tl);overflow:hidden}
-body{display:flex;flex-direction:column}
+html,body{height:100%;font-family:var(--sans);background:#f6f7ed;overflow:hidden}
+body{display:flex}
+
+/* SIDEBAR */
+.sidebar{
+  width:220px;min-width:220px;background:#1f1f1f;
+  display:flex;flex-direction:column;
+  padding:24px 0;flex-shrink:0;height:100vh;z-index:100;
+}
+.sidebar-brand{padding:0 24px 28px}
+.sidebar-label{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.5);margin-bottom:4px}
+.sidebar-title{font-size:16px;font-weight:600;color:#fff}
+.nav-link{
+  display:block;padding:10px 24px;font-size:13px;color:rgba(255,255,255,0.65);
+  text-decoration:none;transition:color .12s,background .12s;border-left:3px solid transparent;
+}
+.nav-link:hover{color:rgba(255,255,255,0.85)}
+.nav-link.active{color:#fff;border-left-color:#fff;background:rgba(255,255,255,0.06)}
+.sidebar-bottom{margin-top:auto;padding:16px 24px;border-top:1px solid rgba(255,255,255,0.08)}
+.sidebar-home{font-size:13px;color:rgba(255,255,255,0.65);text-decoration:none;transition:color .12s}
+.sidebar-home:hover{color:#fff}
+
+/* MAIN */
+.main-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden}
 
 /* NAV */
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--b);background:var(--bg);flex-shrink:0;z-index:30}
-.back{font-size:15px;color:var(--mid);text-decoration:none;transition:color .12s;display:flex;align-items:center;gap:6px}
-.back:hover{color:var(--tl)}
-.topbar-title{font-size:15px;font-weight:600;color:var(--tl);letter-spacing:-.01em}
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 24px;border-bottom:1px solid #e2e2e2;background:#fff;flex-shrink:0;z-index:30;
+}
+.topbar-title{font-size:15px;font-weight:600;color:#111827;letter-spacing:-.01em}
 .topbar-right{display:flex;align-items:center;gap:10px}
-.topbar-meta{font-size:13px;color:var(--mid);font-family:var(--mono)}
+.topbar-meta{font-size:13px;color:#6b7280;font-family:var(--mono)}
 
 /* SECTION */
-.sec{margin-bottom:36px}
-.sec-lbl{font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:14px;padding-bottom:7px;border-bottom:1px solid rgba(255,255,255,0.07)}
+.sec{margin-bottom:28px}
+.sec-lbl{
+  font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#6b7280;
+  border-bottom:1px solid #e2e2e2;padding-bottom:8px;margin-bottom:16px;
+}
 
 /* STAT CARDS */
 .stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-.stat{background:var(--cd);border:1px solid var(--b);border-radius:13px;padding:18px 20px}
-.stat.hl{background:#3a1010;border-color:#7a2020}
-.stat-lbl{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--mid);margin-bottom:8px}
-.stat-val{font-family:var(--mono);font-size:30px;font-weight:500;line-height:1;letter-spacing:-.02em}
-.stat-sub{font-size:14px;color:var(--mid);margin-top:6px;line-height:1.5}
+.stat{background:#fff;border:1px solid #e2e2e2;border-radius:12px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+.stat.hl{background:var(--red-bg);border-color:#fca5a5}
+.stat-lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#6b7280;margin-bottom:8px}
+.stat-val{font-family:var(--mono);font-size:28px;font-weight:500;line-height:1;letter-spacing:-.02em;color:#111827}
+.stat-sub{font-size:13px;color:#6b7280;margin-top:6px;line-height:1.5}
 .stat.hl .stat-val{color:var(--red)}
 .wow-up{color:var(--red);font-weight:600}
 .wow-dn{color:var(--green);font-weight:600}
 
 /* SEGMENTATION */
-.seg-card{background:var(--cd);border:1px solid var(--b);border-radius:13px;padding:22px 24px}
+.seg-card{background:#fff;border:1px solid #e2e2e2;border-radius:12px;padding:22px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
 .seg-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;margin:12px 0 20px}
 .seg-bar-active{background:var(--green)}
 .seg-bar-atrisk{background:var(--amber)}
 .seg-bar-bad{background:var(--red)}
 .seg-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
 .seg-item-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px}
-.seg-item-val{font-family:var(--mono);font-size:24px;font-weight:500;color:var(--tl);margin-bottom:2px}
-.seg-item-pct{font-size:13px;color:var(--mid)}
+.seg-item-val{font-family:var(--mono);font-size:22px;font-weight:500;color:#111827;margin-bottom:2px}
+.seg-item-pct{font-size:13px;color:#6b7280}
 .seg-active .seg-item-lbl{color:var(--green)}
 .seg-atrisk .seg-item-lbl{color:var(--amber)}
 .seg-bad .seg-item-lbl{color:var(--red)}
 
 /* RISK TIERS */
 .tier-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-.tier-card{background:var(--cd);border:1px solid var(--b);border-radius:13px;padding:22px;text-align:center}
-.tier-card.red{background:#2a0f0f;border-color:#6b1e1e}
-.tier-card.amber{background:#261f0a;border-color:#6b4f0a}
-.tier-card.green{background:#0a1f0f;border-color:#1a5c2a}
-.tier-count{font-family:var(--mono);font-size:42px;font-weight:600;line-height:1;margin-bottom:6px}
+.tier-card{background:#fff;border:1px solid #e2e2e2;border-radius:12px;padding:22px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+.tier-card.red{background:var(--red-bg);border-color:#fca5a5}
+.tier-card.amber{background:var(--amber-bg);border-color:#fcd34d}
+.tier-card.green{background:var(--green-bg);border-color:#86efac}
+.tier-count{font-family:var(--mono);font-size:40px;font-weight:600;line-height:1;margin-bottom:6px}
 .tier-card.red .tier-count{color:var(--red)}
 .tier-card.amber .tier-count{color:var(--amber)}
 .tier-card.green .tier-count{color:var(--green)}
@@ -69,55 +93,90 @@ body{display:flex;flex-direction:column}
 .tier-card.red .tier-name{color:var(--red)}
 .tier-card.amber .tier-name{color:var(--amber)}
 .tier-card.green .tier-name{color:var(--green)}
-.tier-rule{font-size:12px;color:var(--mid);line-height:1.5}
-.tier-pct{font-size:14px;font-family:var(--mono);color:var(--mid);margin-top:4px}
+.tier-rule{font-size:12px;color:#6b7280;line-height:1.5}
+.tier-pct{font-size:14px;font-family:var(--mono);color:#6b7280;margin-top:4px}
 
 /* CURVE */
-.curve-card{background:var(--cd);border:1px solid var(--b);border-radius:13px;padding:20px 24px}
+.curve-card{background:#fff;border:1px solid #e2e2e2;border-radius:12px;padding:20px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
 .curve-legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px}
-.curve-note{font-size:11px;color:var(--mid);margin-top:10px}
+.curve-note{font-size:11px;color:#6b7280;margin-top:10px}
 
 /* COHORT TABLE */
 .tbl-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse}
-th{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--mid);padding:8px 14px;text-align:right;border-bottom:1px solid rgba(255,255,255,0.07);white-space:nowrap}
-th:first-child{text-align:left}
-td{font-family:var(--mono);font-size:15px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--mid);text-align:right;white-space:nowrap}
-td:first-child{font-family:var(--sans);font-size:15px;font-weight:500;color:var(--tl);text-align:left}
-tr:hover td{background:rgba(255,255,255,0.02)}
+thead th{
+  background:#f4f4f4;color:#6b7280;font-size:12px;text-transform:uppercase;
+  letter-spacing:.08em;padding:10px 14px;border-bottom:1px solid #e2e2e2;
+  font-weight:600;white-space:nowrap;text-align:right;
+}
+thead th:first-child{text-align:left}
+tbody td{
+  font-family:var(--mono);font-size:14px;padding:10px 14px;
+  border-bottom:1px solid #f0f0f0;color:#374151;text-align:right;white-space:nowrap;
+  background:#fff;
+}
+tbody td:first-child{font-family:var(--sans);font-size:14px;font-weight:500;color:#111827;text-align:left}
+tbody tr:hover td{background:#fafafa}
 .td-green{color:var(--green)}
 .td-amber{color:var(--amber)}
 .td-red{color:var(--red)}
 .badge{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;font-family:var(--sans);vertical-align:middle;margin-left:6px}
-.badge-bad{background:#7a2020;color:#fca5a5}
-.badge-risk{background:#6b4f0a;color:#fcd34d}
+.badge-bad{background:var(--red-bg);color:var(--red)}
+.badge-risk{background:var(--amber-bg);color:var(--amber)}
 
 /* SCROLLABLE CONTENT */
-.content-wrap{flex:1;overflow-y:auto;padding:32px 60px}
+.content-wrap{flex:1;overflow-y:auto;padding:28px 32px}
 
 /* REFRESH BUTTON */
-.refresh-btn{background:none;border:1px solid var(--b);border-radius:8px;padding:6px 14px;font-family:var(--sans);font-size:14px;color:var(--mid);cursor:pointer;transition:all .12s}
-.refresh-btn:hover:not(:disabled){border-color:var(--gold);color:var(--gold)}
+.refresh-btn{
+  background:#fff;border:1px solid #e2e2e2;border-radius:8px;padding:6px 14px;
+  font-family:var(--sans);font-size:14px;color:#6b7280;cursor:pointer;transition:all .12s;
+}
+.refresh-btn:hover:not(:disabled){border-color:#1f1f1f;color:#1f1f1f}
 .refresh-btn:disabled{opacity:0.5;cursor:default}
 .spin{display:inline-block;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* LOADING */
-.loading{font-size:18px;color:var(--mid);padding:60px 0;text-align:center}
+.loading{font-size:16px;color:#6b7280;padding:60px 0;text-align:center}
 
-/* SCROLLBAR */
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.09);border-radius:2px}
+::-webkit-scrollbar-thumb{background:#e2e2e2;border-radius:2px}
 
 /* TOOLTIP */
-#dc-tip{display:none;position:fixed;z-index:999;background:#1c1c1e;border:1px solid rgba(255,255,255,0.12);color:var(--tl);padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.6;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+#dc-tip{
+  display:none;position:fixed;z-index:999;
+  background:#fff;border:1px solid #e2e2e2;color:#111827;
+  padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.6;
+  pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.12);
+}
 </style>
 </head>
 <body>
 
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-label">AnyVan Storage</div>
+    <div class="sidebar-title">Reporting</div>
+  </div>
+  <a class="nav-link" href="../index.html">Home</a>
+  <a class="nav-link" href="mtd.html">MTD Revenue</a>
+  <a class="nav-link" href="weekly.html">Weekly Revenue</a>
+  <a class="nav-link" href="daily.html">Daily Activity</a>
+  <a class="nav-link" href="csat.html">CSAT &amp; NPS</a>
+  <a class="nav-link" href="freshdesk.html">Freshdesk</a>
+  <a class="nav-link" href="voice.html">Voice Activity</a>
+  <a class="nav-link" href="monthly.html">Monthly Trends</a>
+  <a class="nav-link" href="whatsapp.html">WhatsApp</a>
+  <a class="nav-link active" href="debt.html">Debt Intelligence</a>
+  <div class="sidebar-bottom">
+    <a class="sidebar-home" href="../index.html">← Home</a>
+  </div>
+</nav>
+
+<div class="main-wrap">
 <div class="topbar">
-  <a class="back" href="../index.html">← Reporting home</a>
   <span class="topbar-title">Debt Intelligence</span>
   <div class="topbar-right">
     <span class="topbar-meta" id="generated-at"></span>
@@ -127,6 +186,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
 
 <div class="content-wrap">
 <div id="content"><div class="loading">Loading debt data…</div></div>
+</div>
 </div>
 
 <div id="dc-tip"></div>
@@ -152,12 +212,12 @@ function buildCurve(curveData) {
 
   let grid = '';
   [70,75,80,85,90,95,100].forEach(y => {
-    grid += `<line x1="${PL}" y1="${yS(y)}" x2="${W-PR}" y2="${yS(y)}" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>`;
-    grid += `<text x="${PL-5}" y="${yS(y)+4}" text-anchor="end" font-size="9" fill="#86868b">${y}%</text>`;
+    grid += `<line x1="${PL}" y1="${yS(y)}" x2="${W-PR}" y2="${yS(y)}" stroke="#e2e2e2" stroke-width="1"/>`;
+    grid += `<text x="${PL-5}" y="${yS(y)+4}" text-anchor="end" font-size="9" fill="#6b7280">${y}%</text>`;
   });
 
   const xlabels = BUCKETS.map((b,i) =>
-    i%2===0 ? `<text x="${xS(i)}" y="${H-8}" text-anchor="middle" font-size="8" fill="#86868b">${b}</text>` : ''
+    i%2===0 ? `<text x="${xS(i)}" y="${H-8}" text-anchor="middle" font-size="8" fill="#6b7280">${b}</text>` : ''
   ).join('');
 
   let lines = '', dots = '';
@@ -180,11 +240,11 @@ function buildCurve(curveData) {
     const ls = m.is_mtd
       ? `background:repeating-linear-gradient(90deg,${c} 0,${c} 5px,transparent 5px,transparent 8px);height:2px;width:22px`
       : `background:${c};height:2px;width:22px`;
-    const mtd = m.is_mtd ? ' <span style="font-size:9px;background:var(--amber);color:#000;padding:1px 5px;border-radius:3px;font-weight:700">MTD</span>' : '';
+    const mtd = m.is_mtd ? ' <span style="font-size:9px;background:#fffbeb;color:#d97706;padding:1px 5px;border-radius:3px;font-weight:700">MTD</span>' : '';
     const unc = m.uncollected_pct != null ? m.uncollected_pct : (m.writeoff_rate != null ? m.writeoff_rate : '—');
-    return `<span style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--tl)">
+    return `<span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#111827">
       <span style="display:inline-block;${ls};border-radius:2px;flex-shrink:0"></span>
-      ${m.label}${mtd} <span style="color:var(--mid)">(${unc}% uncollected)</span></span>`;
+      ${m.label}${mtd} <span style="color:#6b7280">(${unc}% uncollected)</span></span>`;
   }).join('');
 
   return `
@@ -227,7 +287,7 @@ function render(d) {
     const arr  = up ? '▲' : '▼';
     wowHtml = `<span class="${cls}">${arr} ${sign}${gbp(Math.abs(wow.wow_value))} (${sign}${wow.wow_pct}%)</span> vs ${wow.vs_date}`;
   } else {
-    wowHtml = '<span style="color:var(--mid)">WoW builds after first week</span>';
+    wowHtml = '<span style="color:#6b7280">WoW builds after first week</span>';
   }
 
   // Segmentation bar widths
@@ -241,8 +301,8 @@ function render(d) {
     const badge  = m.outstanding > 0 && m.flag !== 'active'
       ? `<span class="badge ${m.flag === 'bad_debt' ? 'badge-bad' : 'badge-risk'}">${m.flag === 'bad_debt' ? 'BAD DEBT' : 'AT RISK'}</span>`
       : '';
-    const label = m.is_partial ? `${m.label} <span style="font-size:11px;color:var(--mid);font-weight:400">MTD</span>` : m.label;
-    const wo    = m.written_off > 0 ? ` <span style="font-size:11px;color:var(--mid)">(+${gbp(m.written_off)} w/o)</span>` : '';
+    const label = m.is_partial ? `${m.label} <span style="font-size:11px;color:#6b7280;font-weight:400">MTD</span>` : m.label;
+    const wo    = m.written_off > 0 ? ` <span style="font-size:11px;color:#6b7280">(+${gbp(m.written_off)} w/o)</span>` : '';
     const out   = m.outstanding > 0 ? `<span class="${outCls}">${gbp(m.outstanding)}</span>` : '<span class="td-green">—</span>';
     return `<tr>
       <td>${label}${badge}</td>
@@ -266,7 +326,7 @@ function render(d) {
       </div>
       <div class="stat">
         <div class="stat-lbl">Avg Days Overdue</div>
-        <div class="stat-val" style="color:var(--amber)">${s.avg_days_overdue}d</div>
+        <div class="stat-val" style="color:#d97706">${s.avg_days_overdue}d</div>
         <div class="stat-sub">Oldest: ${s.oldest_overdue_days} days overdue</div>
       </div>
       <div class="stat">
@@ -288,17 +348,17 @@ function render(d) {
       </div>
       <div class="seg-grid">
         <div class="seg-active">
-          <div class="seg-item-lbl">Active <span style="font-weight:400;color:var(--mid)">&lt; 4 months</span></div>
+          <div class="seg-item-lbl">Active <span style="font-weight:400;color:#6b7280">&lt; 4 months</span></div>
           <div class="seg-item-val">${gbp(bd.active)}</div>
           <div class="seg-item-pct">${aP}% of outstanding</div>
         </div>
         <div class="seg-atrisk">
-          <div class="seg-item-lbl">At Risk <span style="font-weight:400;color:var(--mid)">4–6 months</span></div>
+          <div class="seg-item-lbl">At Risk <span style="font-weight:400;color:#6b7280">4–6 months</span></div>
           <div class="seg-item-val">${gbp(bd.at_risk)}</div>
           <div class="seg-item-pct">${rP}% of outstanding</div>
         </div>
         <div class="seg-bad">
-          <div class="seg-item-lbl">Bad Debt <span style="font-weight:400;color:var(--mid)">6+ months</span></div>
+          <div class="seg-item-lbl">Bad Debt <span style="font-weight:400;color:#6b7280">6+ months</span></div>
           <div class="seg-item-val">${gbp(bd.bad_debt)}</div>
           <div class="seg-item-pct">${bP}% of outstanding</div>
         </div>
@@ -308,7 +368,7 @@ function render(d) {
 
   <!-- Customer risk tiers -->
   <div class="sec">
-    <div class="sec-lbl">Customer Risk Tiers <span style="font-size:13px;text-transform:none;letter-spacing:0;font-weight:400;color:var(--mid)">${rt.total_customers || 0} customers with outstanding balance</span></div>
+    <div class="sec-lbl">Customer Risk Tiers <span style="font-size:13px;text-transform:none;letter-spacing:0;font-weight:400;color:#6b7280">${rt.total_customers || 0} customers with outstanding balance</span></div>
     <div class="tier-grid">
       <div class="tier-card red">
         <div class="tier-count">${rt.red || 0}</div>

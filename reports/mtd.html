@@ -9,114 +9,161 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#000000;--cl:#f5f5f7;--cd:#1c1c1e;--b:rgba(255,255,255,0.08);
-  --mid:#86868b;--td:#000000;--tl:#f5f5f7;--gold:#0071e3;
-  --mono:'SF Mono','Menlo','Monaco',monospace;--sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
-  --green-bg:#0d2d18;--green-txt:#5cb85c;
-  --red-bg:#3a1010;--red-txt:#e87474;
-  --amber-bg:#2d2a1a;--amber-txt:#d4a017;
+  --mono:'SF Mono','Menlo','Monaco',monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
 }
-body{background:#000;font-family:var(--sans);color:var(--tl);min-height:100vh;padding:44px 60px}
+body{display:flex;min-height:100vh;font-family:var(--sans);background:#f6f7ed}
 
-/* NAV */
-.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:40px}
-.back{font-size:17px;color:var(--mid);text-decoration:none;transition:color .12s;display:flex;align-items:center;gap:6px}
-.back:hover{color:var(--tl)}
-.month-sel{background:var(--cd);border:1px solid var(--b);border-radius:8px;padding:7px 12px;font-family:var(--mono);font-size:17px;color:var(--tl);outline:none;cursor:pointer}
-.month-sel option{background:#1c1c1e}
+/* SIDEBAR */
+.sidebar{
+  width:220px;min-width:220px;background:#1f1f1f;
+  display:flex;flex-direction:column;
+  padding:24px 0;position:fixed;top:0;left:0;height:100vh;z-index:100;
+}
+.sidebar-brand{padding:0 24px 28px}
+.sidebar-label{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.5);margin-bottom:4px}
+.sidebar-title{font-size:16px;font-weight:600;color:#fff}
+.nav-link{
+  display:block;padding:10px 24px;font-size:13px;color:rgba(255,255,255,0.65);
+  text-decoration:none;transition:color .12s,background .12s;border-left:3px solid transparent;
+}
+.nav-link:hover{color:rgba(255,255,255,0.85)}
+.nav-link.active{color:#fff;border-left-color:#fff;background:rgba(255,255,255,0.06)}
+.sidebar-bottom{margin-top:auto;padding:16px 24px;border-top:1px solid rgba(255,255,255,0.08)}
+.sidebar-home{font-size:13px;color:rgba(255,255,255,0.65);text-decoration:none;transition:color .12s}
+.sidebar-home:hover{color:#fff}
 
-/* PAGE HEADER */
-.ph{margin-bottom:36px}
-.ph-lbl{font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:7px}
-.ph-title{font-size:32px;font-weight:600;letter-spacing:-.01em}
-.ph-sub{font-size:18px;color:var(--mid);margin-top:5px;font-family:var(--mono)}
+/* MAIN */
+.main{margin-left:220px;padding:32px 40px;flex:1;min-height:100vh;overflow-y:auto}
 
-/* SECTION */
-.sec{margin-bottom:36px}
-.sec-lbl{font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:14px;padding-bottom:7px;border-bottom:1px solid rgba(255,255,255,0.07)}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px}
+.topbar-controls{display:flex;gap:10px;align-items:center}
+
+.ph{margin-bottom:0}
+.ph-lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#6b7280;margin-bottom:6px}
+.ph-title{font-size:24px;font-weight:700;color:#111827}
+.ph-sub{font-size:13px;color:#6b7280;margin-top:4px;font-family:var(--mono)}
+
+.sec{
+  background:#fff;border:1px solid #e2e2e2;border-radius:12px;padding:24px;
+  box-shadow:0 1px 3px rgba(0,0,0,0.06);margin-bottom:24px;
+}
+.sec-lbl{
+  font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#6b7280;
+  border-bottom:1px solid #e2e2e2;padding-bottom:8px;margin-bottom:16px;
+}
 
 /* STAT CARDS */
 .stat-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
-.stat{background:var(--cd);border:1px solid var(--b);border-radius:13px;padding:18px 20px}
-.stat.hl{background:var(--gold);border-color:transparent}
-.stat.hl .stat-lbl{color:rgba(13,25,18,.65)}
-.stat.hl .stat-val{color:#000000}
-.stat.hl .stat-sub{color:rgba(13,25,18,.5)}
-.stat-lbl{font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:8px}
-.stat-val{font-family:var(--mono);font-size:32px;font-weight:500;line-height:1;letter-spacing:-.02em}
-.stat-sub{font-size:17px;color:var(--mid);margin-top:5px}
+.stat{background:#f4f4f4;border:1px solid #e2e2e2;border-radius:12px;padding:18px 20px}
+.stat-lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#6b7280;margin-bottom:8px}
+.stat-val{font-family:var(--mono);font-size:28px;font-weight:500;line-height:1;letter-spacing:-.02em;color:#111827}
+.stat-sub{font-size:13px;color:#6b7280;margin-top:5px}
 
 /* YOY GRID */
 .yoy-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.yoy-card{background:var(--cd);border:1px solid var(--b);border-radius:13px;padding:20px 22px}
-.yoy-title{font-size:17px;font-weight:600;color:var(--tl);margin-bottom:16px}
-.yoy-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.05)}
+.yoy-card{background:#f4f4f4;border:1px solid #e2e2e2;border-radius:12px;padding:20px 22px}
+.yoy-title{font-size:15px;font-weight:600;color:#111827;margin-bottom:16px}
+.yoy-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #e2e2e2}
 .yoy-row:last-child{border-bottom:none}
-.yoy-lbl{font-size:17px;color:var(--mid)}
+.yoy-lbl{font-size:14px;color:#6b7280}
 .yoy-vals{display:flex;align-items:center;gap:10px}
-.yoy-num{font-family:var(--mono);font-size:19px;color:var(--tl)}
-.badge-up{font-size:15px;letter-spacing:.06em;padding:2px 7px;border-radius:4px;font-weight:600;background:var(--green-bg);color:var(--green-txt)}
-.badge-dn{font-size:15px;letter-spacing:.06em;padding:2px 7px;border-radius:4px;font-weight:600;background:var(--red-bg);color:var(--red-txt)}
-.badge-fl{font-size:15px;letter-spacing:.06em;padding:2px 7px;border-radius:4px;font-weight:600;background:rgba(255,255,255,0.06);color:var(--mid)}
+.yoy-num{font-family:var(--mono);font-size:16px;color:#111827}
+.badge-up{font-size:12px;letter-spacing:.06em;padding:2px 7px;border-radius:4px;font-weight:600;background:#f0fdf4;color:#16a34a}
+.badge-dn{font-size:12px;letter-spacing:.06em;padding:2px 7px;border-radius:4px;font-weight:600;background:#fef2f2;color:#dc2626}
+.badge-fl{font-size:12px;letter-spacing:.06em;padding:2px 7px;border-radius:4px;font-weight:600;background:#f4f4f4;color:#6b7280}
 
 /* TRANSPORT */
 .transport-grid{display:grid;grid-template-columns:1fr;gap:12px}
-.t-card{background:var(--cd);border:1px solid var(--b);border-radius:13px;padding:20px 22px}
-.t-title{font-size:17px;font-weight:600;color:var(--tl);margin-bottom:16px}
-.t-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)}
+.t-card{background:#f4f4f4;border:1px solid #e2e2e2;border-radius:12px;padding:20px 22px}
+.t-title{font-size:15px;font-weight:600;color:#111827;margin-bottom:16px}
+.t-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #e2e2e2}
 .t-row:last-child{border-bottom:none}
-.t-lbl{font-size:17px;color:var(--mid)}
-.t-val{font-family:var(--mono);font-size:19px;color:var(--tl)}
+.t-lbl{font-size:14px;color:#6b7280}
+.t-val{font-family:var(--mono);font-size:16px;color:#111827}
 
 /* SQFT + FEES */
 .two-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-.info-card{background:var(--cd);border:1px solid var(--b);border-radius:13px;padding:20px 22px}
-.info-title{font-size:17px;font-weight:600;color:var(--tl);margin-bottom:16px}
-.info-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)}
+.info-card{background:#f4f4f4;border:1px solid #e2e2e2;border-radius:12px;padding:20px 22px}
+.info-title{font-size:15px;font-weight:600;color:#111827;margin-bottom:16px}
+.info-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #e2e2e2}
 .info-row:last-child{border-bottom:none}
-.info-lbl{font-size:17px;color:var(--mid)}
-.info-val{font-family:var(--mono);font-size:19px;color:var(--tl)}
+.info-lbl{font-size:14px;color:#6b7280}
+.info-val{font-family:var(--mono);font-size:16px;color:#111827}
 
 /* HISTORY TABLE */
 .tbl-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse}
-th{font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--mid);padding:8px 12px;text-align:right;border-bottom:1px solid rgba(255,255,255,0.07);white-space:nowrap}
-th:first-child{text-align:left}
-td{font-family:var(--mono);font-size:17px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--mid);text-align:right;white-space:nowrap}
-td:first-child{font-family:var(--sans);font-size:18px;font-weight:500;color:var(--tl);text-align:left}
-tr:hover td{background:rgba(255,255,255,0.02)}
-tr.current-month td{color:var(--tl)}
-tr.current-month td:first-child{color:var(--gold)}
+thead th{
+  background:#f4f4f4;color:#6b7280;font-size:12px;text-transform:uppercase;
+  letter-spacing:.08em;padding:10px 14px;border-bottom:1px solid #e2e2e2;
+  font-weight:600;white-space:nowrap;text-align:right;
+}
+thead th:first-child{text-align:left}
+tbody td{
+  font-family:var(--mono);font-size:14px;padding:10px 14px;
+  border-bottom:1px solid #f0f0f0;color:#374151;text-align:right;white-space:nowrap;
+  background:#fff;
+}
+tbody td:first-child{font-family:var(--sans);font-size:14px;font-weight:500;color:#111827;text-align:left}
+tbody tr:hover td{background:#fafafa}
+tr.current-month td{color:#111827}
+tr.current-month td:first-child{color:#1f1f1f;font-weight:700}
 
-/* LOADING / EMPTY */
-.loading{font-size:18px;color:var(--mid);padding:40px 0;text-align:center}
+.loading{font-size:14px;color:#6b7280;padding:40px 0;text-align:center}
 
-/* MISC */
-::-webkit-scrollbar{width:4px;height:4px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.09);border-radius:2px}
+.month-sel{
+  background:#fff;border:1px solid #e2e2e2;border-radius:8px;padding:7px 12px;
+  font-family:var(--mono);font-size:14px;color:#111827;outline:none;cursor:pointer;
+}
 
-.refresh-btn{background:none;border:1px solid var(--b);border-radius:7px;padding:5px 12px;font-family:var(--sans);font-size:13px;color:var(--mid);cursor:pointer;transition:all .12s}
-.refresh-btn:hover:not(:disabled){border-color:var(--gold);color:var(--gold)}
+.refresh-btn{
+  background:#fff;border:1px solid #e2e2e2;border-radius:7px;padding:5px 12px;
+  font-family:var(--sans);font-size:13px;color:#6b7280;cursor:pointer;transition:all .12s;
+}
+.refresh-btn:hover:not(:disabled){border-color:#1f1f1f;color:#1f1f1f}
 .refresh-btn:disabled{opacity:0.5;cursor:default}
 .spin{display:inline-block;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#e2e2e2;border-radius:2px}
 </style>
 </head>
 <body>
 
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-label">AnyVan Storage</div>
+    <div class="sidebar-title">Reporting</div>
+  </div>
+  <a class="nav-link active" href="mtd.html">MTD Revenue</a>
+  <a class="nav-link" href="weekly.html">Weekly Revenue</a>
+  <a class="nav-link" href="daily.html">Daily Activity</a>
+  <a class="nav-link" href="csat.html">CSAT &amp; NPS</a>
+  <a class="nav-link" href="freshdesk.html">Freshdesk</a>
+  <a class="nav-link" href="voice.html">Voice Activity</a>
+  <a class="nav-link" href="monthly.html">Monthly Trends</a>
+  <a class="nav-link" href="whatsapp.html">WhatsApp</a>
+  <a class="nav-link" href="debt.html">Debt Intelligence</a>
+  <div class="sidebar-bottom">
+    <a class="sidebar-home" href="../index.html">← Home</a>
+  </div>
+</nav>
+
+<div class="main">
+
 <div class="topbar">
-  <a class="back" href="../index.html">← Reporting home</a>
-  <div style="display:flex;align-items:center;gap:12px">
+  <div class="ph">
+    <div class="ph-lbl">Revenue Intelligence</div>
+    <div class="ph-title">MTD Report</div>
+    <div class="ph-sub" id="ph-sub">Loading…</div>
+  </div>
+  <div class="topbar-controls">
     <select class="month-sel" id="month-sel" onchange="switchMonth(this.value)"></select>
     <button class="refresh-btn" id="refresh-btn" onclick="triggerRefresh()">↻ Refresh</button>
   </div>
-</div>
-
-<div class="ph">
-  <div class="ph-lbl">Revenue Intelligence</div>
-  <div class="ph-title">MTD Report</div>
-  <div class="ph-sub" id="ph-sub">Loading…</div>
 </div>
 
 <!-- HEADLINE STATS -->
@@ -184,6 +231,8 @@ tr.current-month td:first-child{color:var(--gold)}
   </div>
 </div>
 
+</div>
+
 <script>
 const SUPABASE_URL = '[SUPABASE_URL_REMOVED]'
 const SUPABASE_ANON_KEY = '[SUPABASE_ANON_KEY_REMOVED]'
@@ -229,7 +278,7 @@ async function loadAll(){
     document.getElementById('yoy-section').innerHTML = ''
     document.getElementById('transport-section').innerHTML = ''
     document.getElementById('sqft-fees-section').innerHTML = ''
-    document.getElementById('history-body').innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--mid);padding:20px;font-size:14px">No data yet</td></tr>'
+    document.getElementById('history-body').innerHTML = '<tr><td colspan="9" style="text-align:center;color:#6b7280;padding:20px;font-size:14px">No data yet</td></tr>'
     return
   }
 
@@ -305,7 +354,7 @@ function renderCombined(m, t, isLatest){
         <span class="yoy-lbl">Actual vs prior year same days</span>
         <div class="yoy-vals">
           <span class="yoy-num">${fmt(cyInvT)}</span>
-          <span style="font-size:13px;color:var(--mid)">vs ${fmt(pyInvTSameDay)}</span>
+          <span style="font-size:13px;color:#6b7280">vs ${fmt(pyInvTSameDay)}</span>
           ${yoyBadge(yoyCalc(cyInvT, pyInvTSameDay))}
         </div>
       </div>
@@ -313,7 +362,7 @@ function renderCombined(m, t, isLatest){
         <span class="yoy-lbl">Forecast vs prior year full month</span>
         <div class="yoy-vals">
           <span class="yoy-num">${fmt(cyInvTForecast)}</span>
-          <span style="font-size:13px;color:var(--mid)">vs ${fmt(pyInvTFull)}</span>
+          <span style="font-size:13px;color:#6b7280">vs ${fmt(pyInvTFull)}</span>
           ${yoyBadge(yoyCalc(cyInvTForecast, pyInvTFull))}
         </div>
       </div>
@@ -324,7 +373,7 @@ function renderCombined(m, t, isLatest){
         <span class="yoy-lbl">Actual vs prior year same days</span>
         <div class="yoy-vals">
           <span class="yoy-num">${fmt(cyPaidT)}</span>
-          <span style="font-size:13px;color:var(--mid)">vs ${fmt(pyPaidTSameDay)}</span>
+          <span style="font-size:13px;color:#6b7280">vs ${fmt(pyPaidTSameDay)}</span>
           ${yoyBadge(yoyCalc(cyPaidT, pyPaidTSameDay))}
         </div>
       </div>
@@ -332,7 +381,7 @@ function renderCombined(m, t, isLatest){
         <span class="yoy-lbl">Forecast vs prior year full month</span>
         <div class="yoy-vals">
           <span class="yoy-num">${fmt(cyPaidTForecast)}</span>
-          <span style="font-size:13px;color:var(--mid)">vs ${fmt(pyPaidTFull)}</span>
+          <span style="font-size:13px;color:#6b7280">vs ${fmt(pyPaidTFull)}</span>
           ${yoyBadge(yoyCalc(cyPaidTForecast, pyPaidTFull))}
         </div>
       </div>
@@ -374,7 +423,7 @@ function renderHeadline(m){
 function renderYoy(m, isLatest){
   if(!isLatest || !YOY){
     document.getElementById('yoy-section').innerHTML = `
-      <div style="grid-column:span 2;font-size:14px;color:var(--mid);padding:12px 0">YoY comparison only available for the current month.</div>`
+      <div style="grid-column:span 2;font-size:14px;color:#6b7280;padding:12px 0">YoY comparison only available for the current month.</div>`
     return
   }
   const y = YOY
@@ -385,7 +434,7 @@ function renderYoy(m, isLatest){
         <span class="yoy-lbl">Actual vs prior year same days</span>
         <div class="yoy-vals">
           <span class="yoy-num">${fmt(y.cy_invoiced)}</span>
-          <span style="font-size:12px;color:var(--mid)">vs ${fmt(y.py_invoiced_same_days)}</span>
+          <span style="font-size:12px;color:#6b7280">vs ${fmt(y.py_invoiced_same_days)}</span>
           ${yoyBadge(y.invoiced_actual_yoy_pct)}
         </div>
       </div>
@@ -393,7 +442,7 @@ function renderYoy(m, isLatest){
         <span class="yoy-lbl">Forecast vs prior year full month</span>
         <div class="yoy-vals">
           <span class="yoy-num">${fmt(y.cy_invoiced_forecast)}</span>
-          <span style="font-size:12px;color:var(--mid)">vs ${fmt(y.py_invoiced_full_month)}</span>
+          <span style="font-size:12px;color:#6b7280">vs ${fmt(y.py_invoiced_full_month)}</span>
           ${yoyBadge(y.invoiced_forecast_yoy_pct)}
         </div>
       </div>
@@ -404,7 +453,7 @@ function renderYoy(m, isLatest){
         <span class="yoy-lbl">Actual vs prior year same days</span>
         <div class="yoy-vals">
           <span class="yoy-num">${fmt(y.cy_paid)}</span>
-          <span style="font-size:12px;color:var(--mid)">vs ${fmt(y.py_paid_same_days)}</span>
+          <span style="font-size:12px;color:#6b7280">vs ${fmt(y.py_paid_same_days)}</span>
           ${yoyBadge(y.paid_actual_yoy_pct)}
         </div>
       </div>
@@ -412,7 +461,7 @@ function renderYoy(m, isLatest){
         <span class="yoy-lbl">Forecast vs prior year full month</span>
         <div class="yoy-vals">
           <span class="yoy-num">${fmt(y.cy_paid_forecast)}</span>
-          <span style="font-size:12px;color:var(--mid)">vs ${fmt(y.py_paid_full_month)}</span>
+          <span style="font-size:12px;color:#6b7280">vs ${fmt(y.py_paid_full_month)}</span>
           ${yoyBadge(y.paid_forecast_yoy_pct)}
         </div>
       </div>
@@ -423,7 +472,7 @@ function renderYoy(m, isLatest){
         <span class="yoy-lbl">Actual vs prior year same days</span>
         <div class="yoy-vals">
           <span class="yoy-num">${fmtN(y.cy_unique_customers)}</span>
-          <span style="font-size:12px;color:var(--mid)">vs ${fmtN(y.py_unique_customers_same_days)}</span>
+          <span style="font-size:12px;color:#6b7280">vs ${fmtN(y.py_unique_customers_same_days)}</span>
           ${yoyBadge(y.customers_actual_yoy_pct)}
         </div>
       </div>
@@ -431,7 +480,7 @@ function renderYoy(m, isLatest){
         <span class="yoy-lbl">Forecast vs prior year full month</span>
         <div class="yoy-vals">
           <span class="yoy-num">${fmtN(y.cy_customers_forecast)}</span>
-          <span style="font-size:12px;color:var(--mid)">vs ${fmtN(y.py_customers_full_month)}</span>
+          <span style="font-size:12px;color:#6b7280">vs ${fmtN(y.py_customers_full_month)}</span>
           ${yoyBadge(y.customers_forecast_yoy_pct)}
         </div>
       </div>
@@ -442,7 +491,7 @@ function renderYoy(m, isLatest){
         <span class="yoy-lbl">Collections AV fee</span>
         <div class="yoy-vals">
           <span class="yoy-num">${fmt(y.coll_av_fee)}</span>
-          <span style="font-size:12px;color:var(--mid)">vs ${fmt(y.coll_av_fee_prior_year)}</span>
+          <span style="font-size:12px;color:#6b7280">vs ${fmt(y.coll_av_fee_prior_year)}</span>
           ${yoyBadge(y.coll_yoy_pct)}
         </div>
       </div>
@@ -450,7 +499,7 @@ function renderYoy(m, isLatest){
         <span class="yoy-lbl">Redeliveries AV fee</span>
         <div class="yoy-vals">
           <span class="yoy-num">${fmt(y.redel_av_fee)}</span>
-          <span style="font-size:12px;color:var(--mid)">vs ${fmt(y.redel_av_fee_prior_year)}</span>
+          <span style="font-size:12px;color:#6b7280">vs ${fmt(y.redel_av_fee_prior_year)}</span>
           ${yoyBadge(y.redel_yoy_pct)}
         </div>
       </div>
@@ -471,7 +520,7 @@ function renderTransport(t){
     </div>`
 }
 
-function netCol(val){ return val >= 0 ? 'var(--green-txt)' : 'var(--red-txt)' }
+function netCol(val){ return val >= 0 ? '#16a34a' : '#dc2626' }
 function netFmt(val){ return (val > 0 ? '+' : '') + fmtN(val) }
 
 function renderSqftFees(m, f){
@@ -496,11 +545,11 @@ function renderSqftFees(m, f){
       <div class="info-title">Fees</div>
       <div class="info-row">
         <span class="info-lbl">Overdue admin fee</span>
-        <span class="info-val">${fmt(f.overdue_admin_total)} <span style="color:var(--mid);font-size:12px">(${fmtN(f.overdue_admin_count)||0})</span></span>
+        <span class="info-val">${fmt(f.overdue_admin_total)} <span style="color:#6b7280;font-size:12px">(${fmtN(f.overdue_admin_count)||0})</span></span>
       </div>
       <div class="info-row">
         <span class="info-lbl">Early release fee</span>
-        <span class="info-val">${fmt(f.early_release_total)} <span style="color:var(--mid);font-size:12px">(${fmtN(f.early_release_count)||0})</span></span>
+        <span class="info-val">${fmt(f.early_release_total)} <span style="color:#6b7280;font-size:12px">(${fmtN(f.early_release_count)||0})</span></span>
       </div>
     </div>`
 }

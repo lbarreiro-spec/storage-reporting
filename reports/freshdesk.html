@@ -7,25 +7,52 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#000000;--cl:#f5f5f7;--cd:#1c1c1e;--b:rgba(255,255,255,0.08);
-  --mid:#86868b;--tl:#f5f5f7;--gold:#0071e3;--dim:#1c1c1e;
-  --mono:'SF Mono','Menlo','Monaco',monospace;--sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
+  --mono:'SF Mono','Menlo','Monaco',monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
 }
-html,body{height:100%;background:var(--bg);font-family:var(--sans);color:var(--tl);overflow:hidden}
-body{display:flex;flex-direction:column}
+html,body{height:100%;font-family:var(--sans);background:#f6f7ed;overflow:hidden}
+body{display:flex}
 
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--b);background:var(--bg);flex-shrink:0;z-index:30}
-.back{font-size:15px;color:var(--mid);text-decoration:none;transition:color .12s;display:flex;align-items:center;gap:6px}
-.back:hover{color:var(--tl)}
-.topbar-title{font-size:15px;font-weight:600;color:var(--tl);letter-spacing:-.01em}
+/* SIDEBAR */
+.sidebar{
+  width:220px;min-width:220px;background:#1f1f1f;
+  display:flex;flex-direction:column;
+  padding:24px 0;flex-shrink:0;height:100vh;z-index:100;
+}
+.sidebar-brand{padding:0 24px 28px}
+.sidebar-label{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.5);margin-bottom:4px}
+.sidebar-title{font-size:16px;font-weight:600;color:#fff}
+.nav-link{
+  display:block;padding:10px 24px;font-size:13px;color:rgba(255,255,255,0.65);
+  text-decoration:none;transition:color .12s,background .12s;border-left:3px solid transparent;
+}
+.nav-link:hover{color:rgba(255,255,255,0.85)}
+.nav-link.active{color:#fff;border-left-color:#fff;background:rgba(255,255,255,0.06)}
+.sidebar-bottom{margin-top:auto;padding:16px 24px;border-top:1px solid rgba(255,255,255,0.08)}
+.sidebar-home{font-size:13px;color:rgba(255,255,255,0.65);text-decoration:none;transition:color .12s}
+.sidebar-home:hover{color:#fff}
+
+/* MAIN */
+.main-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#f6f7ed}
+
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 24px;border-bottom:1px solid #e2e2e2;background:#fff;flex-shrink:0;z-index:30;
+}
+.topbar-title{font-size:15px;font-weight:600;color:#111827;letter-spacing:-.01em}
 .topbar-right{display:flex;align-items:center;gap:10px}
-.topbar-meta{font-size:13px;color:var(--mid);font-family:var(--mono)}
+.topbar-meta{font-size:13px;color:#6b7280;font-family:var(--mono)}
 
-.month-sel{background:var(--cd);border:1px solid var(--b);border-radius:8px;padding:6px 12px;font-family:var(--mono);font-size:14px;color:var(--tl);outline:none;cursor:pointer}
-.month-sel option{background:#1c1c1e}
+.month-sel{
+  background:#fff;border:1px solid #e2e2e2;border-radius:8px;padding:6px 12px;
+  font-family:var(--mono);font-size:14px;color:#111827;outline:none;cursor:pointer;
+}
 
-.refresh-btn{background:none;border:1px solid var(--b);border-radius:8px;padding:6px 14px;font-family:var(--sans);font-size:14px;color:var(--mid);cursor:pointer;transition:all .12s}
-.refresh-btn:hover:not(:disabled){border-color:var(--gold);color:var(--gold)}
+.refresh-btn{
+  background:#fff;border:1px solid #e2e2e2;border-radius:8px;padding:6px 14px;
+  font-family:var(--sans);font-size:14px;color:#6b7280;cursor:pointer;transition:all .12s;
+}
+.refresh-btn:hover:not(:disabled){border-color:#1f1f1f;color:#1f1f1f}
 .refresh-btn:disabled{opacity:0.5;cursor:default}
 .spin{display:inline-block;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -36,25 +63,25 @@ table{border-collapse:collapse;white-space:nowrap;font-size:13px}
 
 thead tr.day-hdr th{
   position:sticky;top:0;z-index:20;
-  background:var(--bg);
-  border-bottom:1px solid var(--b);
+  background:#f4f4f4;
+  border-bottom:1px solid #e2e2e2;
   text-align:center;
   padding:10px 10px;
   font-family:var(--mono);
-  font-size:11px;font-weight:500;
-  color:var(--mid);
+  font-size:11px;font-weight:600;
+  color:#6b7280;
   min-width:72px;
   letter-spacing:.08em;text-transform:uppercase;
 }
 thead tr.day-hdr th.c-metric{
   position:sticky;left:0;top:0;z-index:25;
-  text-align:left;
+  text-align:left;background:#f4f4f4;
   min-width:180px;width:180px;
   padding-left:20px;
-  border-right:1px solid var(--b);
+  border-right:1px solid #e2e2e2;
 }
 .day-name{display:block;letter-spacing:.1em;text-transform:uppercase;font-size:10px}
-.day-date{display:block;font-size:12px;margin-top:2px;color:var(--tl)}
+.day-date{display:block;font-size:12px;margin-top:2px;color:#111827}
 
 tr.date-repeat>td{
   background:rgba(0,0,0,0.7);
@@ -75,70 +102,91 @@ tr.date-repeat>td.c-metric{
 tr.date-repeat>td.wknd{color:rgba(134,134,139,0.3)}
 
 tr.sec-hdr>td{
-  background:rgba(255,255,255,0.03);
+  background:#f4f4f4;
   padding:10px 10px 7px;
   font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
-  color:rgba(245,245,247,0.25);
-  border-top:1px solid var(--b);
-  border-bottom:1px solid rgba(255,255,255,0.04);
+  color:#6b7280;
+  border-top:1px solid #e2e2e2;
+  border-bottom:1px solid #e2e2e2;
 }
 tr.sec-hdr>td.c-metric{
   position:sticky;left:0;z-index:9;
-  background:rgba(28,28,30,0.98);
+  background:#f4f4f4;
   padding-left:20px;
-  border-right:1px solid var(--b);
+  border-right:1px solid #e2e2e2;
 }
 
 tr.sub-hdr>td{
-  background:rgba(255,255,255,0.015);
+  background:#fafafa;
   padding:8px 10px 6px;
   font-size:11px;font-weight:600;letter-spacing:.04em;
-  color:rgba(245,245,247,0.45);
-  border-top:1px solid rgba(255,255,255,0.04);
-  border-bottom:1px solid rgba(255,255,255,0.03);
+  color:#374151;
+  border-top:1px solid #f0f0f0;
+  border-bottom:1px solid #f0f0f0;
 }
 tr.sub-hdr>td.c-metric{
   position:sticky;left:0;z-index:9;
-  background:rgba(10,10,10,0.98);
+  background:#fafafa;
   padding-left:20px;
-  border-right:1px solid var(--b);
+  border-right:1px solid #e2e2e2;
 }
 
-tr.dr>td{border-bottom:1px solid rgba(255,255,255,0.03);vertical-align:middle}
-tr.dr:hover>td{background:rgba(255,255,255,0.025) !important}
+tr.dr>td{border-bottom:1px solid #f0f0f0;vertical-align:middle}
+tr.dr:hover>td{background:#fafafa !important}
 
 td.c-metric{
   position:sticky;left:0;z-index:9;
-  background:var(--bg);
+  background:#fff;
   min-width:180px;width:180px;
   padding:7px 14px 7px 20px;
-  font-size:14px;color:var(--tl);
-  border-right:1px solid var(--b);
+  font-size:14px;color:#111827;
+  border-right:1px solid #e2e2e2;
 }
-tr.dr:hover>td.c-metric{background:rgba(255,255,255,0.025)}
+tr.dr:hover>td.c-metric{background:#fafafa}
 
 td.c-val{
   font-family:var(--mono);
   font-size:14px;
-  color:var(--mid);
+  color:#374151;
   text-align:right;
   padding:7px 14px;
   min-width:72px;
+  background:#fff;
 }
-td.c-val.empty{color:rgba(134,134,139,0.3)}
-td.c-val.hl{color:var(--tl)}
+td.c-val.empty{color:#d1d5db}
+td.c-val.hl{color:#111827;font-weight:500}
 
-.state{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--mid)}
+.state{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#6b7280}
 
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.09);border-radius:2px}
+::-webkit-scrollbar-thumb{background:#e2e2e2;border-radius:2px}
 </style>
 </head>
 <body>
 
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-label">AnyVan Storage</div>
+    <div class="sidebar-title">Reporting</div>
+  </div>
+  <a class="nav-link" href="../index.html">Home</a>
+  <a class="nav-link" href="mtd.html">MTD Revenue</a>
+  <a class="nav-link" href="weekly.html">Weekly Revenue</a>
+  <a class="nav-link" href="daily.html">Daily Activity</a>
+  <a class="nav-link" href="csat.html">CSAT &amp; NPS</a>
+  <a class="nav-link active" href="freshdesk.html">Freshdesk</a>
+  <a class="nav-link" href="voice.html">Voice Activity</a>
+  <a class="nav-link" href="monthly.html">Monthly Trends</a>
+  <a class="nav-link" href="whatsapp.html">WhatsApp</a>
+  <a class="nav-link" href="debt.html">Debt Intelligence</a>
+  <div class="sidebar-bottom">
+    <a class="sidebar-home" href="../index.html">← Home</a>
+  </div>
+</nav>
+
+<div class="main-wrap">
 <div class="topbar">
-  <a class="back" href="../index.html">← Reporting home</a>
   <span class="topbar-title">Freshdesk</span>
   <div class="topbar-right">
     <select class="month-sel" id="month-sel" onchange="switchMonth(this.value)"></select>
@@ -149,6 +197,7 @@ td.c-val.hl{color:var(--tl)}
 
 <div class="matrix-wrap" id="wrap">
   <div class="state" id="state">Loading…</div>
+</div>
 </div>
 
 <script>
