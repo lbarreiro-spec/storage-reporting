@@ -13,14 +13,14 @@
   --red:#dc2626;--red-bg:#fef2f2;
   --amber:#d97706;--amber-bg:#fffbeb;
 }
-html,body{height:100%;font-family:var(--sans);background:#f6f7ed;overflow:hidden}
-body{display:flex}
+html,body{height:100%;overflow:hidden}
+body{display:flex;height:100%;font-family:var(--sans);background:#f6f7ed}
 
 /* SIDEBAR */
 .sidebar{
   width:220px;min-width:220px;background:#1f1f1f;
   display:flex;flex-direction:column;
-  padding:24px 0;flex-shrink:0;height:100vh;z-index:100;
+  padding:24px 0;flex-shrink:0;height:100%;overflow-y:auto;
 }
 .sidebar-brand{padding:0 24px 28px}
 .sidebar-label{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.5);margin-bottom:4px}

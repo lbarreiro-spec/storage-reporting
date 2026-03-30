@@ -11,13 +11,14 @@
   --mono:'SF Mono','Menlo','Monaco',monospace;
   --sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
 }
-body{display:flex;min-height:100vh;font-family:var(--sans);background:#f6f7ed}
+html,body{height:100%;overflow:hidden}
+body{display:flex;height:100%;font-family:var(--sans);background:#f6f7ed}
 
 /* SIDEBAR */
 .sidebar{
   width:220px;min-width:220px;background:#1f1f1f;
   display:flex;flex-direction:column;
-  padding:24px 0;position:fixed;top:0;left:0;height:100vh;z-index:100;
+  padding:24px 0;flex-shrink:0;height:100%;overflow-y:auto;
 }
 .sidebar-brand{padding:0 24px 28px}
 .sidebar-label{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.5);margin-bottom:4px}
@@ -34,7 +35,7 @@ body{display:flex;min-height:100vh;font-family:var(--sans);background:#f6f7ed}
 .sidebar-home-dim{font-size:13px;color:rgba(255,255,255,0.25)}
 
 /* MAIN CONTENT */
-.main{margin-left:220px;padding:32px 40px;flex:1;min-height:100vh}
+.main{padding:32px 40px;flex:1;overflow-y:auto}
 
 .page-header{margin-bottom:32px}
 .page-header-lbl{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#6b7280;margin-bottom:8px}
