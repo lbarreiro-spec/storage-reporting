@@ -272,7 +272,7 @@ function render(d) {
   const wow = s.wow || {};
   const bd  = d.bad_debt_segmentation || {};
   const rt  = d.customer_risk_tiers || {};
-  const or_ = d.overdue_recovery || {};
+  const or_ = d.mtd_recovered_overdue || {};
 
   // Generated at
   if (d.generated_at) {
@@ -340,9 +340,9 @@ function render(d) {
         <div class="stat-sub">incl. partially paid · excl. write-offs</div>
       </div>
       <div class="stat">
-        <div class="stat-lbl">Recovered from Overdue</div>
-        <div class="stat-val" style="color:#d97706">${gbp(or_.collected_overdue)}</div>
-        <div class="stat-sub">${or_.overdue_recovery_pct || 0}% of collected was late · ${gbp(or_.collected_on_time)} on time<br><span style="font-size:11px">last 12 months</span></div>
+        <div class="stat-lbl">Recovered from Overdue <span style="font-weight:400;text-transform:none;letter-spacing:0">${or_.month_label || ''}</span></div>
+        <div class="stat-val" style="color:#16a34a">${gbp(or_.recovered)}</div>
+        <div class="stat-sub">${or_.recovered_pct || 0}% of this month's payments were overdue before collection<br>${gbp(or_.on_time)} paid on time</div>
       </div>
     </div>
   </div>

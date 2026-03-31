@@ -569,6 +569,59 @@ def snapshot_history(total_overdue, overdue_count):
 
     return {"wow_value": None, "wow_pct": None, "vs_date": None}
 
+# ── MTD recovered from overdue ────────────────────────────────────────────────
+
+def build_mtd_recovered_overdue(invoices):
+    """
+    Revenue collected in the current calendar month where payment arrived
+    1+ day after the invoice date — i.e. it went overdue before being recovered.
+
+    Buckets by last_payment_date (not invoice date), so this answers:
+    "how much did the debt team recover THIS month?"
+    """
+    today      = date.today()
+    current_mk = f"{today.year}-{today.month:02d}"
+
+    total_paid = 0.0
+    recovered  = 0.0
+
+    for inv in invoices:
+        inv_type = classify(inv)
+        if inv_type not in ("paid", "partial"):
+            continue
+
+        pay_str = (inv.get("last_payment_date") or "").strip()
+        if not pay_str:
+            continue
+
+        pay_date = _to_date(pay_str)
+        if not pay_date:
+            continue
+
+        # Only payments made in the current month
+        if f"{pay_date.year}-{pay_date.month:02d}" != current_mk:
+            continue
+
+        total   = float(inv.get("total",   0) or 0)
+        balance = float(inv.get("balance", 0) or 0)
+        amount_paid = total if inv_type == "paid" else (total - balance)
+        total_paid += amount_paid
+
+        days = calc_days_to_pay(inv)
+        if days is not None and days >= 1:
+            recovered += amount_paid
+
+    yr, mo = current_mk.split("-")
+    return {
+        "month":           current_mk,
+        "month_label":     f"{MONTH_LABELS[mo]} {yr}",
+        "total_paid_mtd":  round(total_paid, 2),
+        "recovered":       round(recovered, 2),
+        "on_time":         round(total_paid - recovered, 2),
+        "recovered_pct":   round(recovered / total_paid * 100, 1) if total_paid else 0.0,
+    }
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
@@ -612,21 +665,13 @@ def main():
     wow     = snapshot_history(summary["total_overdue_balance"], summary["overdue_invoice_count"])
 
     cohort_data = build_outstanding_by_cohort(merged, months=12)
-    total_collected         = sum(c["collected"]         for c in cohort_data)
-    total_collected_overdue = sum(c["collected_overdue"] for c in cohort_data)
-    overdue_recovery = {
-        "total_collected":       round(total_collected, 2),
-        "collected_overdue":     round(total_collected_overdue, 2),
-        "collected_on_time":     round(total_collected - total_collected_overdue, 2),
-        "overdue_recovery_pct":  round(total_collected_overdue / total_collected * 100, 1) if total_collected else 0.0,
-    }
 
     output = {
         "generated_at":          datetime.now().isoformat(timespec="seconds"),
         "summary":               {**summary, "wow": wow},
         "bad_debt_segmentation": build_bad_debt_segmentation(merged),
         "customer_risk_tiers":   build_customer_risk_tiers(merged),
-        "overdue_recovery":      overdue_recovery,
+        "mtd_recovered_overdue": build_mtd_recovered_overdue(merged),
         "debt_curve":            build_curve(merged, months=6),
         "outstanding_by_cohort": cohort_data,
     }
