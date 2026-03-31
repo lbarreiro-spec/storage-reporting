@@ -5320,37 +5320,37 @@
     ]
   },
   "2026-03-30": {
-    "inn": 102,
-    "resolved": 130,
-    "backlog": 364,
-    "fr_sla": 86.3,
-    "res_sla": 84.6,
-    "avg_r": "46.7h",
+    "inn": 138,
+    "resolved": 124,
+    "backlog": 359,
+    "fr_sla": 88.4,
+    "res_sla": 83.9,
+    "avg_r": "48.2h",
     "p90": "99.3h",
     "queues": [
       {
-        "in": 42,
-        "res": 54,
-        "blg": 38,
-        "fr": 85.7
+        "in": 60,
+        "res": 51,
+        "blg": 32,
+        "fr": 90.0
       },
       {
-        "in": 49,
-        "res": 63,
+        "in": 62,
+        "res": 60,
         "blg": 17,
-        "fr": 83.7
+        "fr": 85.5
       },
       {
-        "in": 7,
+        "in": 12,
         "res": 6,
-        "blg": 4,
+        "blg": 6,
         "fr": 100.0
       },
       {
         "in": 4,
         "res": 7,
-        "blg": 5,
-        "fr": 100.0
+        "blg": 4,
+        "fr": 75.0
       },
       {
         "in": 0,
@@ -5361,23 +5361,23 @@
     ],
     "agents": [
       {
-        "assigned": 41,
-        "resolved": 60,
-        "backlog": 11,
-        "fr": 80.5,
-        "avg": "42.1h",
+        "assigned": 68,
+        "resolved": 59,
+        "backlog": 9,
+        "fr": 88.2,
+        "avg": "42.5h",
         "p90": "95.4h",
         "replied": 20,
-        "note_only": 40,
+        "note_only": 39,
         "nothing": 0,
-        "reply_rate": "33%",
+        "reply_rate": "34%",
         "fast": 5
       },
       {
-        "assigned": 4,
+        "assigned": 15,
         "resolved": 15,
-        "backlog": 1,
-        "fr": 25.0,
+        "backlog": 0,
+        "fr": 73.3,
         "avg": "75.5h",
         "p90": "234.3h",
         "replied": 9,
@@ -5387,29 +5387,29 @@
         "fast": 1
       },
       {
-        "assigned": 22,
-        "resolved": 26,
-        "backlog": 7,
-        "fr": 90.9,
-        "avg": "23.3h",
+        "assigned": 26,
+        "resolved": 24,
+        "backlog": 14,
+        "fr": 88.5,
+        "avg": "25.0h",
         "p90": "78.2h",
-        "replied": 3,
-        "note_only": 23,
+        "replied": 2,
+        "note_only": 22,
         "nothing": 0,
-        "reply_rate": "12%",
+        "reply_rate": "8%",
         "fast": 3
       },
       {
-        "assigned": 11,
-        "resolved": 29,
-        "backlog": 5,
-        "fr": 100.0,
-        "avg": "62.5h",
+        "assigned": 15,
+        "resolved": 26,
+        "backlog": 8,
+        "fr": 93.3,
+        "avg": "66.8h",
         "p90": "104.7h",
-        "replied": 13,
+        "replied": 10,
         "note_only": 16,
         "nothing": 0,
-        "reply_rate": "45%",
+        "reply_rate": "38%",
         "fast": 5
       }
     ]
