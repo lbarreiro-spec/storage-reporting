@@ -55,7 +55,7 @@ body{display:flex;height:100%;font-family:var(--sans);background:#f6f7ed}
 }
 
 /* STAT CARDS */
-.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .stat{background:#fff;border:1px solid #e2e2e2;border-radius:12px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
 .stat.hl{background:var(--red-bg);border-color:#fca5a5}
 .stat-lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#6b7280;margin-bottom:8px}
@@ -272,6 +272,7 @@ function render(d) {
   const wow = s.wow || {};
   const bd  = d.bad_debt_segmentation || {};
   const rt  = d.customer_risk_tiers || {};
+  const or_ = d.overdue_recovery || {};
 
   // Generated at
   if (d.generated_at) {
@@ -304,11 +305,15 @@ function render(d) {
     const label = m.is_partial ? `${m.label} <span style="font-size:11px;color:#6b7280;font-weight:400">MTD</span>` : m.label;
     const wo    = m.written_off > 0 ? ` <span style="font-size:11px;color:#6b7280">(+${gbp(m.written_off)} w/o)</span>` : '';
     const out   = m.outstanding > 0 ? `<span class="${outCls}">${gbp(m.outstanding)}</span>` : '<span class="td-green">—</span>';
+    const lateAmt = m.collected_overdue > 0
+      ? `<span class="td-amber">${gbp(m.collected_overdue)}</span> <span style="font-size:11px;color:#6b7280">${m.collected_overdue_pct}%</span>`
+      : '<span class="td-green">—</span>';
     return `<tr>
       <td>${label}${badge}</td>
       <td>${gbp(m.invoiced)}</td>
       <td><span class="td-green">${gbp(m.collected)}</span>${wo}</td>
       <td class="${pctCls}">${pct}%</td>
+      <td>${lateAmt}</td>
       <td>${out}</td>
     </tr>`;
   }).join('');
@@ -333,6 +338,11 @@ function render(d) {
         <div class="stat-lbl">Outstanding Balance</div>
         <div class="stat-val">${gbp(bd.total)}</div>
         <div class="stat-sub">incl. partially paid · excl. write-offs</div>
+      </div>
+      <div class="stat">
+        <div class="stat-lbl">Recovered from Overdue</div>
+        <div class="stat-val" style="color:#d97706">${gbp(or_.collected_overdue)}</div>
+        <div class="stat-sub">${or_.overdue_recovery_pct || 0}% of collected was late · ${gbp(or_.collected_on_time)} on time<br><span style="font-size:11px">last 12 months</span></div>
       </div>
     </div>
   </div>
@@ -407,6 +417,7 @@ function render(d) {
           <th>Invoiced</th>
           <th>Collected</th>
           <th>Coll. %</th>
+          <th>Late Recovery</th>
           <th>Outstanding</th>
         </tr></thead>
         <tbody>${cohortRows}</tbody>

@@ -323,7 +323,8 @@ def build_outstanding_by_cohort(invoices, months=12):
     cutoff_mk   = f"{cutoff_date.year}-{cutoff_date.month:02d}"
 
     by_month = defaultdict(lambda: {
-        "invoiced": 0.0, "collected": 0.0, "outstanding": 0.0, "written_off": 0.0
+        "invoiced": 0.0, "collected": 0.0, "collected_overdue": 0.0,
+        "outstanding": 0.0, "written_off": 0.0,
     })
 
     for inv in invoices:
@@ -345,9 +346,16 @@ def build_outstanding_by_cohort(invoices, months=12):
 
         if inv_type == "paid":
             by_month[mk]["collected"] += total
+            days = calc_days_to_pay(inv)
+            if days is not None and days >= 1:
+                by_month[mk]["collected_overdue"] += total
         elif inv_type == "partial":
-            by_month[mk]["collected"]  += (total - balance)
+            amount_paid = total - balance
+            by_month[mk]["collected"]  += amount_paid
             by_month[mk]["outstanding"] += balance
+            days = calc_days_to_pay(inv)
+            if days is not None and days >= 1:
+                by_month[mk]["collected_overdue"] += amount_paid
         elif inv_type == "overdue":
             by_month[mk]["outstanding"] += balance
         elif inv_type == "write_off":
@@ -373,17 +381,20 @@ def build_outstanding_by_cohort(invoices, months=12):
         else:
             flag = "active"
 
+        collected_overdue = m["collected_overdue"]
         result.append({
-            "month":          mk,
-            "label":          f"{MONTH_LABELS[mo]} {yr}",
-            "is_partial":     mk == current_mk,
-            "invoiced":       round(invoiced, 2),
-            "collected":      round(collected, 2),
-            "outstanding":    round(outstanding, 2),
-            "written_off":    round(written_off, 2),
-            "collection_pct": collection_pct,
-            "flag":           flag,
-            "months_old":     months_old,
+            "month":                 mk,
+            "label":                 f"{MONTH_LABELS[mo]} {yr}",
+            "is_partial":            mk == current_mk,
+            "invoiced":              round(invoiced, 2),
+            "collected":             round(collected, 2),
+            "collected_overdue":     round(collected_overdue, 2),
+            "collected_overdue_pct": round(collected_overdue / collected * 100, 1) if collected else 0.0,
+            "outstanding":           round(outstanding, 2),
+            "written_off":           round(written_off, 2),
+            "collection_pct":        collection_pct,
+            "flag":                  flag,
+            "months_old":            months_old,
         })
 
     return result
@@ -600,13 +611,24 @@ def main():
     summary = build_summary(merged)
     wow     = snapshot_history(summary["total_overdue_balance"], summary["overdue_invoice_count"])
 
+    cohort_data = build_outstanding_by_cohort(merged, months=12)
+    total_collected         = sum(c["collected"]         for c in cohort_data)
+    total_collected_overdue = sum(c["collected_overdue"] for c in cohort_data)
+    overdue_recovery = {
+        "total_collected":       round(total_collected, 2),
+        "collected_overdue":     round(total_collected_overdue, 2),
+        "collected_on_time":     round(total_collected - total_collected_overdue, 2),
+        "overdue_recovery_pct":  round(total_collected_overdue / total_collected * 100, 1) if total_collected else 0.0,
+    }
+
     output = {
         "generated_at":          datetime.now().isoformat(timespec="seconds"),
         "summary":               {**summary, "wow": wow},
         "bad_debt_segmentation": build_bad_debt_segmentation(merged),
         "customer_risk_tiers":   build_customer_risk_tiers(merged),
+        "overdue_recovery":      overdue_recovery,
         "debt_curve":            build_curve(merged, months=6),
-        "outstanding_by_cohort": build_outstanding_by_cohort(merged, months=12),
+        "outstanding_by_cohort": cohort_data,
     }
 
     os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
