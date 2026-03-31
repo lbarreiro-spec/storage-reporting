@@ -181,3 +181,15 @@ alter table weekly_kpi             disable row level security;
 alter table daily_activity         disable row level security;
 alter table voice_daily            disable row level security;
 alter table whatsapp_daily         disable row level security;
+
+-- ClearPass invoice automation outcomes (one row per invoice processed)
+create table if not exists clearpass_invoices (
+  id           bigserial primary key,
+  processed_at timestamptz not null default now(),
+  month        text not null,   -- 'YYYY-MM'
+  supplier     text not null,   -- parser slug e.g. 'safestore', 'uk_storage'
+  outcome      text not null    -- 'approved', 'manual', 'rejected'
+);
+create index if not exists clearpass_invoices_month_idx    on clearpass_invoices (month);
+create index if not exists clearpass_invoices_supplier_idx on clearpass_invoices (supplier);
+alter table clearpass_invoices disable row level security;

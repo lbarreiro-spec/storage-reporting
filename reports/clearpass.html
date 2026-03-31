@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClearPass Automation — AnyVan Storage</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --mono:'SF Mono','Menlo','Monaco',monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
+  --green:#16a34a;--green-bg:#f0fdf4;--green-border:#86efac;
+  --red:#dc2626;--red-bg:#fef2f2;--red-border:#fca5a5;
+  --amber:#d97706;--amber-bg:#fffbeb;--amber-border:#fcd34d;
+  --blue:#2563eb;--blue-bg:#eff6ff;--blue-border:#93c5fd;
+}
+html,body{height:100%;overflow:hidden}
+body{display:flex;height:100%;font-family:var(--sans);background:#f6f7ed}
+
+.sidebar{width:220px;min-width:220px;background:#1f1f1f;display:flex;flex-direction:column;padding:24px 0;flex-shrink:0;height:100%;overflow-y:auto}
+.sidebar-brand{padding:0 24px 28px}
+.sidebar-label{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.5);margin-bottom:4px}
+.sidebar-title{font-size:16px;font-weight:600;color:#fff}
+.nav-link{display:block;padding:10px 24px;font-size:13px;color:rgba(255,255,255,0.65);text-decoration:none;transition:color .12s,background .12s;border-left:3px solid transparent}
+.nav-link:hover{color:rgba(255,255,255,0.85)}
+.nav-link.active{color:#fff;border-left-color:#fff;background:rgba(255,255,255,0.06)}
+.sidebar-bottom{margin-top:auto;padding:16px 24px;border-top:1px solid rgba(255,255,255,0.08)}
+.sidebar-home{font-size:13px;color:rgba(255,255,255,0.65);text-decoration:none;transition:color .12s}
+.sidebar-home:hover{color:#fff}
+
+.main-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid #e2e2e2;background:#fff;flex-shrink:0}
+.topbar-title{font-size:15px;font-weight:600;color:#111827;letter-spacing:-.01em}
+.topbar-meta{font-size:13px;color:#6b7280;font-family:var(--mono)}
+
+.content{padding:28px 32px;overflow-y:auto;flex:1}
+.sec{margin-bottom:32px}
+.sec-lbl{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#6b7280;border-bottom:1px solid #e2e2e2;padding-bottom:8px;margin-bottom:16px}
+
+/* STAT CARDS */
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:32px}
+.stat{border-radius:12px;padding:22px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+.stat.approved{background:var(--green-bg);border:1px solid var(--green-border)}
+.stat.manual{background:var(--amber-bg);border:1px solid var(--amber-border)}
+.stat.rejected{background:var(--red-bg);border:1px solid var(--red-border)}
+.stat-lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px;font-weight:700}
+.stat.approved .stat-lbl{color:var(--green)}
+.stat.manual .stat-lbl{color:var(--amber)}
+.stat.rejected .stat-lbl{color:var(--red)}
+.stat-val{font-family:var(--mono);font-size:36px;font-weight:500;line-height:1;letter-spacing:-.02em;margin-bottom:6px}
+.stat.approved .stat-val{color:var(--green)}
+.stat.manual .stat-val{color:var(--amber)}
+.stat.rejected .stat-val{color:var(--red)}
+.stat-sub{font-size:14px;color:#6b7280}
+
+/* TABLES */
+.tbl-card{background:#fff;border:1px solid #e2e2e2;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+.tbl-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #e2e2e2}
+.tbl-title{font-size:14px;font-weight:600;color:#111827}
+.tbl-filter select{font-size:13px;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;color:#374151;background:#fff;cursor:pointer;outline:none}
+.tbl-filter select:focus{border-color:#6b7280}
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#6b7280;padding:10px 16px;text-align:left;background:#fafafa;border-bottom:1px solid #e2e2e2;font-weight:600}
+th.num,td.num{text-align:right}
+td{font-size:13px;color:#111827;padding:11px 16px;border-bottom:1px solid #f3f4f6;font-family:var(--mono)}
+td.lbl{font-family:var(--sans);font-weight:500}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafafa}
+
+.pct-bar{display:flex;height:6px;border-radius:3px;overflow:hidden;gap:1px;min-width:80px}
+.pct-bar-a{background:var(--green)}
+.pct-bar-m{background:var(--amber)}
+.pct-bar-r{background:var(--red)}
+
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;font-family:var(--sans);letter-spacing:.04em}
+.badge-a{background:var(--green-bg);color:var(--green)}
+.badge-m{background:var(--amber-bg);color:var(--amber)}
+.badge-r{background:var(--red-bg);color:var(--red)}
+
+.loading{padding:48px;text-align:center;color:#6b7280;font-size:14px}
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-label">AnyVan Storage</div>
+    <div class="sidebar-title">Reporting</div>
+  </div>
+  <a class="nav-link" href="../index.html">Home</a>
+  <a class="nav-link" href="mtd.html">MTD Revenue</a>
+  <a class="nav-link" href="weekly.html">Weekly Revenue</a>
+  <a class="nav-link" href="daily.html">Daily Activity</a>
+  <a class="nav-link" href="csat.html">CSAT &amp; NPS</a>
+  <a class="nav-link" href="freshdesk.html">Freshdesk</a>
+  <a class="nav-link" href="voice.html">Voice Activity</a>
+  <a class="nav-link" href="monthly.html">Monthly Trends</a>
+  <a class="nav-link" href="whatsapp.html">WhatsApp</a>
+  <a class="nav-link" href="debt.html">Debt Intelligence</a>
+  <a class="nav-link active" href="clearpass.html">ClearPass</a>
+  <div class="sidebar-bottom">
+    <a href="../index.html" class="sidebar-home">← Home</a>
+  </div>
+</nav>
+
+<div class="main-wrap">
+  <div class="topbar">
+    <div class="topbar-title">ClearPass — Invoice Automation</div>
+    <div class="topbar-meta" id="meta">Loading…</div>
+  </div>
+
+  <div class="content">
+    <div id="loading" class="loading">Loading data…</div>
+    <div id="dashboard" style="display:none">
+
+      <!-- OVERALL -->
+      <div class="sec">
+        <div class="sec-lbl">All Time</div>
+        <div class="stat-row">
+          <div class="stat approved">
+            <div class="stat-lbl">Auto-Approved</div>
+            <div class="stat-val" id="tot-approved">—</div>
+            <div class="stat-sub" id="tot-approved-pct">—</div>
+          </div>
+          <div class="stat manual">
+            <div class="stat-lbl">Manual Review</div>
+            <div class="stat-val" id="tot-manual">—</div>
+            <div class="stat-sub" id="tot-manual-pct">—</div>
+          </div>
+          <div class="stat rejected">
+            <div class="stat-lbl">Rejected</div>
+            <div class="stat-val" id="tot-rejected">—</div>
+            <div class="stat-sub" id="tot-rejected-pct">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MONTHLY -->
+      <div class="sec">
+        <div class="sec-lbl">Month-on-Month</div>
+        <div class="tbl-card">
+          <table>
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th class="num">Total</th>
+                <th class="num">Approved</th>
+                <th class="num">Manual</th>
+                <th class="num">Rejected</th>
+                <th>Split</th>
+              </tr>
+            </thead>
+            <tbody id="monthly-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PER SUPPLIER -->
+      <div class="sec">
+        <div class="sec-lbl">By Supplier</div>
+        <div class="tbl-card">
+          <div class="tbl-header">
+            <div class="tbl-title">Supplier Breakdown</div>
+            <div class="tbl-filter">
+              <select id="month-filter" onchange="renderSupplier()">
+                <option value="">All time</option>
+              </select>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Supplier</th>
+                <th class="num">Total</th>
+                <th class="num">Approved</th>
+                <th class="num">Manual</th>
+                <th class="num">Rejected</th>
+                <th class="num">Auto %</th>
+              </tr>
+            </thead>
+            <tbody id="supplier-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL      = '[SUPABASE_URL_REMOVED]';
+const SUPABASE_ANON_KEY = '[SUPABASE_ANON_KEY_REMOVED]';
+
+const SUPPLIER_NAMES = {
+  safestore:    'Safestore',
+  uk_storage:   'UK Storage Company',
+  gb_liners:    'GB Liners',
+  pickfords:    'Pickfords',
+  cinch:        'Cinch Self Storage',
+  titan:        'Titan Self Storage',
+  clark_rose:   'Clark & Rose',
+  britannia:    'Britannia',
+  trek:         'Trek / London City Storage',
+  access:       'Access Self Storage',
+  edwards:      'Edwards / Clockwork',
+  f_smith:      'F Smith & Son',
+  nomad:        'Nomad International',
+  trunk:        'Trunk Logistics',
+  andrew_porter:'Andrew Porter',
+  dolphin:      'Dolphin Removals',
+  merthyr:      'Merthyr Self Storage',
+  chelmsford:   'Chelmsford Removals',
+  mj_mccarthy:  'MJ McCarthy',
+  bishops_move: "Bishop's Move",
+  daw:          'DAW Logistics',
+  easy_shipping:'Easy Shipping',
+  cadogan_tate: 'Cadogan Tate',
+  doree_bonner: 'Doree Bonner',
+  mcgregor:     'McGregor',
+  easy_storage: 'Easy Storage',
+  clear_space:  'Clear Space Self Storage',
+  leatherbarrows:'Leatherbarrows',
+  kellys:       "Kelly's Storage",
+};
+
+let allRows = [];
+
+async function loadData() {
+  const headers = { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` };
+  // Fetch all rows (no limit needed — one row per invoice)
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/clearpass_invoices?select=month,supplier,outcome&order=processed_at.desc`, { headers });
+  allRows = await res.json();
+  return allRows;
+}
+
+function aggregate(rows) {
+  const a = rows.filter(r => r.outcome === 'approved').length;
+  const m = rows.filter(r => r.outcome === 'manual').length;
+  const r = rows.filter(r => r.outcome === 'rejected').length;
+  const t = rows.length;
+  return { a, m, r, t };
+}
+
+function pct(n, t) { return t ? Math.round(n / t * 100) : 0; }
+
+function pctBar(a, m, r, t) {
+  if (!t) return '';
+  const pa = pct(a,t), pm = pct(m,t), pr = pct(r,t);
+  return `<div class="pct-bar">
+    <div class="pct-bar-a" style="width:${pa}%"></div>
+    <div class="pct-bar-m" style="width:${pm}%"></div>
+    <div class="pct-bar-r" style="width:${pr}%"></div>
+  </div>`;
+}
+
+function renderOverall(rows) {
+  const { a, m, r, t } = aggregate(rows);
+  document.getElementById('tot-approved').textContent  = a.toLocaleString();
+  document.getElementById('tot-manual').textContent    = m.toLocaleString();
+  document.getElementById('tot-rejected').textContent  = r.toLocaleString();
+  document.getElementById('tot-approved-pct').textContent  = `${pct(a,t)}% of ${t.toLocaleString()} invoices`;
+  document.getElementById('tot-manual-pct').textContent    = `${pct(m,t)}% of ${t.toLocaleString()} invoices`;
+  document.getElementById('tot-rejected-pct').textContent  = `${pct(r,t)}% of ${t.toLocaleString()} invoices`;
+  document.getElementById('meta').textContent = `${t.toLocaleString()} invoices total`;
+}
+
+function renderMonthly(rows) {
+  const months = {};
+  rows.forEach(r => {
+    if (!months[r.month]) months[r.month] = [];
+    months[r.month].push(r);
+  });
+  const sortedMonths = Object.keys(months).sort().reverse();
+  const tbody = document.getElementById('monthly-tbody');
+  tbody.innerHTML = sortedMonths.map(mo => {
+    const { a, m, r, t } = aggregate(months[mo]);
+    const label = new Date(mo + '-01').toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+    return `<tr>
+      <td class="lbl">${label}</td>
+      <td class="num">${t}</td>
+      <td class="num"><span class="badge badge-a">${a} &nbsp;${pct(a,t)}%</span></td>
+      <td class="num"><span class="badge badge-m">${m} &nbsp;${pct(m,t)}%</span></td>
+      <td class="num"><span class="badge badge-r">${r} &nbsp;${pct(r,t)}%</span></td>
+      <td>${pctBar(a,m,r,t)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function populateMonthFilter(rows) {
+  const months = [...new Set(rows.map(r => r.month))].sort().reverse();
+  const sel = document.getElementById('month-filter');
+  months.forEach(mo => {
+    const opt = document.createElement('option');
+    opt.value = mo;
+    opt.textContent = new Date(mo + '-01').toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+    sel.appendChild(opt);
+  });
+}
+
+function renderSupplier() {
+  const filterMonth = document.getElementById('month-filter').value;
+  const rows = filterMonth ? allRows.filter(r => r.month === filterMonth) : allRows;
+  const suppliers = {};
+  rows.forEach(r => {
+    if (!suppliers[r.supplier]) suppliers[r.supplier] = [];
+    suppliers[r.supplier].push(r);
+  });
+  const sorted = Object.entries(suppliers).sort((x,y) => y[1].length - x[1].length);
+  const tbody = document.getElementById('supplier-tbody');
+  tbody.innerHTML = sorted.map(([slug, srows]) => {
+    const { a, m, r, t } = aggregate(srows);
+    const name = SUPPLIER_NAMES[slug] || slug;
+    return `<tr>
+      <td class="lbl">${name}</td>
+      <td class="num">${t}</td>
+      <td class="num"><span class="badge badge-a">${a}</span></td>
+      <td class="num"><span class="badge badge-m">${m}</span></td>
+      <td class="num"><span class="badge badge-r">${r}</span></td>
+      <td class="num" style="font-weight:600;color:${pct(a,t)>=80?'var(--green)':pct(a,t)>=50?'var(--amber)':'var(--red)'}">${pct(a,t)}%</td>
+    </tr>`;
+  }).join('');
+}
+
+async function init() {
+  try {
+    await loadData();
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    renderOverall(allRows);
+    renderMonthly(allRows);
+    populateMonthFilter(allRows);
+    renderSupplier();
+  } catch(e) {
+    document.getElementById('loading').textContent = 'Failed to load data: ' + e.message;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
