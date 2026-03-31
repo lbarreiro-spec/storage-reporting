@@ -85,21 +85,21 @@ thead tr.day-hdr th.c-metric{
 
 tr.date-repeat>td{
   background:rgba(0,0,0,0.7);
-  border-top:1px solid var(--b);border-bottom:1px solid var(--b);
+  border-top:1px solid rgba(255,255,255,0.12);border-bottom:1px solid rgba(255,255,255,0.12);
   text-align:center;
   padding:7px 10px;
   font-family:var(--mono);
   font-size:11px;font-weight:500;
-  color:var(--mid);
+  color:rgba(255,255,255,0.85);
   letter-spacing:.06em;
 }
 tr.date-repeat>td.c-metric{
   position:sticky;left:0;z-index:9;
   background:rgba(0,0,0,0.85);
-  border-right:1px solid var(--b);
+  border-right:1px solid rgba(255,255,255,0.12);
   text-align:left;padding-left:20px;
 }
-tr.date-repeat>td.wknd{color:rgba(134,134,139,0.3)}
+tr.date-repeat>td.wknd{color:rgba(255,255,255,0.25)}
 
 tr.sec-hdr>td{
   background:#f4f4f4;
@@ -250,7 +250,7 @@ function buildTable(days){
     days.forEach(d => {
       const t = document.createElement('td')
       t.className = d.wknd ? 'wknd' : ''
-      t.innerHTML = `<span class="day-name">${d.day}</span><span class="day-date" style="display:block;font-size:11px;color:var(--tl)">${d.dd}/${SELECTED_MONTH.slice(5,7)}</span>`
+      t.innerHTML = `<span class="day-name">${d.day}</span><span class="day-date" style="display:block;font-size:11px;color:rgba(255,255,255,0.85)">${d.dd}/${SELECTED_MONTH.slice(5,7)}</span>`
       tr.appendChild(t)
     })
   }
