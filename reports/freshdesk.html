@@ -377,7 +377,19 @@ async function triggerRefresh(){
         break
       }
     }
-    await new Promise(r=>setTimeout(r,12000))
+    // Poll until the JSON on GitHub Pages reflects the new data (Pages deploy takes ~1-2 min)
+    const expectedDate = (() => {
+      const d = new Date(); d.setDate(d.getDate() - 1)
+      return d.toISOString().slice(0,10)
+    })()
+    let deployed = false
+    for(let i=0;i<24;i++){
+      await new Promise(r=>setTimeout(r,5000))
+      try{
+        const jr = await fetch('../data/freshdesk_data.json?_='+Date.now())
+        if(jr.ok){ const jd = await jr.json(); if(jd[expectedDate]){ deployed=true; break } }
+      }catch(_){}
+    }
     location.reload()
   }catch(e){
     alert('Refresh failed: '+e.message)
