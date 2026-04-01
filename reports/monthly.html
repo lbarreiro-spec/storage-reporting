@@ -16,7 +16,6 @@
 html,body{height:100%;font-family:var(--sans);background:#f6f7ed}
 body{display:flex;flex-direction:column;min-height:100vh;flex-direction:row}
 
-/* SIDEBAR */
 .sidebar{
   width:220px;min-width:220px;background:#1f1f1f;
   display:flex;flex-direction:column;
@@ -35,10 +34,8 @@ body{display:flex;flex-direction:column;min-height:100vh;flex-direction:row}
 .sidebar-home{font-size:13px;color:rgba(255,255,255,0.65);text-decoration:none;transition:color .12s}
 .sidebar-home:hover{color:#fff}
 
-/* MAIN */
 .main-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:100vh}
 
-/* TOP BAR */
 .topbar{
   display:flex;align-items:center;justify-content:space-between;
   padding:12px 28px;border-bottom:1px solid #e2e2e2;
@@ -47,7 +44,6 @@ body{display:flex;flex-direction:column;min-height:100vh;flex-direction:row}
 .topbar-title{font-size:15px;font-weight:600;color:#111827;letter-spacing:-.01em}
 .topbar-meta{font-size:12px;color:#6b7280;font-family:var(--mono)}
 
-/* METRIC TABS */
 .tab-bar{
   display:flex;gap:0;overflow-x:auto;flex-shrink:0;
   border-bottom:1px solid #e2e2e2;background:#fff;padding:0 20px;
@@ -62,25 +58,20 @@ body{display:flex;flex-direction:column;min-height:100vh;flex-direction:row}
 .tab:hover{color:#111827}
 .tab.active{color:#111827;border-bottom-color:#1f1f1f}
 
-/* MAIN */
 .main{flex:1;display:flex;flex-direction:column;padding:28px 32px;gap:24px;overflow-y:auto}
-
 .chart-header{display:flex;align-items:baseline;gap:16px}
 .chart-title{font-size:20px;font-weight:700;letter-spacing:-.01em;color:#111827}
-
 .chart-wrap{
   background:#fff;border:1px solid #e2e2e2;border-radius:12px;
   padding:24px;position:relative;box-shadow:0 1px 3px rgba(0,0,0,0.06);
 }
 .chart-wrap canvas{max-height:380px}
 
-/* LEGEND */
 .legend{display:flex;gap:20px;flex-wrap:wrap}
 .legend-item{display:flex;align-items:center;gap:7px;font-size:13px;color:#6b7280;cursor:pointer;transition:opacity .15s}
 .legend-item.faded{opacity:.35}
 .legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 
-/* DATA TABLE */
 .tbl-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse}
 thead th{
@@ -170,31 +161,40 @@ const { createClient } = window.supabase
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-const VAT    = 1.2   // stored values are inc-VAT; divide to get ex-VAT
+const VAT    = 1.2
 
 const YEAR_STYLES = {
+  '2023': { color: 'rgba(156,163,175,0.7)',  border: 'rgba(156,163,175,0.7)',  width: 1.5 },
   '2024': { color: 'rgba(107,114,128,0.85)', border: 'rgba(107,114,128,0.85)', width: 1.5 },
-  '2025': { color: 'rgba(55,65,81,0.9)',     border: 'rgba(55,65,81,0.9)',     width: 2 },
+  '2025': { color: 'rgba(55,65,81,0.9)',     border: 'rgba(55,65,81,0.9)',     width: 2   },
   '2026': { color: '#1f1f1f',               border: '#1f1f1f',               width: 2.5 },
 }
 
-// Metric definitions — field sourced from Supabase, format, and whether to strip VAT
-const METRIC_DEFS = [
-  { key: 'invoiced_revenue',    label: 'Invoice Revenue',         format: 'money', table: 'main',      vatDiv: true  },
-  { key: 'paid_revenue',        label: 'Paid Revenue',            format: 'money', table: 'main',      vatDiv: true  },
-  { key: 'invoice_count',       label: 'Invoices Raised',         format: 'int',   table: 'main',      vatDiv: false },
-  { key: 'unique_customers',    label: 'Unique Customers',        format: 'int',   table: 'main',      vatDiv: false },
-  { key: 'customers_booked',    label: 'New Customers Booked',    format: 'int',   table: 'main',      vatDiv: false },
-  { key: 'customers_entering',  label: 'Customers Entering',      format: 'int',   table: 'main',      vatDiv: false },
-  { key: 'customers_exiting',   label: 'Customers Exiting',       format: 'int',   table: 'main',      vatDiv: false },
-  { key: 'sqft_booked',         label: 'SqFt Booked',             format: 'float', table: 'main',      vatDiv: false },
-  { key: 'sqft_entering',       label: 'SqFt Entering',           format: 'float', table: 'main',      vatDiv: false },
-  { key: 'sqft_exiting',        label: 'SqFt Exiting',            format: 'float', table: 'main',      vatDiv: false },
-  { key: 'promo_pct',           label: 'Promo % of Revenue',      format: 'pct',   table: 'main',      vatDiv: false },
-  { key: 'coll_av_fee',         label: 'Total Collection AV Fee',   format: 'money', table: 'transport', vatDiv: true  },
-  { key: 'redel_av_fee',        label: 'Total Redelivery AV Fee',   format: 'money', table: 'transport', vatDiv: true  },
-  { key: 'coll_completed',      label: 'Collections Completed',     format: 'int',   table: 'transport', vatDiv: false },
-  { key: 'redel_completed',     label: 'Redeliveries Completed',    format: 'int',   table: 'transport', vatDiv: false },
+// How to fill each monthly.json metric key from Supabase rows (values stored inc-VAT → ÷1.2)
+const SUPABASE_FILL = {
+  invoice_revenue:        (m, t) => m?.invoiced_revenue  != null ? m.invoiced_revenue  / VAT : null,
+  paid_cash:              (m, t) => m?.paid_revenue       != null ? m.paid_revenue       / VAT : null,
+  transport_fee:          (m, t) => (t?.coll_av_fee != null && t?.redel_av_fee != null) ? (t.coll_av_fee + t.redel_av_fee) / VAT : null,
+  invoiced_plus_transport:(m, t) => (m?.invoiced_revenue != null && t?.coll_av_fee != null) ? (m.invoiced_revenue + t.coll_av_fee + t.redel_av_fee) / VAT : null,
+  paid_plus_transport:    (m, t) => (m?.paid_revenue     != null && t?.coll_av_fee != null) ? (m.paid_revenue     + t.coll_av_fee + t.redel_av_fee) / VAT : null,
+  customers_booked:       (m, t) => m?.customers_booked   ?? null,
+  customers_entering:     (m, t) => m?.customers_entering ?? null,
+  customers_exiting:      (m, t) => m?.customers_exiting  ?? null,
+  promo_pct:              (m, t) => m?.promo_pct           ?? null,
+  total_invoices:         (m, t) => m?.invoice_count       ?? null,
+  sqft_booked:            (m, t) => m?.sqft_booked         ?? null,
+  sqft_entering:          (m, t) => m?.sqft_entering       ?? null,
+  sqft_exiting:           (m, t) => m?.sqft_exiting        ?? null,
+  net_sqft:               (m, t) => (m?.sqft_entering != null && m?.sqft_exiting != null) ? m.sqft_entering - m.sqft_exiting : null,
+}
+
+// Supabase-only metrics (not in monthly.json at all) — appended as extra tabs
+const SUPABASE_EXTRA = [
+  { key: 'unique_customers',    label: 'Unique Customers',        format: 'int',   fn: (m, t) => m?.unique_customers    ?? null },
+  { key: 'coll_av_fee',         label: 'Total Collection AV Fee', format: 'money', fn: (m, t) => t?.coll_av_fee  != null ? t.coll_av_fee  / VAT : null },
+  { key: 'redel_av_fee',        label: 'Total Redelivery AV Fee', format: 'money', fn: (m, t) => t?.redel_av_fee != null ? t.redel_av_fee / VAT : null },
+  { key: 'coll_completed',      label: 'Collections Completed',   format: 'int',   fn: (m, t) => t?.coll_completed  ?? null },
+  { key: 'redel_completed',     label: 'Redeliveries Completed',  format: 'int',   fn: (m, t) => t?.redel_completed ?? null },
 ]
 
 let _data      = null
@@ -211,24 +211,6 @@ function fmt(v, format) {
   return v
 }
 
-function buildSeries(rows, fieldKey, vatDiv) {
-  // rows: array of Supabase row objects with a 'label' field (YYYY-MM)
-  const byYearMonth = {}
-  for (const row of rows) {
-    const lbl = row.label   // e.g. '2025-03'
-    if (!lbl) continue
-    const yr  = lbl.substring(0, 4)
-    const mo  = parseInt(lbl.substring(5, 7), 10) - 1  // 0-indexed
-    if (!byYearMonth[yr]) byYearMonth[yr] = new Array(12).fill(null)
-    let val = row[fieldKey]
-    if (val != null) {
-      val = vatDiv ? val / VAT : val
-    }
-    byYearMonth[yr][mo] = val
-  }
-  return byYearMonth
-}
-
 function renderMetric(idx) {
   _activeIdx = idx
   const m = _data.metrics[idx]
@@ -236,12 +218,9 @@ function renderMetric(idx) {
   document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === idx))
   document.getElementById('chart-title').textContent = m.label
 
-  const years = m.years
-
-  // Legend
   const legendEl = document.getElementById('legend')
   legendEl.innerHTML = ''
-  years.forEach(y => {
+  m.years.forEach(y => {
     const s = YEAR_STYLES[y] || YEAR_STYLES['2025']
     const el = document.createElement('div')
     el.className = 'legend-item' + (_hiddenYrs.has(y) ? ' faded' : '')
@@ -253,7 +232,7 @@ function renderMetric(idx) {
     legendEl.appendChild(el)
   })
 
-  const datasets = years.map(y => {
+  const datasets = m.years.map(y => {
     const s = YEAR_STYLES[y] || YEAR_STYLES['2025']
     return {
       label: y,
@@ -295,9 +274,7 @@ function renderMetric(idx) {
             titleFont: { family: '-apple-system, sans-serif', size: 13, weight: '600' },
             bodyFont: { family: "'SF Mono', monospace", size: 13 },
             padding: 12,
-            callbacks: {
-              label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.raw, m.format)}`
-            }
+            callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.raw, m.format)}` }
           }
         },
         scales: {
@@ -320,20 +297,18 @@ function renderMetric(idx) {
     })
   }
 
-  // Table
   const curYear = new Date().getFullYear().toString()
   const head = document.getElementById('tbl-head')
   const body = document.getElementById('tbl-body')
 
-  head.innerHTML = '<th>Month</th>' + years.map(y =>
+  head.innerHTML = '<th>Month</th>' + m.years.map(y =>
     `<th style="color:${y === curYear ? '#1f1f1f' : ''};font-weight:${y === curYear ? '700' : ''}">${y}</th>`
   ).join('')
 
   body.innerHTML = MONTHS.map((mo, mi) => {
-    const cells = years.map(y => {
+    const cells = m.years.map(y => {
       const v = (m.series[y] || [])[mi]
-      const isCur = y === curYear
-      return `<td class="${isCur && v != null ? 'cur' : ''}">${fmt(v, m.format)}</td>`
+      return `<td class="${y === curYear && v != null ? 'cur' : ''}">${fmt(v, m.format)}</td>`
     }).join('')
     return `<tr><td>${mo}</td>${cells}</tr>`
   }).join('')
@@ -341,53 +316,87 @@ function renderMetric(idx) {
 
 async function load() {
   try {
-    const [mainRes, transportRes, feesRes] = await Promise.all([
-      db.from('mtd_monthly').select('*').order('label'),
-      db.from('mtd_transport_monthly').select('*').order('label'),
-      db.from('mtd_fees_monthly').select('*').order('label'),
+    // Current month label — exclude this and future months (retrospective only)
+    const currentMonth = new Date().toISOString().substring(0, 7)
+
+    const [jsonResp, mainRes, transportRes] = await Promise.all([
+      fetch('../data/monthly.json?_=' + Date.now()),
+      db.from('mtd_monthly').select('*').lt('label', currentMonth).order('label'),
+      db.from('mtd_transport_monthly').select('*').lt('label', currentMonth).order('label'),
     ])
 
+    if (!jsonResp.ok) throw new Error('Failed to load monthly.json')
+    const jsonData = await jsonResp.json()
     if (mainRes.error)      throw mainRes.error
     if (transportRes.error) throw transportRes.error
-    if (feesRes.error)      throw feesRes.error
 
-    // Only show completed months (exclude current and future)
-    const currentMonth = new Date().toISOString().substring(0, 7)
-    const mainRows      = (mainRes.data      || []).filter(r => r.label < currentMonth)
-    const transportRows = (transportRes.data || []).filter(r => r.label < currentMonth)
-    const feesRows      = (feesRes.data      || []).filter(r => r.label < currentMonth)
+    // Supabase lookups by YYYY-MM label
+    const mainByLabel  = {}
+    const transByLabel = {}
+    ;(mainRes.data      || []).forEach(r => mainByLabel[r.label]  = r)
+    ;(transportRes.data || []).forEach(r => transByLabel[r.label] = r)
 
-    // Collect all years present across all tables
-    const allLabels = [
-      ...mainRows.map(r => r.label),
-      ...transportRows.map(r => r.label),
-      ...feesRows.map(r => r.label),
-    ]
-    const years = [...new Set(allLabels.map(l => l.substring(0, 4)))].sort()
+    // Fill nulls in monthly.json metrics from Supabase where we have a mapping
+    const metrics = jsonData.metrics.map(metric => {
+      const fillFn = SUPABASE_FILL[metric.key]
+      if (!fillFn) return metric
 
-    // Latest updated_at across tables
-    const latestDates = [
-      ...mainRows.map(r => r.updated_at),
-      ...transportRows.map(r => r.updated_at),
-      ...feesRows.map(r => r.updated_at),
-    ].filter(Boolean).sort()
-    const latestUpdated = latestDates.length
-      ? new Date(latestDates[latestDates.length - 1]).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })
-      : 'unknown'
+      const series = {}
+      const years  = new Set(metric.years)
 
-    // Build metrics
-    const metrics = METRIC_DEFS.map(def => {
-      const rows = def.table === 'main'      ? mainRows
-                 : def.table === 'transport' ? transportRows
-                 : feesRows
-      const series = buildSeries(rows, def.key, def.vatDiv)
-      // Only include years that have at least one non-null value for this metric
-      const metricYears = years.filter(y => series[y] && series[y].some(v => v != null))
-      return { key: def.key, label: def.label, format: def.format, years: metricYears, series }
-    }).filter(m => m.years.length > 0)
+      // Copy existing series, filling nulls from Supabase
+      metric.years.forEach(year => {
+        const arr = (metric.series[year] || new Array(12).fill(null)).slice()
+        arr.forEach((val, mi) => {
+          if (val == null) {
+            const label  = `${year}-${String(mi + 1).padStart(2, '0')}`
+            const filled = fillFn(mainByLabel[label], transByLabel[label])
+            if (filled != null) arr[mi] = filled
+          }
+        })
+        series[year] = arr
+      })
 
-    _data = { metrics, updated: latestUpdated }
-    document.getElementById('meta').textContent = 'updated ' + latestUpdated
+      // Check if Supabase has any years not yet in the JSON (e.g. future year)
+      const allSbLabels = Object.keys(mainByLabel)
+      const sbYears = [...new Set(allSbLabels.map(l => l.substring(0, 4)))].filter(y => !years.has(y))
+      sbYears.forEach(year => {
+        const arr = new Array(12).fill(null)
+        let hasData = false
+        arr.forEach((_, mi) => {
+          const label  = `${year}-${String(mi + 1).padStart(2, '0')}`
+          const filled = fillFn(mainByLabel[label], transByLabel[label])
+          if (filled != null) { arr[mi] = filled; hasData = true }
+        })
+        if (hasData) { series[year] = arr; years.add(year) }
+      })
+
+      return { ...metric, years: [...years].sort(), series }
+    })
+
+    // Append Supabase-only metrics (not in monthly.json)
+    const allSbYears = [...new Set(
+      Object.keys(mainByLabel).concat(Object.keys(transByLabel)).map(l => l.substring(0, 4))
+    )].sort()
+
+    SUPABASE_EXTRA.forEach(def => {
+      const series = {}
+      const years  = []
+      allSbYears.forEach(year => {
+        const arr = new Array(12).fill(null)
+        let hasData = false
+        arr.forEach((_, mi) => {
+          const label = `${year}-${String(mi + 1).padStart(2, '0')}`
+          const val   = def.fn(mainByLabel[label], transByLabel[label])
+          if (val != null) { arr[mi] = val; hasData = true }
+        })
+        if (hasData) { series[year] = arr; years.push(year) }
+      })
+      if (years.length) metrics.push({ key: def.key, label: def.label, format: def.format, years, series })
+    })
+
+    _data = { metrics, updated: jsonData.updated }
+    document.getElementById('meta').textContent = 'updated ' + jsonData.updated
 
     const tabBar = document.getElementById('tabs')
     metrics.forEach((m, i) => {
@@ -406,7 +415,7 @@ async function load() {
 }
 
 const GITHUB_REPO = 'Robbosd/storage-reporting'
-const WORKFLOW_ID = 'fetch_mtd.yml'
+const WORKFLOW_ID = 'fetch_monthly.yml'
 const GITHUB_PAT  = 'worker-handles-auth'
 
 async function triggerRefresh() {
@@ -448,8 +457,8 @@ async function triggerRefresh() {
         break
       }
     }
-    if (meta) meta.textContent = 'Reloading…'
-    await new Promise(r => setTimeout(r, 3000))
+    if (meta) meta.textContent = 'Deploying…'
+    await new Promise(r => setTimeout(r, 12000))
     location.reload()
   } catch (e) {
     alert('Refresh failed: ' + e.message)
