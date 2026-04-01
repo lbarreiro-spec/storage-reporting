@@ -5417,7 +5417,7 @@
   "2026-03-31": {
     "inn": 160,
     "resolved": 109,
-    "backlog": 50,
+    "backlog": 48,
     "fr_sla": 98.1,
     "res_sla": 91.7,
     "avg_r": "23.2h",
@@ -5426,7 +5426,7 @@
       {
         "in": 76,
         "res": 65,
-        "blg": 22,
+        "blg": 20,
         "fr": 98.7
       },
       {
@@ -5456,9 +5456,9 @@
     ],
     "agents": [
       {
-        "assigned": 77,
+        "assigned": 78,
         "resolved": 68,
-        "backlog": 3,
+        "backlog": 4,
         "fr": 100.0,
         "avg": "13.0h",
         "p90": "40.6h",
