@@ -435,6 +435,8 @@ async function triggerRefresh() {
   const btn = document.getElementById('refresh-btn')
   btn.disabled = true
   btn.innerHTML = '<span class="spin">↻</span> Refreshing…'
+  const prevTs = await fetch('../data/debt_data.json?_=' + Date.now())
+    .then(r => r.json()).then(j => j.generated_at).catch(() => null)
   try {
     const dispatch = await fetch(
       `https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/dispatches`,
@@ -465,7 +467,18 @@ async function triggerRefresh() {
         break
       }
     }
-    await new Promise(r => setTimeout(r, 12000))
+    // Poll until GitHub Pages serves the updated JSON (deploy typically takes 30-90s)
+    let deployed = false
+    for (let i = 0; i < 24; i++) {
+      await new Promise(r => setTimeout(r, 5000))
+      try {
+        const jr = await fetch('../data/debt_data.json?_=' + Date.now())
+        if (jr.ok) {
+          const jd = await jr.json()
+          if (jd.generated_at && jd.generated_at !== prevTs) { deployed = true; break }
+        }
+      } catch(_) {}
+    }
     location.reload()
   } catch(e) {
     alert('Refresh failed: ' + e.message)
