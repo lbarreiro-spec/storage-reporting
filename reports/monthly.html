@@ -191,12 +191,10 @@ const METRIC_DEFS = [
   { key: 'sqft_entering',       label: 'SqFt Entering',           format: 'float', table: 'main',      vatDiv: false },
   { key: 'sqft_exiting',        label: 'SqFt Exiting',            format: 'float', table: 'main',      vatDiv: false },
   { key: 'promo_pct',           label: 'Promo % of Revenue',      format: 'pct',   table: 'main',      vatDiv: false },
-  { key: 'coll_av_fee',         label: 'Avg Collection Fee',      format: 'money', table: 'transport', vatDiv: true  },
-  { key: 'redel_av_fee',        label: 'Avg Redelivery Fee',      format: 'money', table: 'transport', vatDiv: true  },
-  { key: 'coll_completed',      label: 'Collections Completed',   format: 'int',   table: 'transport', vatDiv: false },
-  { key: 'redel_completed',     label: 'Redeliveries Completed',  format: 'int',   table: 'transport', vatDiv: false },
-  { key: 'overdue_admin_total', label: 'Overdue Admin Fees',      format: 'money', table: 'fees',      vatDiv: true  },
-  { key: 'early_release_total', label: 'Early Release Fees',      format: 'money', table: 'fees',      vatDiv: true  },
+  { key: 'coll_av_fee',         label: 'Total Collection AV Fee',   format: 'money', table: 'transport', vatDiv: true  },
+  { key: 'redel_av_fee',        label: 'Total Redelivery AV Fee',   format: 'money', table: 'transport', vatDiv: true  },
+  { key: 'coll_completed',      label: 'Collections Completed',     format: 'int',   table: 'transport', vatDiv: false },
+  { key: 'redel_completed',     label: 'Redeliveries Completed',    format: 'int',   table: 'transport', vatDiv: false },
 ]
 
 let _data      = null
