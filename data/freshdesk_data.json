@@ -5417,7 +5417,7 @@
   "2026-03-31": {
     "inn": 160,
     "resolved": 109,
-    "backlog": 350,
+    "backlog": 50,
     "fr_sla": 98.1,
     "res_sla": 91.7,
     "avg_r": "23.2h",

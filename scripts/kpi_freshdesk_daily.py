@@ -283,7 +283,7 @@ resolve_hrs = [h for t in resolved_tickets if (h := resolve_time_hrs(t)) is not 
 overall = {
     'in':        len(created_tickets),
     'resolved':  len(resolved_tickets),
-    'backlog':   len(backlog_tickets),
+    'backlog':   sum(1 for t in backlog_tickets if t.get("group_id") in STORAGE_GROUPS),
     'fr_sla':    fr_sla_pct(created_tickets),
     'res_sla':   res_sla_pct(resolved_tickets),
     'avg':       round(avg(resolve_hrs), 1) if resolve_hrs else None,
