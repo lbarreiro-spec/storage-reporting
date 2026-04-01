@@ -249,7 +249,7 @@ async function loadAll(){
 async function loadMonth(){
   const [year, month] = SELECTED_MONTH.split('-').map(Number)
   const from = `${SELECTED_MONTH}-01`
-  const to   = new Date(year, month, 0).toISOString().slice(0,10)
+  const to   = `${SELECTED_MONTH}-${String(new Date(year, month, 0).getDate()).padStart(2,'0')}`
 
   const { data, error } = await db
     .from('voice_daily')
