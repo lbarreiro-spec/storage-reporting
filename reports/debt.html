@@ -295,6 +295,20 @@ function render(d) {
   // Segmentation bar widths
   const aP = bd.active_pct || 0, rP = bd.at_risk_pct || 0, bP = bd.bad_debt_pct || 0;
 
+  // Recovered overdue history rows
+  const recoveryRows = (d.recovered_overdue_history || []).slice().reverse().map(m => {
+    const pct    = m.recovered_pct;
+    const pctCls = pct >= 40 ? 'td-green' : pct >= 20 ? 'td-amber' : 'td-red';
+    const mtdTag = m.is_mtd ? ' <span style="font-size:11px;color:#6b7280;font-weight:400">MTD</span>' : '';
+    return `<tr>
+      <td>${m.month_label}${mtdTag}</td>
+      <td>${gbp(m.total_paid)}</td>
+      <td><span class="td-amber">${gbp(m.recovered)}</span></td>
+      <td class="${pctCls}">${pct}%</td>
+      <td>${gbp(m.on_time)}</td>
+    </tr>`;
+  }).join('');
+
   // Cohort rows
   const cohortRows = (d.outstanding_by_cohort || []).map(m => {
     const pct    = m.collection_pct;
@@ -345,6 +359,23 @@ function render(d) {
         <div class="stat-val" style="color:#16a34a">${gbp(or_.recovered)}</div>
         <div class="stat-sub">${or_.recovered_pct || 0}% of this month's payments were overdue before collection<br>${gbp(or_.on_time)} paid on time</div>
       </div>
+    </div>
+  </div>
+
+  <!-- Recovered from Overdue — History -->
+  <div class="sec">
+    <div class="sec-lbl">Recovered from Overdue — Last 6 Months</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th style="text-align:left">Month</th>
+          <th>Total Collected</th>
+          <th>From Overdue</th>
+          <th>Recovery %</th>
+          <th>Paid On Time</th>
+        </tr></thead>
+        <tbody>${recoveryRows || '<tr><td colspan="5" style="text-align:center;color:#6b7280;padding:20px">No data yet</td></tr>'}</tbody>
+      </table>
     </div>
   </div>
 

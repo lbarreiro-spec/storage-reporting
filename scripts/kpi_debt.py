@@ -571,6 +571,63 @@ def snapshot_history(total_overdue, overdue_count):
 
 # ── MTD recovered from overdue ────────────────────────────────────────────────
 
+def build_recovered_overdue_history(invoices, months=6):
+    """
+    Month-by-month history of debt recovered from overdue status.
+    For each of the last N months, groups payments by last_payment_date month
+    and shows how much was collected that had gone overdue (days_to_pay >= 1).
+    """
+    today = date.today()
+    result = []
+
+    for i in range(months - 1, -1, -1):
+        m = today.month - i
+        y = today.year
+        while m <= 0:
+            m += 12
+            y -= 1
+        mk = f"{y}-{m:02d}"
+        is_mtd = (i == 0)
+
+        total_paid = 0.0
+        recovered  = 0.0
+
+        for inv in invoices:
+            inv_type = classify(inv)
+            if inv_type not in ("paid", "partial"):
+                continue
+            pay_str = (inv.get("last_payment_date") or "").strip()
+            if not pay_str:
+                continue
+            pay_date = _to_date(pay_str)
+            if not pay_date:
+                continue
+            if f"{pay_date.year}-{pay_date.month:02d}" != mk:
+                continue
+
+            total       = float(inv.get("total",   0) or 0)
+            balance     = float(inv.get("balance", 0) or 0)
+            amount_paid = total if inv_type == "paid" else (total - balance)
+            total_paid += amount_paid
+
+            days = calc_days_to_pay(inv)
+            if days is not None and days >= 1:
+                recovered += amount_paid
+
+        mo_str = f"{m:02d}"
+        result.append({
+            "month":         mk,
+            "month_label":   f"{MONTH_LABELS[mo_str]} {y}" + (" MTD" if is_mtd else ""),
+            "is_mtd":        is_mtd,
+            "total_paid":    round(total_paid, 2),
+            "recovered":     round(recovered, 2),
+            "on_time":       round(total_paid - recovered, 2),
+            "recovered_pct": round(recovered / total_paid * 100, 1) if total_paid else 0.0,
+        })
+
+    return result
+
+
 def build_mtd_recovered_overdue(invoices):
     """
     Revenue collected in the current calendar month where payment arrived
@@ -671,8 +728,9 @@ def main():
         "summary":               {**summary, "wow": wow},
         "bad_debt_segmentation": build_bad_debt_segmentation(merged),
         "customer_risk_tiers":   build_customer_risk_tiers(merged),
-        "mtd_recovered_overdue": build_mtd_recovered_overdue(merged),
-        "debt_curve":            build_curve(merged, months=6),
+        "mtd_recovered_overdue":         build_mtd_recovered_overdue(merged),
+        "recovered_overdue_history":     build_recovered_overdue_history(merged, months=6),
+        "debt_curve":                    build_curve(merged, months=6),
         "outstanding_by_cohort": cohort_data,
     }
 
