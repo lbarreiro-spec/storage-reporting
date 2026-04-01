@@ -41,6 +41,8 @@ AGENTS = {
     "Dylan Christian":  ("Dylan",     "sales"),
     "Emmanuel Nsenga":  ("Emmanuel",  "ops"),
     "Michelle J":       ("Michelle",  "sales"),
+    "Prosper M":        ("Prosper",   "sales"),
+    "Prosper Mubata":   ("Prosper",   "sales"),
     "Shaun Gae":        ("Shaun",     "ops"),
     "Theo J":           ("Theo",      "ops"),
     "Shafwaan Titus":   ("Shafwaan",  "ops"),

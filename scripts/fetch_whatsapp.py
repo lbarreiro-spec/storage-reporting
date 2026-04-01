@@ -46,6 +46,8 @@ AGENTS = {
     "Andy N":          ("Andy",     "sales"),
     "Carla Jacobs":    ("Carla",    "sales"),
     "Michelle J":      ("Michelle", "sales"),
+    "Prosper M":       ("Prosper",  "sales"),
+    "Prosper Mubata":  ("Prosper",  "sales"),
 }
 
 # URL-encoded email → display name (TWILIO_CONVERSATION_MESSAGE AUTHOR field)
@@ -59,6 +61,7 @@ AGENT_EMAILS = {
     "andy_2En_40anyvan_2Ecom":           "Andy",
     "carla_2Ejacobs_40anyvan_2Ecom":     "Carla",
     "michelle_2Ej_40anyvan_2Ecom":       "Michelle",
+    "prosper_2Em_40anyvan_2Ecom":        "Prosper",
 }
 
 # Reverse map: display name → encoded email (for engagement lookup)
