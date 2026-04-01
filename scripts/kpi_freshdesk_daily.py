@@ -45,7 +45,6 @@ FD_HDR   = {"Authorization": f"Basic {AUTH}", "Content-Type": "application/json"
 STORAGE_GROUPS = {
     31000116715: "Storage",
     31000118020: "Storage Complaints",
-    31000118088: "Storage Leads",
     31000117596: "Storage Payments",
     31000117121: "Storage Support",
     31000117989: "Storage Warehouse",
