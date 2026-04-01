@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Monthly Trends — AnyVan Storage</title>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -163,42 +164,86 @@ td.cur{color:#1f1f1f;font-weight:600}
 </div>
 
 <script>
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+const SUPABASE_URL      = '[SUPABASE_URL_REMOVED]'
+const SUPABASE_ANON_KEY = '[SUPABASE_ANON_KEY_REMOVED]'
+const { createClient } = window.supabase
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
-// Year colour palette
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+const VAT    = 1.2   // stored values are inc-VAT; divide to get ex-VAT
+
 const YEAR_STYLES = {
-  '2023': { color: 'rgba(156,163,175,0.7)',  border: 'rgba(156,163,175,0.7)',  width: 1.5 },
   '2024': { color: 'rgba(107,114,128,0.85)', border: 'rgba(107,114,128,0.85)', width: 1.5 },
   '2025': { color: 'rgba(55,65,81,0.9)',     border: 'rgba(55,65,81,0.9)',     width: 2 },
   '2026': { color: '#1f1f1f',               border: '#1f1f1f',               width: 2.5 },
 }
 
-let _data       = null
-let _chart      = null
-let _activeIdx  = 0
-let _hiddenYrs  = new Set()
+// Metric definitions — field sourced from Supabase, format, and whether to strip VAT
+const METRIC_DEFS = [
+  { key: 'invoiced_revenue',    label: 'Invoice Revenue',         format: 'money', table: 'main',      vatDiv: true  },
+  { key: 'paid_revenue',        label: 'Paid Revenue',            format: 'money', table: 'main',      vatDiv: true  },
+  { key: 'invoice_count',       label: 'Invoices Raised',         format: 'int',   table: 'main',      vatDiv: false },
+  { key: 'unique_customers',    label: 'Unique Customers',        format: 'int',   table: 'main',      vatDiv: false },
+  { key: 'customers_booked',    label: 'New Customers Booked',    format: 'int',   table: 'main',      vatDiv: false },
+  { key: 'customers_entering',  label: 'Customers Entering',      format: 'int',   table: 'main',      vatDiv: false },
+  { key: 'customers_exiting',   label: 'Customers Exiting',       format: 'int',   table: 'main',      vatDiv: false },
+  { key: 'sqft_booked',         label: 'SqFt Booked',             format: 'float', table: 'main',      vatDiv: false },
+  { key: 'sqft_entering',       label: 'SqFt Entering',           format: 'float', table: 'main',      vatDiv: false },
+  { key: 'sqft_exiting',        label: 'SqFt Exiting',            format: 'float', table: 'main',      vatDiv: false },
+  { key: 'promo_pct',           label: 'Promo % of Revenue',      format: 'pct',   table: 'main',      vatDiv: false },
+  { key: 'coll_av_fee',         label: 'Avg Collection Fee',      format: 'money', table: 'transport', vatDiv: true  },
+  { key: 'redel_av_fee',        label: 'Avg Redelivery Fee',      format: 'money', table: 'transport', vatDiv: true  },
+  { key: 'coll_completed',      label: 'Collections Completed',   format: 'int',   table: 'transport', vatDiv: false },
+  { key: 'redel_completed',     label: 'Redeliveries Completed',  format: 'int',   table: 'transport', vatDiv: false },
+  { key: 'overdue_admin_total', label: 'Overdue Admin Fees',      format: 'money', table: 'fees',      vatDiv: true  },
+  { key: 'early_release_total', label: 'Early Release Fees',      format: 'money', table: 'fees',      vatDiv: true  },
+]
 
-function fmt(v, format){
-  if(v == null) return '—'
-  if(format === 'money') return '£' + Math.round(v).toLocaleString('en-GB')
-  if(format === 'pct')   return v.toFixed(1) + '%'
-  if(format === 'int')   return Math.round(v).toLocaleString('en-GB')
-  if(format === 'float') return Math.round(v).toLocaleString('en-GB')
+let _data      = null
+let _chart     = null
+let _activeIdx = 0
+let _hiddenYrs = new Set()
+
+function fmt(v, format) {
+  if (v == null) return '—'
+  if (format === 'money') return '£' + Math.round(v).toLocaleString('en-GB')
+  if (format === 'pct')   return v.toFixed(1) + '%'
+  if (format === 'int')   return Math.round(v).toLocaleString('en-GB')
+  if (format === 'float') return Math.round(v).toLocaleString('en-GB')
   return v
 }
 
-function renderMetric(idx){
+function buildSeries(rows, fieldKey, vatDiv) {
+  // rows: array of Supabase row objects with a 'label' field (YYYY-MM)
+  const byYearMonth = {}
+  for (const row of rows) {
+    const lbl = row.label   // e.g. '2025-03'
+    if (!lbl) continue
+    const yr  = lbl.substring(0, 4)
+    const mo  = parseInt(lbl.substring(5, 7), 10) - 1  // 0-indexed
+    if (!byYearMonth[yr]) byYearMonth[yr] = new Array(12).fill(null)
+    let val = row[fieldKey]
+    if (val != null) {
+      val = vatDiv ? val / VAT : val
+    }
+    byYearMonth[yr][mo] = val
+  }
+  return byYearMonth
+}
+
+function renderMetric(idx) {
   _activeIdx = idx
   const m = _data.metrics[idx]
 
-  // Update tab highlight
-  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i === idx))
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === idx))
   document.getElementById('chart-title').textContent = m.label
+
+  const years = m.years
 
   // Legend
   const legendEl = document.getElementById('legend')
   legendEl.innerHTML = ''
-  m.years.forEach(y => {
+  years.forEach(y => {
     const s = YEAR_STYLES[y] || YEAR_STYLES['2025']
     const el = document.createElement('div')
     el.className = 'legend-item' + (_hiddenYrs.has(y) ? ' faded' : '')
@@ -210,12 +255,11 @@ function renderMetric(idx){
     legendEl.appendChild(el)
   })
 
-  // Chart datasets
-  const datasets = m.years.map(y => {
+  const datasets = years.map(y => {
     const s = YEAR_STYLES[y] || YEAR_STYLES['2025']
     return {
       label: y,
-      data: m.series[y],
+      data: m.series[y] || new Array(12).fill(null),
       borderColor: s.border,
       backgroundColor: 'transparent',
       borderWidth: s.width,
@@ -228,10 +272,10 @@ function renderMetric(idx){
     }
   })
 
-  if(_chart){
+  if (_chart) {
     _chart.data.datasets = datasets
-    _chart.options.plugins.tooltip.callbacks.label = (ctx) => ` ${ctx.dataset.label}: ${fmt(ctx.raw, m.format)}`
-    _chart.options.scales.y.ticks.callback = (v) => fmt(v, m.format)
+    _chart.options.plugins.tooltip.callbacks.label = ctx => ` ${ctx.dataset.label}: ${fmt(ctx.raw, m.format)}`
+    _chart.options.scales.y.ticks.callback = v => fmt(v, m.format)
     _chart.update()
   } else {
     const ctx = document.getElementById('chart').getContext('2d')
@@ -250,11 +294,11 @@ function renderMetric(idx){
             borderWidth: 1,
             titleColor: '#111827',
             bodyColor: '#6b7280',
-            titleFont: { family: "-apple-system, sans-serif", size: 13, weight: '600' },
+            titleFont: { family: '-apple-system, sans-serif', size: 13, weight: '600' },
             bodyFont: { family: "'SF Mono', monospace", size: 13 },
             padding: 12,
             callbacks: {
-              label: (ctx) => ` ${ctx.dataset.label}: ${fmt(ctx.raw, m.format)}`
+              label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.raw, m.format)}`
             }
           }
         },
@@ -269,7 +313,7 @@ function renderMetric(idx){
             ticks: {
               color: '#6b7280',
               font: { family: "'SF Mono', monospace", size: 12 },
-              callback: (v) => fmt(v, m.format)
+              callback: v => fmt(v, m.format)
             },
             border: { color: '#e2e2e2' }
           }
@@ -283,13 +327,13 @@ function renderMetric(idx){
   const head = document.getElementById('tbl-head')
   const body = document.getElementById('tbl-body')
 
-  head.innerHTML = '<th>Month</th>' + m.years.map(y =>
+  head.innerHTML = '<th>Month</th>' + years.map(y =>
     `<th style="color:${y === curYear ? '#1f1f1f' : ''};font-weight:${y === curYear ? '700' : ''}">${y}</th>`
   ).join('')
 
   body.innerHTML = MONTHS.map((mo, mi) => {
-    const cells = m.years.map(y => {
-      const v = m.series[y][mi]
+    const cells = years.map(y => {
+      const v = (m.series[y] || [])[mi]
       const isCur = y === curYear
       return `<td class="${isCur && v != null ? 'cur' : ''}">${fmt(v, m.format)}</td>`
     }).join('')
@@ -297,78 +341,120 @@ function renderMetric(idx){
   }).join('')
 }
 
-async function load(){
-  let data
+async function load() {
   try {
-    const r = await fetch('../data/monthly.json?_=' + Date.now())
-    if(!r.ok) throw new Error(r.status)
-    data = await r.json()
-  } catch(e) {
-    document.getElementById('meta').textContent = 'Failed to load data/monthly.json'
-    return
+    const [mainRes, transportRes, feesRes] = await Promise.all([
+      db.from('mtd_monthly').select('*').order('label'),
+      db.from('mtd_transport_monthly').select('*').order('label'),
+      db.from('mtd_fees_monthly').select('*').order('label'),
+    ])
+
+    if (mainRes.error)      throw mainRes.error
+    if (transportRes.error) throw transportRes.error
+    if (feesRes.error)      throw feesRes.error
+
+    const mainRows      = mainRes.data      || []
+    const transportRows = transportRes.data || []
+    const feesRows      = feesRes.data      || []
+
+    // Collect all years present across all tables
+    const allLabels = [
+      ...mainRows.map(r => r.label),
+      ...transportRows.map(r => r.label),
+      ...feesRows.map(r => r.label),
+    ]
+    const years = [...new Set(allLabels.map(l => l.substring(0, 4)))].sort()
+
+    // Latest updated_at across tables
+    const latestDates = [
+      ...mainRows.map(r => r.updated_at),
+      ...transportRows.map(r => r.updated_at),
+      ...feesRows.map(r => r.updated_at),
+    ].filter(Boolean).sort()
+    const latestUpdated = latestDates.length
+      ? new Date(latestDates[latestDates.length - 1]).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })
+      : 'unknown'
+
+    // Build metrics
+    const metrics = METRIC_DEFS.map(def => {
+      const rows = def.table === 'main'      ? mainRows
+                 : def.table === 'transport' ? transportRows
+                 : feesRows
+      const series = buildSeries(rows, def.key, def.vatDiv)
+      // Only include years that have at least one non-null value for this metric
+      const metricYears = years.filter(y => series[y] && series[y].some(v => v != null))
+      return { key: def.key, label: def.label, format: def.format, years: metricYears, series }
+    }).filter(m => m.years.length > 0)
+
+    _data = { metrics, updated: latestUpdated }
+    document.getElementById('meta').textContent = 'updated ' + latestUpdated
+
+    const tabBar = document.getElementById('tabs')
+    metrics.forEach((m, i) => {
+      const t = document.createElement('div')
+      t.className = 'tab' + (i === 0 ? ' active' : '')
+      t.textContent = m.label
+      t.addEventListener('click', () => renderMetric(i))
+      tabBar.appendChild(t)
+    })
+
+    renderMetric(0)
+  } catch (e) {
+    document.getElementById('meta').textContent = 'Failed to load data'
+    console.error(e)
   }
-  _data = data
-  document.getElementById('meta').textContent = 'updated ' + data.updated
-
-  // Build tabs
-  const tabBar = document.getElementById('tabs')
-  data.metrics.forEach((m, i) => {
-    const t = document.createElement('div')
-    t.className = 'tab' + (i === 0 ? ' active' : '')
-    t.textContent = m.label
-    t.addEventListener('click', () => renderMetric(i))
-    tabBar.appendChild(t)
-  })
-
-  renderMetric(0)
 }
 
-const GITHUB_PAT  = 'worker-handles-auth'
 const GITHUB_REPO = 'Robbosd/storage-reporting'
-const WORKFLOW_ID = 'fetch_monthly.yml'
+const WORKFLOW_ID = 'fetch_mtd.yml'
+const GITHUB_PAT  = 'worker-handles-auth'
 
-async function triggerRefresh(){
-  const btn = document.getElementById('refresh-btn')
+async function triggerRefresh() {
+  const btn  = document.getElementById('refresh-btn')
   const meta = document.getElementById('meta')
   btn.disabled = true
   btn.innerHTML = '<span class="spin">↻</span> Refreshing…'
-  try{
+  try {
     const dispatch = await fetch(
       `https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/dispatches`,
-      {method:'POST',headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify({ref:'main'})}
+      { method: 'POST', headers: { 'Authorization': `Bearer ${GITHUB_PAT}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' }, body: JSON.stringify({ ref: 'main' }) }
     )
-    if(!dispatch.ok) throw new Error(`Dispatch failed: ${dispatch.status}`)
-    if(meta) meta.textContent = 'Triggering workflow…'
-    await new Promise(r=>setTimeout(r,5000))
+    if (!dispatch.ok) throw new Error(`Dispatch failed: ${dispatch.status}`)
+    if (meta) meta.textContent = 'Triggering workflow…'
+    await new Promise(r => setTimeout(r, 5000))
     let runId = null
-    for(let i=0;i<12;i++){
-      const runs = await fetch(`https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/runs?per_page=1`,
-        {headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json'}})
+    for (let i = 0; i < 12; i++) {
+      const runs = await fetch(
+        `https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/runs?per_page=1`,
+        { headers: { 'Authorization': `Bearer ${GITHUB_PAT}`, 'Accept': 'application/vnd.github.v3+json' } }
+      )
       const d = await runs.json()
-      if(d.workflow_runs?.[0]){runId=d.workflow_runs[0].id;break}
-      await new Promise(r=>setTimeout(r,3000))
+      if (d.workflow_runs?.[0]) { runId = d.workflow_runs[0].id; break }
+      await new Promise(r => setTimeout(r, 3000))
     }
-    if(!runId) throw new Error('Could not find workflow run')
-    if(meta) meta.textContent = 'Workflow running…'
-    for(let i=0;i<50;i++){
-      await new Promise(r=>setTimeout(r,6000))
-      const check = await fetch(`https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/runs/${runId}`,
-        {headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json'}})
+    if (!runId) throw new Error('Could not find workflow run')
+    if (meta) meta.textContent = 'Workflow running…'
+    for (let i = 0; i < 50; i++) {
+      await new Promise(r => setTimeout(r, 6000))
+      const check = await fetch(
+        `https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/runs/${runId}`,
+        { headers: { 'Authorization': `Bearer ${GITHUB_PAT}`, 'Accept': 'application/vnd.github.v3+json' } }
+      )
       const run = await check.json()
-      const elapsed = Math.round((i+1)*6/60*10)/10
-      if(meta) meta.textContent = `Running… ${elapsed}m`
-      if(run.status==='completed'){
-        if(run.conclusion!=='success') throw new Error(`Workflow ${run.conclusion}`)
+      const elapsed = Math.round((i + 1) * 6 / 60 * 10) / 10
+      if (meta) meta.textContent = `Running… ${elapsed}m`
+      if (run.status === 'completed') {
+        if (run.conclusion !== 'success') throw new Error(`Workflow ${run.conclusion}`)
         break
       }
     }
-    if(meta) meta.textContent = 'Deploying…'
-    await new Promise(r=>setTimeout(r,12000))
+    if (meta) meta.textContent = 'Reloading…'
+    await new Promise(r => setTimeout(r, 3000))
     location.reload()
-  }catch(e){
-    alert('Refresh failed: '+e.message)
+  } catch (e) {
+    alert('Refresh failed: ' + e.message)
     console.error(e)
-  }finally{
+  } finally {
     btn.disabled = false
     btn.innerHTML = '↻ Refresh'
   }
