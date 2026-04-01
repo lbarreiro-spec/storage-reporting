@@ -287,15 +287,16 @@ function renderMetric(idx){
     `<th style="color:${y === curYear ? '#1f1f1f' : ''};font-weight:${y === curYear ? '700' : ''}">${y}</th>`
   ).join('')
 
-  // Only render rows up to the last month that has data in the current year
+  // For the current year, blank out months beyond the last one with data
   const curYearSeries = m.series[curYear] || []
   const lastDataMi = curYearSeries.reduce((last, v, i) => v != null ? i : last, -1)
-  const maxMi = lastDataMi >= 0 ? lastDataMi : new Date().getMonth() - 1
 
-  body.innerHTML = MONTHS.slice(0, maxMi + 1).map((mo, mi) => {
+  body.innerHTML = MONTHS.map((mo, mi) => {
     const cells = m.years.map(y => {
       const v = m.series[y][mi]
       const isCur = y === curYear
+      // Hide current year cells for months beyond last data point
+      if(isCur && mi > lastDataMi) return '<td></td>'
       return `<td class="${isCur && v != null ? 'cur' : ''}">${fmt(v, m.format)}</td>`
     }).join('')
     return `<tr><td>${mo}</td>${cells}</tr>`
