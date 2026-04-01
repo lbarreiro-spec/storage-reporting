@@ -278,9 +278,9 @@ function renderMonthly(rows) {
     return `<tr>
       <td class="lbl">${label}</td>
       <td class="num">${t}</td>
-      <td class="num"><span class="badge badge-a">${a} &nbsp;${pct(a,t)}%</span></td>
-      <td class="num"><span class="badge badge-m">${m} &nbsp;${pct(m,t)}%</span></td>
-      <td class="num"><span class="badge badge-r">${r} &nbsp;${pct(r,t)}%</span></td>
+      <td class="num"><span class="badge badge-a">${a} (${pct(a,t)}%)</span></td>
+      <td class="num"><span class="badge badge-m">${m} (${pct(m,t)}%)</span></td>
+      <td class="num"><span class="badge badge-r">${r} (${pct(r,t)}%)</span></td>
       <td>${pctBar(a,m,r,t)}</td>
     </tr>`;
   }).join('');
