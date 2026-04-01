@@ -351,9 +351,11 @@ async function load() {
     if (transportRes.error) throw transportRes.error
     if (feesRes.error)      throw feesRes.error
 
-    const mainRows      = mainRes.data      || []
-    const transportRows = transportRes.data || []
-    const feesRows      = feesRes.data      || []
+    // Only show completed months (exclude current and future)
+    const currentMonth = new Date().toISOString().substring(0, 7)
+    const mainRows      = (mainRes.data      || []).filter(r => r.label < currentMonth)
+    const transportRows = (transportRes.data || []).filter(r => r.label < currentMonth)
+    const feesRows      = (feesRes.data      || []).filter(r => r.label < currentMonth)
 
     // Collect all years present across all tables
     const allLabels = [
