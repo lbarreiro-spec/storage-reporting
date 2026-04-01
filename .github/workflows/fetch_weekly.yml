@@ -31,4 +31,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/weekly.json
           git diff --cached --quiet || git commit -m "chore: update weekly.json"
+          git pull --rebase
           git push
