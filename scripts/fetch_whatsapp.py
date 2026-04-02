@@ -46,7 +46,6 @@ AGENTS = {
     "Andy N":          ("Andy",     "sales"),
     "Carla Jacobs":    ("Carla",    "sales"),
     "Michelle J":      ("Michelle", "sales"),
-    "Prosper M":       ("Prosper",  "sales"),
     "Prosper Mubata":  ("Prosper",  "sales"),
 }
 
