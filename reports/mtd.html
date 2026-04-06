@@ -6,6 +6,7 @@
 <title>MTD Revenue Intelligence — AnyVan Storage</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -176,6 +177,12 @@ tr.current-month td:first-child{color:#1f1f1f;font-weight:700}
   </div>
 </div>
 
+<!-- DAILY INVOICE REVENUE CHART -->
+<div class="sec" id="daily-chart-sec" style="display:none">
+  <div class="sec-lbl" id="daily-chart-lbl">Daily invoiced revenue</div>
+  <canvas id="daily-chart" height="80"></canvas>
+</div>
+
 <!-- COMBINED REVENUE -->
 <div class="sec">
   <div class="sec-lbl">Combined revenue (incl. transport)</div>
@@ -247,6 +254,8 @@ let ALL_MONTHLY = []
 let ALL_TRANSPORT = []
 let ALL_FEES = []
 let YOY = null
+let DAILY = []
+let dailyChart = null
 let SELECTED_MONTH = null
 
 function fmt(n){ if(n==null||n===undefined) return '—'; return '£'+Number(n).toLocaleString('en-GB',{minimumFractionDigits:0,maximumFractionDigits:0}) }
@@ -262,17 +271,20 @@ function yoyBadge(pct){
 }
 
 async function loadAll(){
-  const [mRes, tRes, fRes, yRes] = await Promise.all([
+  const curLabel = new Date().toISOString().slice(0, 7)
+  const [mRes, tRes, fRes, yRes, dRes] = await Promise.all([
     db.from('mtd_monthly').select('*').order('label', { ascending: false }),
     db.from('mtd_transport_monthly').select('*').order('label', { ascending: false }),
     db.from('mtd_fees_monthly').select('*').order('label', { ascending: false }),
     db.from('mtd_yoy').select('*').eq('id', 1).single(),
+    db.from('mtd_daily_revenue').select('*').eq('label', curLabel).order('day'),
   ])
 
   ALL_MONTHLY   = mRes.data || []
   ALL_TRANSPORT = tRes.data || []
   ALL_FEES      = fRes.data || []
   YOY           = yRes.data || null
+  DAILY         = dRes.data || []
 
   if(!ALL_MONTHLY.length){
     document.getElementById('ph-sub').textContent = 'No data loaded yet — run the fetch script to populate.'
@@ -311,11 +323,99 @@ function renderAll(){
     `${monthLabel(SELECTED_MONTH)}${isLatest && YOY ? ` · Day ${YOY.days_elapsed} of ${YOY.days_in_month} · as of ${YOY.as_of}` : ''}`
 
   renderHeadline(m)
+  renderDailyChart(isLatest)
   renderCombined(m, t, isLatest)
   renderYoy(m, isLatest)
   renderTransport(t)
   renderSqftFees(m, f)
   renderHistory()
+}
+
+function renderDailyChart(isLatest){
+  const sec = document.getElementById('daily-chart-sec')
+  if (!isLatest || !DAILY.length){ sec.style.display='none'; return }
+  sec.style.display = ''
+
+  const yr    = parseInt(SELECTED_MONTH.split('-')[0])
+  const mo    = MO[parseInt(SELECTED_MONTH.split('-')[1])-1]
+  document.getElementById('daily-chart-lbl').textContent =
+    `Daily invoiced revenue — ${mo} ${yr} vs ${mo} ${yr-1}`
+
+  const labels   = DAILY.map(d => d.day)
+  const dayNames = DAILY.map(d => d.day_name)
+  const pyData   = DAILY.map(d => d.py_revenue ?? null)
+  const cyData   = DAILY.map(d => (d.cy_revenue > 0 ? d.cy_revenue : null))
+
+  if(dailyChart){ dailyChart.destroy(); dailyChart=null }
+
+  const ctx = document.getElementById('daily-chart').getContext('2d')
+  dailyChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: `${mo} ${yr-1}`,
+          data: pyData,
+          borderColor: '#9ca3af',
+          pointBackgroundColor: '#9ca3af',
+          borderWidth: 1.5,
+          pointRadius: 2.5,
+          pointHoverRadius: 4,
+          tension: 0.25,
+          fill: false,
+          spanGaps: false,
+        },
+        {
+          label: `${mo} ${yr}`,
+          data: cyData,
+          borderColor: '#1f1f1f',
+          pointBackgroundColor: '#1f1f1f',
+          borderWidth: 2.5,
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          tension: 0.25,
+          fill: false,
+          spanGaps: false,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { font: { size: 12, family: '-apple-system,BlinkMacSystemFont,Helvetica Neue,Arial,sans-serif' }, boxWidth: 14, padding: 16 }
+        },
+        tooltip: {
+          callbacks: {
+            title: items => `${dayNames[items[0].dataIndex]} ${items[0].label} ${mo}`,
+            label: item => item.raw == null ? null :
+              ` ${item.dataset.label}: £${Number(item.raw).toLocaleString('en-GB',{minimumFractionDigits:0,maximumFractionDigits:0})}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: '#f0f0f0' },
+          ticks: { font: { size: 11 }, color: '#6b7280',
+            callback: (val, i) => {
+              const dn = dayNames[i]
+              return (dn==='Sat'||dn==='Sun') ? String(labels[i]) : labels[i]
+            }
+          }
+        },
+        y: {
+          grid: { color: '#f0f0f0' },
+          ticks: {
+            font: { size: 11 }, color: '#6b7280',
+            callback: v => '£'+Number(v).toLocaleString('en-GB',{minimumFractionDigits:0,maximumFractionDigits:0})
+          }
+        }
+      }
+    }
+  })
 }
 
 function renderCombined(m, t, isLatest){

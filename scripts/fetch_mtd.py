@@ -638,6 +638,48 @@ def compute_yoy(token, current_months, transport_monthly):
     }
 
 
+# ─── DAILY REVENUE ─────────────────────────────────────────────────────────────
+
+def build_daily_revenue(invoices, token):
+    """Aggregate daily invoiced revenue for current month vs prior year same month."""
+    cur_label      = month_label(TODAY)
+    py_month_start = date(TODAY.year - 1, TODAY.month, 1)
+    py_month_end_  = month_end(py_month_start)
+
+    py_invoices = fetch_invoices(token, py_month_start, py_month_end_,
+                                 f"prior year daily ({py_month_start} → {py_month_end_})")
+
+    def daily_totals(inv_list, year, month):
+        totals = {}
+        for inv in inv_list:
+            d_str = inv.get("date", "")
+            if not d_str:
+                continue
+            try:
+                d = date.fromisoformat(d_str)
+            except ValueError:
+                continue
+            if d.year == year and d.month == month:
+                totals[d.day] = totals.get(d.day, 0.0) + float(inv.get("total") or 0)
+        return totals
+
+    cy_totals = daily_totals(invoices,    TODAY.year,     TODAY.month)
+    py_totals = daily_totals(py_invoices, TODAY.year - 1, TODAY.month)
+
+    days_in_month = (py_month_end_ - py_month_start).days + 1
+    rows = []
+    for day in range(1, days_in_month + 1):
+        d_py = date(TODAY.year - 1, TODAY.month, day)
+        rows.append({
+            "label":      cur_label,
+            "day":        day,
+            "day_name":   d_py.strftime("%a"),
+            "cy_revenue": round(cy_totals.get(day, 0.0), 2),
+            "py_revenue": round(py_totals.get(day, 0.0), 2),
+        })
+    return rows
+
+
 # ─── SUPABASE UPSERTS ──────────────────────────────────────────────────────────
 
 def upsert(table, rows):
@@ -718,6 +760,8 @@ def main():
     if IS_MTD:
         yoy_data = compute_yoy(token, monthly, transport)
         upsert("mtd_yoy", [yoy_data])
+        daily_rows = build_daily_revenue(invoices, token)
+        upsert("mtd_daily_revenue", daily_rows)
 
     print("\n✅ Done.\n")
 

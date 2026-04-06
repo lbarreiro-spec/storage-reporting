@@ -172,6 +172,18 @@ create table if not exists whatsapp_daily (
   primary key (date, agent)
 );
 
+-- Daily invoiced revenue for current month vs prior year (for chart)
+create table if not exists mtd_daily_revenue (
+  label       text    not null,   -- 'YYYY-MM'
+  day         integer not null,   -- 1–31
+  day_name    text,               -- 'Mon', 'Tue', etc.
+  cy_revenue  numeric,            -- current year daily invoiced
+  py_revenue  numeric,            -- prior year daily invoiced
+  updated_at  timestamptz default now(),
+  primary key (label, day)
+);
+alter table mtd_daily_revenue disable row level security;
+
 -- RLS: disabled — open read access (no auth in reporting app)
 alter table mtd_monthly           disable row level security;
 alter table mtd_transport_monthly  disable row level security;
