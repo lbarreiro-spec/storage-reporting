@@ -663,7 +663,7 @@ def build_daily_revenue(invoices, token):
                 totals[d.day] = totals.get(d.day, 0.0) + float(inv.get("total") or 0)
         return totals
 
-    cy_totals = daily_totals(invoices,    TODAY.year,     TODAY.month)
+    cy_totals = {d: v for d, v in daily_totals(invoices, TODAY.year, TODAY.month).items() if d <= TODAY.day}
     py_totals = daily_totals(py_invoices, TODAY.year - 1, TODAY.month)
 
     days_in_month = (py_month_end_ - py_month_start).days + 1
