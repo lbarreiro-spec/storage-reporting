@@ -1,8 +1,6 @@
 name: Fetch Daily Activity
 
 on:
-  schedule:
-    - cron: '0 7 * * 1-5'   # 7am UTC Mon-Fri (weekdays only)
   workflow_dispatch:
 
 jobs:
