@@ -1,8 +1,6 @@
 name: Fetch Weekly KPI
 
 on:
-  schedule:
-    - cron: '0 8 * * 1'   # 8am UTC every Monday
   workflow_dispatch:
 
 permissions:
