@@ -1,8 +1,6 @@
 name: Refresh Freshdesk Data
 
 on:
-  schedule:
-    - cron: '0 8 * * 1-5'   # 8am UTC Mon-Fri
   workflow_dispatch:
 
 permissions:
