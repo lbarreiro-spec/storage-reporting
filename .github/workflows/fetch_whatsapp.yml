@@ -1,8 +1,6 @@
 name: Fetch WhatsApp Daily
 
 on:
-  schedule:
-    - cron: '0 8 * * 1-5'   # 8:00am UTC Mon-Fri
   workflow_dispatch:
 
 jobs:
