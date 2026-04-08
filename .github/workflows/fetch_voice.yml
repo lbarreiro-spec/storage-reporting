@@ -1,8 +1,6 @@
 name: Fetch Voice Daily
 
 on:
-  schedule:
-    - cron: '30 7 * * 1-5'   # 7:30am UTC Mon-Fri (30 mins after daily activity)
   workflow_dispatch:
 
 jobs:
