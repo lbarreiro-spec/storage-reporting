@@ -162,6 +162,7 @@ tr.date-sep td{
         <th>Lunch</th>
         <th>Admin</th>
         <th>OB Activity</th>
+        <th>Offline</th>
         <th>Personal</th>
         <th>Ticketing</th>
         <th>Live Chat</th>
@@ -169,7 +170,7 @@ tr.date-sep td{
         <th>First Login</th>
         <th>Last Logout</th>
       </tr></thead>
-      <tbody id="activity-body"><tr><td colspan="14" class="loading">Loading…</td></tr></tbody>
+      <tbody id="activity-body"><tr><td colspan="15" class="loading">Loading…</td></tr></tbody>
     </table>
   </div>
 </div>
@@ -214,7 +215,7 @@ async function loadAll(){
 
   if(error || !data || !data.length){
     document.getElementById('ph-sub').textContent = 'No data yet — run the fetch script to populate.'
-    document.getElementById('activity-body').innerHTML = '<tr><td colspan="14" style="text-align:center;color:#6b7280;padding:20px;font-size:14px">No data available</td></tr>'
+    document.getElementById('activity-body').innerHTML = '<tr><td colspan="15" style="text-align:center;color:#6b7280;padding:20px;font-size:14px">No data available</td></tr>'
     return
   }
 
@@ -276,7 +277,7 @@ function renderTable(){
 
   const tbody = document.getElementById('activity-body')
   if(!rows.length){
-    tbody.innerHTML = '<tr><td colspan="14" style="text-align:center;color:#6b7280;padding:20px;font-size:14px">No data for this selection</td></tr>'
+    tbody.innerHTML = '<tr><td colspan="15" style="text-align:center;color:#6b7280;padding:20px;font-size:14px">No data for this selection</td></tr>'
     return
   }
 
@@ -284,7 +285,7 @@ function renderTable(){
   let html = ''
   for(const d of dates){
     const dayRows = rows.filter(r => r.date === d)
-    html += `<tr class="date-sep"><td colspan="14">${fmtDate(d)}</td></tr>`
+    html += `<tr class="date-sep"><td colspan="15">${fmtDate(d)}</td></tr>`
     for(const r of dayRows){
       html += `<tr>
         <td></td>
@@ -295,6 +296,7 @@ function renderTable(){
         <td>${fmtSecs(r.lunch)}</td>
         <td>${fmtSecs(r.admin)}</td>
         <td>${fmtSecs(r.ob_activity)}</td>
+        <td>${fmtSecs(r.offline)}</td>
         <td>${fmtSecs(r.personal)}</td>
         <td>${fmtSecs(r.ticketing)}</td>
         <td>${fmtSecs(r.live_chat)}</td>
