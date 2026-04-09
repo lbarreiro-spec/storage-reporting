@@ -14,8 +14,11 @@ import os
 import sys
 import requests
 import snowflake.connector
-from datetime import date, timedelta
+from datetime import date, timedelta, timezone
 from dateutil.relativedelta import relativedelta
+from zoneinfo import ZoneInfo
+
+UK_TZ = ZoneInfo("Europe/London")
 
 # ─── CONFIG ────────────────────────────────────────────────────────────────────
 
@@ -162,8 +165,8 @@ def main():
             if s is None and l[0] is None and l[1] is None:
                 continue  # no data for this agent on this day
 
-            first_login  = l[0].strftime("%H:%M") if l[0] else None
-            last_logout  = l[1].strftime("%H:%M") if l[1] else None
+            first_login  = l[0].replace(tzinfo=timezone.utc).astimezone(UK_TZ).strftime("%H:%M") if l[0] else None
+            last_logout  = l[1].replace(tzinfo=timezone.utc).astimezone(UK_TZ).strftime("%H:%M") if l[1] else None
 
             all_rows.append({
                 "date":            date_str,
