@@ -5,7 +5,7 @@ Sources: Zoho Books, Zoho CRM, Snowflake (transport)
 Writes to Supabase (mtd_monthly, mtd_transport_monthly, mtd_fees_monthly, mtd_yoy)
 
 Usage:
-  python3 fetch_mtd.py          # Current year Jan 1 → today + YoY
+  python3 fetch_mtd.py          # Current month start → today + YoY (past months left in Supabase)
   python3 fetch_mtd.py 2025     # Full 2025 history (no YoY)
   python3 fetch_mtd.py 2024     # Full 2024 history (no YoY)
 """
@@ -63,13 +63,15 @@ SNOWFLAKE_ROLE    = "MART_SALES_OPS_GROUP"
 
 HISTORY_START = date(2024, 1, 1)
 TODAY         = date.today()
+YESTERDAY     = TODAY - timedelta(days=1)
 
 YEAR_ARG = sys.argv[1] if len(sys.argv) > 1 else None
 IS_MTD   = not YEAR_ARG or str(YEAR_ARG).strip().lower() == "mtd"
 
 def resolve_start():
     if not YEAR_ARG or str(YEAR_ARG).strip().lower() == "mtd":
-        return date(TODAY.year, 1, 1)
+        # Only re-run current month — past months stay in Supabase as-is
+        return date(YESTERDAY.year, YESTERDAY.month, 1)
     try:
         year = int(YEAR_ARG)
         if 2000 <= year <= 2100:
@@ -90,7 +92,7 @@ def month_end(d):
     return (d.replace(day=1) + relativedelta(months=1)) - timedelta(days=1)
 
 def build_month_buckets(start, end=None):
-    end = end or TODAY
+    end = end or YESTERDAY
     cursor, last = start.replace(day=1), end.replace(day=1)
     buckets = {}
     while cursor <= last:
@@ -182,8 +184,8 @@ def fetch_line_item_fees(invoices, token):
     headers = {"Authorization": f"Zoho-oauthtoken {token}"}
     fee_keys = [(name.lower(), col_key) for name, col_key, _id in FEE_TARGETS]
 
-    current_month = month_label(TODAY)
-    current_month_prefix = TODAY.strftime("%Y-%m-")
+    current_month = month_label(YESTERDAY)
+    current_month_prefix = YESTERDAY.strftime("%Y-%m-")
     candidates = [i for i in invoices
                   if (i.get("date") or "").startswith(current_month_prefix)]
 
@@ -348,10 +350,10 @@ def fetch_transport():
     )
     cur = conn.cursor()
 
-    cy_start  = HISTORY_START.isoformat()
-    py_start  = (HISTORY_START - relativedelta(years=1)).isoformat()
-    py_end    = (TODAY - relativedelta(years=1)).isoformat()
-    today_str = TODAY.isoformat()
+    cy_start  = START_DATE.isoformat()
+    py_start  = (START_DATE - relativedelta(years=1)).isoformat()
+    py_end    = (YESTERDAY - relativedelta(years=1)).isoformat()
+    today_str = YESTERDAY.isoformat()
 
     print(f"📥 Fetching transport from Snowflake ({cy_start} → {today_str})...")
 
@@ -546,15 +548,15 @@ def aggregate_monthly(invoices, deals):
 # ─── YOY COMPUTATION (MTD only) ────────────────────────────────────────────────
 
 def compute_yoy(token, current_months, transport_monthly):
-    cur_month_label = month_label(TODAY)
+    cur_month_label = month_label(YESTERDAY)
     cur_month = next((m for m in current_months if m["label"] == cur_month_label), {})
 
-    days_elapsed  = (TODAY - date(TODAY.year, TODAY.month, 1)).days + 1
-    days_in_month = (date(TODAY.year, TODAY.month % 12 + 1, 1) -
-                     date(TODAY.year, TODAY.month, 1)).days if TODAY.month < 12 else 31
+    days_elapsed  = (YESTERDAY - date(YESTERDAY.year, YESTERDAY.month, 1)).days + 1
+    days_in_month = (date(YESTERDAY.year, YESTERDAY.month % 12 + 1, 1) -
+                     date(YESTERDAY.year, YESTERDAY.month, 1)).days if YESTERDAY.month < 12 else 31
 
-    py_month_start = date(TODAY.year - 1, TODAY.month, 1)
-    py_same_day    = date(TODAY.year - 1, TODAY.month, TODAY.day)
+    py_month_start = date(YESTERDAY.year - 1, YESTERDAY.month, 1)
+    py_same_day    = date(YESTERDAY.year - 1, YESTERDAY.month, YESTERDAY.day)
     py_month_end_  = month_end(py_month_start)
 
     py_inv_month = fetch_invoices(token, py_month_start, py_same_day,
@@ -608,7 +610,7 @@ def compute_yoy(token, current_months, transport_monthly):
     return {
         "id":                            1,
         "period":                        cur_month_label,
-        "as_of":                         TODAY.isoformat(),
+        "as_of":                         YESTERDAY.isoformat(),
         "days_elapsed":                  days_elapsed,
         "days_in_month":                 days_in_month,
         "cy_invoiced":                   cy_act_inv,
@@ -642,8 +644,8 @@ def compute_yoy(token, current_months, transport_monthly):
 
 def build_daily_revenue(invoices, token):
     """Aggregate daily invoiced revenue for current month vs prior year same month."""
-    cur_label      = month_label(TODAY)
-    py_month_start = date(TODAY.year - 1, TODAY.month, 1)
+    cur_label      = month_label(YESTERDAY)
+    py_month_start = date(YESTERDAY.year - 1, YESTERDAY.month, 1)
     py_month_end_  = month_end(py_month_start)
 
     py_invoices = fetch_invoices(token, py_month_start, py_month_end_,
@@ -663,7 +665,7 @@ def build_daily_revenue(invoices, token):
                 totals[d.day] = totals.get(d.day, 0.0) + float(inv.get("total") or 0)
         return totals
 
-    cy_totals = {d: v for d, v in daily_totals(invoices, TODAY.year, TODAY.month).items() if d <= TODAY.day}
+    cy_totals = {d: v for d, v in daily_totals(invoices, YESTERDAY.year, YESTERDAY.month).items() if d <= YESTERDAY.day}
     py_totals = daily_totals(py_invoices, TODAY.year - 1, TODAY.month)
 
     days_in_month = (py_month_end_ - py_month_start).days + 1
@@ -696,12 +698,12 @@ def upsert(table, rows):
 # ─── MAIN ──────────────────────────────────────────────────────────────────────
 
 def main():
-    print(f"\n🚀 fetch_mtd.py — {'MTD + YoY' if IS_MTD else YEAR_ARG}")
-    print(f"   Period: {START_DATE} → {TODAY}\n")
+    print(f"\n🚀 fetch_mtd.py — {'MTD (current month only, past months preserved in Supabase)' if IS_MTD else YEAR_ARG}")
+    print(f"   Period: {START_DATE} → {YESTERDAY}\n")
 
     token = get_zoho_token()
 
-    invoices  = fetch_invoices(token, START_DATE, label=f"{START_DATE} → {TODAY}")
+    invoices  = fetch_invoices(token, START_DATE, end=YESTERDAY, label=f"{START_DATE} → {YESTERDAY}")
     deals     = fetch_crm_deals(token)
     fee_data  = fetch_line_item_fees(invoices, token)
     transport = fetch_transport()
