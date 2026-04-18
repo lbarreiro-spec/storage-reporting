@@ -131,6 +131,8 @@ tr.current-month td:first-child{color:#1f1f1f;font-weight:700}
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:#e2e2e2;border-radius:2px}
+
+.chart-caption{font-size:11px;color:#9ca3af;margin-top:8px;text-align:right;font-family:var(--mono)}
 </style>
 </head>
 <body>
@@ -213,6 +215,19 @@ tr.current-month td:first-child{color:#1f1f1f;font-weight:700}
   <div class="two-grid" id="sqft-fees-section">
     <div class="loading">Loading…</div>
   </div>
+</div>
+
+<!-- BOOKINGS: TEAM TOTAL -->
+<div class="sec" id="bookings-team-sec" style="display:none">
+  <div class="sec-lbl">New bookings — team total (Jan 2025 – MTD)</div>
+  <canvas id="bookings-team-chart" height="85"></canvas>
+  <div class="chart-caption" id="bookings-caption"></div>
+</div>
+
+<!-- BOOKINGS: BY AGENT -->
+<div class="sec" id="bookings-agent-sec" style="display:none">
+  <div class="sec-lbl">New bookings — by agent</div>
+  <canvas id="bookings-agent-chart" height="85"></canvas>
 </div>
 
 <!-- HISTORY -->
@@ -720,6 +735,201 @@ async function triggerRefresh(){
 }
 
 loadAll()
+loadBookings()
+
+// ── BOOKINGS ────────────────────────────────────────────────────────────────
+
+let teamBookingsChart = null
+let agentBookingsChart = null
+const MO_S = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+const THIS_MONTH = new Date().toISOString().slice(0,7)
+
+async function loadBookings(){
+  try{
+    const resp = await fetch('../data/bookings.json')
+    if(!resp.ok) return
+    const data = await resp.json()
+    renderTeamBookings(data)
+    renderAgentBookings(data)
+    document.getElementById('bookings-team-sec').style.display = ''
+    document.getElementById('bookings-agent-sec').style.display = ''
+  }catch(e){ console.warn('Bookings data unavailable:', e) }
+}
+
+function renderTeamBookings(data){
+  const months = data.months
+  const total  = data.total
+  const values = months.map(m => total[m] || 0)
+  const colors = months.map(m => m.startsWith('2026') ? '#1f1f1f' : '#f59e0b')
+
+  const labels = months.map(m => {
+    const [y,mo] = m.split('-')
+    const s = `${MO_S[+mo-1]} '${y.slice(2)}`
+    return m === THIS_MONTH ? s+'*' : s
+  })
+
+  const labelsPlugin = {
+    id: 'bookingLabels',
+    afterDatasetsDraw(chart){
+      const ctx2 = chart.ctx
+      const meta = chart.getDatasetMeta(0)
+      months.forEach((mk, i) => {
+        const bar = meta.data[i]
+        if(!bar) return
+        const val = values[i]
+        if(!val) return
+        const {x, y, base} = bar
+        const barH = base - y
+        ctx2.save()
+        ctx2.textAlign = 'center'
+        // count label above bar
+        ctx2.fillStyle = '#374151'
+        ctx2.font = 'bold 10px system-ui,sans-serif'
+        ctx2.textBaseline = 'bottom'
+        ctx2.fillText(String(val), x, y - 2)
+        // YoY% inside 2026 bars
+        if(mk.startsWith('2026') && barH > 20){
+          const py = total[`2025-${mk.slice(5)}`]
+          if(py){
+            const pct = Math.round((val - py) / py * 100)
+            const sign = pct >= 0 ? '+' : ''
+            ctx2.fillStyle = 'rgba(255,255,255,0.92)'
+            ctx2.font = 'bold 10px system-ui,sans-serif'
+            ctx2.textBaseline = 'middle'
+            ctx2.fillText(`${sign}${pct}%`, x, y + barH / 2)
+          }
+        }
+        ctx2.restore()
+      })
+    }
+  }
+
+  if(teamBookingsChart){ teamBookingsChart.destroy(); teamBookingsChart = null }
+  const ctx = document.getElementById('bookings-team-chart').getContext('2d')
+  teamBookingsChart = new Chart(ctx, {
+    type: 'bar',
+    plugins: [labelsPlugin],
+    data: { labels, datasets:[{
+      data: values,
+      backgroundColor: colors,
+      borderRadius: 3,
+      barPercentage: 0.7,
+      categoryPercentage: 0.85,
+    }]},
+    options:{
+      responsive: true,
+      layout:{ padding:{ top: 20 } },
+      plugins:{
+        legend:{ display: false },
+        tooltip:{
+          callbacks:{
+            title: items => {
+              const mk = months[items[0].dataIndex]
+              const [y,mo] = mk.split('-')
+              return `${MO_S[+mo-1]} ${y}${mk===THIS_MONTH?' (MTD)':''}`
+            },
+            label: item => ` ${item.raw} bookings`,
+            afterLabel: item => {
+              const mk = months[item.dataIndex]
+              if(!mk.startsWith('2026')) return null
+              const py = total[`2025-${mk.slice(5)}`]
+              if(!py) return null
+              const pct = ((item.raw - py)/py*100).toFixed(1)
+              return ` vs ${py} in 2025 (${pct>=0?'+':''}${pct}%)`
+            }
+          }
+        }
+      },
+      scales:{
+        x:{
+          grid:{ display: false },
+          ticks:{
+            font:{ size: 11 },
+            color: ctx => months[ctx.index]?.startsWith('2026') ? '#111827' : '#6b7280'
+          }
+        },
+        y:{
+          grid:{ color:'#f0f0f0' },
+          ticks:{ font:{ size: 11 }, color:'#6b7280' }
+        }
+      }
+    }
+  })
+
+  const cap = document.getElementById('bookings-caption')
+  if(cap) cap.textContent = `* ${MO_S[+THIS_MONTH.slice(5)-1]} ${THIS_MONTH.slice(0,4)} is month-to-date · Updated ${data.updated}`
+}
+
+function renderAgentBookings(data){
+  const months  = data.months
+  const byOwner = data.by_owner
+
+  const COLORS = {
+    'Theo J':                   '#1f1f1f',
+    'Dylan Christian':          '#3b82f6',
+    'Andrew Njiokwuemegi':      '#f59e0b',
+    'Carla Jacobs':             '#10b981',
+    'Michelle Jemsana':         '#8b5cf6',
+    'Conni Tyabule':            '#9ca3af',
+    'Shaun Gae':                '#f97316',
+    'Mandlenkosi Johannes':     '#6b7280',
+    'Emmanuel Nsenga':          '#ec4899',
+    'Prosper Mubata':           '#14b8a6',
+    'Shafwaan Titus':           '#d97706',
+    'Gabby Mullins':            '#be123c',
+  }
+  const FALLBACK = ['#64748b','#0f766e','#7c3aed','#a16207']
+  let fi = 0
+
+  const agents = Object.entries(byOwner)
+    .map(([name, md]) => ({ name, total: Object.values(md).reduce((a,b)=>a+b,0) }))
+    .filter(a => a.total >= 10)
+    .sort((a,b) => b.total - a.total)
+
+  const labels = months.map(m => {
+    const [y,mo] = m.split('-')
+    return `${MO_S[+mo-1]} '${y.slice(2)}`
+  })
+
+  const datasets = agents.map(({name}) => ({
+    label: name.split(' ')[0],
+    data:  months.map(m => byOwner[name][m] || 0),
+    backgroundColor: COLORS[name] || FALLBACK[fi++ % FALLBACK.length],
+    stack: 'all',
+    borderRadius: 2,
+    borderWidth: 0,
+  }))
+
+  if(agentBookingsChart){ agentBookingsChart.destroy(); agentBookingsChart = null }
+  const ctx = document.getElementById('bookings-agent-chart').getContext('2d')
+  agentBookingsChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets },
+    options:{
+      responsive: true,
+      plugins:{
+        legend:{
+          position:'top',
+          labels:{ font:{ size:11 }, boxWidth:12, padding:12 }
+        },
+        tooltip:{
+          callbacks:{
+            title: items => {
+              const mk = months[items[0].dataIndex]
+              const [y,mo] = mk.split('-')
+              return `${MO_S[+mo-1]} ${y}${mk===THIS_MONTH?' (MTD)':''}`
+            },
+            label: item => item.raw > 0 ? ` ${item.dataset.label}: ${item.raw}` : null,
+          }
+        }
+      },
+      scales:{
+        x:{ stacked:true, grid:{ display:false }, ticks:{ font:{ size:11 }, color:'#6b7280' } },
+        y:{ stacked:true, grid:{ color:'#f0f0f0' }, ticks:{ font:{ size:11 }, color:'#6b7280' } }
+      }
+    }
+  })
+}
 </script>
 </body>
 </html>
