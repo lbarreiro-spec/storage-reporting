@@ -746,9 +746,29 @@ const THIS_MONTH = new Date().toISOString().slice(0,7)
 
 async function loadBookings(){
   try{
-    const resp = await fetch('../data/bookings.json')
-    if(!resp.ok) return
-    const data = await resp.json()
+    const { data: rows, error } = await db
+      .from('bookings_monthly')
+      .select('label,total,by_owner,updated_at')
+      .order('label', { ascending: true })
+    if(error || !rows || !rows.length) return
+
+    // Reshape rows → { months, total, by_owner } for the chart functions
+    const months   = rows.map(r => r.label)
+    const total    = Object.fromEntries(rows.map(r => [r.label, r.total]))
+    const by_owner = {}
+    for(const row of rows){
+      for(const [name, count] of Object.entries(row.by_owner || {})){
+        if(!by_owner[name]) by_owner[name] = {}
+        by_owner[name][row.label] = count
+      }
+    }
+    for(const name of Object.keys(by_owner))
+      for(const m of months) by_owner[name][m] = by_owner[name][m] || 0
+
+    const data = {
+      updated: rows[rows.length - 1]?.updated_at?.slice(0, 10) || '',
+      months, total, by_owner,
+    }
     renderTeamBookings(data)
     renderAgentBookings(data)
     document.getElementById('bookings-team-sec').style.display = ''

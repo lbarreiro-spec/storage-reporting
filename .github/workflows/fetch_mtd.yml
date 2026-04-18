@@ -48,12 +48,3 @@ jobs:
       - name: Fetch bookings data
         run: python3 scripts/fetch_bookings.py
         continue-on-error: true
-
-      - name: Commit bookings.json if changed
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/bookings.json
-          git diff --cached --quiet || git commit -m "chore: update bookings.json"
-          git pull --rebase
-          git push
