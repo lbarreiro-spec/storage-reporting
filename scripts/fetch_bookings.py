@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
 """
-Fetch new bookings from Zoho CRM → Supabase (bookings_monthly table).
+Fetch storage bookings + entering data from Zoho CRM → Supabase.
+
+  Bookings : count by Created_Time month  → bookings_monthly
+  Entering : count by Moving_Date month   → entering_monthly
+
+Stage exclusions (both metrics):
+  Cancel, Prospect, Enquiry, Estimate sent, Quoted by Sales
 
 Incremental run (default):
-  - Queries deals modified in the last 48h to detect affected months
-  - Re-fetches only those months + the current month
-  - Fast: typically 1–3 months re-fetched
+  Queries Modified_Time last 48h → re-fetches only affected months per metric
+  + always re-fetches the current month for both.
 
 Full run:
-  - python3 scripts/fetch_bookings.py --full
-  - Fetches every month from Jan 2025 to present
-  - Use once to seed the table, or to force a full re-sync
-
-Booking definition: deal Created_Time month, excluding stages:
-  Cancel, Prospect, Enquiry, Estimate sent, Quoted by Sales
+  python3 scripts/fetch_bookings.py --full
+  Seeds/overwrites all months Jan 2025 → present.
 """
 
 import os, sys, calendar, warnings, requests
@@ -78,15 +79,21 @@ def supa_headers():
     }
 
 
-def get_modified_months(since: date) -> set:
-    """Return set of YYYY-MM strings for months containing deals modified since `since`."""
+def get_modified_months(since: date):
+    """
+    Returns (booked_months, entering_months) — sets of YYYY-MM strings
+    for months that had deal modifications since `since`.
+    Fetches both Created_Time and Moving_Date so each metric gets its
+    own affected month set.
+    """
     start    = since.strftime("%Y-%m-%dT00:00:00+00:00")
     end      = date.today().strftime("%Y-%m-%dT23:59:59+00:00")
     criteria = f"(Modified_Time:between:{start},{end})"
-    affected, page = set(), 1
+    booked, entering = set(), set()
+    page = 1
     while True:
         resp = requests.get(f"{CRM_BASE}/Deals/search", headers=crm_headers(), params={
-            "criteria": criteria, "fields": "Created_Time",
+            "criteria": criteria, "fields": "Created_Time,Moving_Date",
             "per_page": 200, "page": page,
         }, timeout=30)
         if resp.status_code == 204:
@@ -95,24 +102,19 @@ def get_modified_months(since: date) -> set:
         data = resp.json()
         for d in data.get("data", []):
             ct = d.get("Created_Time", "")
+            md = d.get("Moving_Date", "")
             if ct:
-                affected.add(ct[:7])
+                booked.add(ct[:7])
+            if md and len(md) >= 7:
+                entering.add(md[:7])
         if not data.get("info", {}).get("more_records"):
             break
         page += 1
-    return affected
+    return booked, entering
 
 
-def fetch_month(year: int, month: int):
-    """Fetch all deals for a month. Returns (total_count, {owner_name: count})."""
-    today      = date.today()
-    is_current = (year == today.year and month == today.month)
-    last_day   = today.day if is_current else calendar.monthrange(year, month)[1]
-    criteria   = (
-        f"(Created_Time:between:"
-        f"{year}-{month:02d}-01T00:00:00+00:00,"
-        f"{year}-{month:02d}-{last_day:02d}T23:59:59+00:00)"
-    )
+def _fetch_and_count(criteria: str):
+    """Paginate Deals/search for a criteria, return (total, {owner: count})."""
     deals, page = [], 1
     while True:
         resp = requests.get(f"{CRM_BASE}/Deals/search", headers=crm_headers(), params={
@@ -135,23 +137,46 @@ def fetch_month(year: int, month: int):
         owner = d.get("Owner", {})
         name  = owner.get("name", "Unknown") if isinstance(owner, dict) else "Unknown"
         owner_counts[name] += 1
-
     return sum(owner_counts.values()), dict(owner_counts)
 
 
-def upsert(rows: list):
+def fetch_bookings_month(year: int, month: int):
+    """Bookings: filter by Created_Time, cap current month at today."""
+    today    = date.today()
+    last_day = today.day if (year == today.year and month == today.month) \
+               else calendar.monthrange(year, month)[1]
+    criteria = (
+        f"(Created_Time:between:"
+        f"{year}-{month:02d}-01T00:00:00+00:00,"
+        f"{year}-{month:02d}-{last_day:02d}T23:59:59+00:00)"
+    )
+    return _fetch_and_count(criteria)
+
+
+def fetch_entering_month(year: int, month: int):
+    """Entering: filter by Moving_Date, always use full month (future dates included)."""
+    last_day = calendar.monthrange(year, month)[1]
+    criteria = (
+        f"(Moving_Date:between:"
+        f"{year}-{month:02d}-01,"
+        f"{year}-{month:02d}-{last_day:02d})"
+    )
+    return _fetch_and_count(criteria)
+
+
+def upsert(table: str, rows: list):
     if not rows:
         return
     resp = requests.post(
-        f"{SUPA_URL}/rest/v1/bookings_monthly",
+        f"{SUPA_URL}/rest/v1/{table}",
         headers=supa_headers(),
         json=rows,
         timeout=30,
     )
     if resp.status_code not in (200, 201):
-        print(f"  ❌ Supabase error: {resp.status_code} {resp.text[:200]}")
+        print(f"  ❌ Supabase {table}: {resp.status_code} {resp.text[:200]}")
         resp.raise_for_status()
-    print(f"  ✅ Upserted {len(rows)} row(s) → bookings_monthly")
+    print(f"  ✅ Upserted {len(rows)} row(s) → {table}")
 
 
 def month_range(sy, sm, ey, em):
@@ -163,44 +188,59 @@ def month_range(sy, sm, ey, em):
             y += 1
 
 
+def _to_month_list(month_set, start_key, current_key):
+    filtered = {m for m in month_set if start_key <= m <= current_key}
+    filtered.add(current_key)
+    return [(int(m[:4]), int(m[5:])) for m in sorted(filtered)]
+
+
 def main():
     today       = date.today()
     current_key = f"{today.year}-{today.month:02d}"
     start_key   = f"{START[0]}-{START[1]:02d}"
     now_iso     = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    all_months  = list(month_range(*START, today.year, today.month))
 
     if FULL_MODE:
         print("Full mode — fetching all months Jan 2025 → present")
-        months_to_fetch = list(month_range(*START, today.year, today.month))
+        booked_months   = all_months
+        entering_months = all_months
     else:
-        since    = today - timedelta(days=2)
-        print(f"Incremental mode — checking for deal modifications since {since}...")
-        affected = get_modified_months(since)
-        affected = {m for m in affected if start_key <= m <= current_key}
-        affected.add(current_key)
+        since = today - timedelta(days=2)
+        print(f"Incremental mode — checking modifications since {since}...")
+        affected_b, affected_e = get_modified_months(since)
 
-        historical = sorted(affected - {current_key})
-        if historical:
-            print(f"  Modified historical months: {historical}")
-        else:
-            print(f"  No historical modifications detected")
+        historical_b = sorted({m for m in affected_b if start_key <= m < current_key})
+        historical_e = sorted({m for m in affected_e if start_key <= m < current_key})
+        if historical_b: print(f"  Booking months affected:  {historical_b}")
+        if historical_e: print(f"  Entering months affected: {historical_e}")
+        if not historical_b and not historical_e:
+            print("  No historical modifications detected")
 
-        months_to_fetch = [(int(m[:4]), int(m[5:])) for m in sorted(affected)]
+        booked_months   = _to_month_list(affected_b, start_key, current_key)
+        entering_months = _to_month_list(affected_e, start_key, current_key)
 
+    # ── Bookings ────────────────────────────────────────────────────────────
+    print("\nBookings (by Created_Time)...")
     rows = []
-    for year, month in months_to_fetch:
-        key            = f"{year}-{month:02d}"
-        total, by_owner = fetch_month(year, month)
-        rows.append({
-            "label":      key,
-            "total":      total,
-            "by_owner":   by_owner,
-            "updated_at": now_iso,
-        })
-        print(f"  {key}: {total} bookings")
+    for year, month in booked_months:
+        key           = f"{year}-{month:02d}"
+        total, owners = fetch_bookings_month(year, month)
+        rows.append({"label": key, "total": total, "by_owner": owners, "updated_at": now_iso})
+        print(f"  {key}: {total}")
+    upsert("bookings_monthly", rows)
 
-    upsert(rows)
-    print("Done!")
+    # ── Entering ────────────────────────────────────────────────────────────
+    print("\nEntering (by Moving_Date)...")
+    rows = []
+    for year, month in entering_months:
+        key           = f"{year}-{month:02d}"
+        total, owners = fetch_entering_month(year, month)
+        rows.append({"label": key, "total": total, "by_owner": owners, "updated_at": now_iso})
+        print(f"  {key}: {total}")
+    upsert("entering_monthly", rows)
+
+    print("\nDone!")
 
 
 if __name__ == "__main__":
