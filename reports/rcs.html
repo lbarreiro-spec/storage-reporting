@@ -194,6 +194,12 @@ tbody tr.sent td{opacity:.55}
     </div>
   </div>
 
+  <!-- Token prompt (hidden once configured) -->
+  <div id="token-prompt" style="display:none;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:11px 16px;margin-bottom:18px;align-items:center;gap:12px;font-size:13px;color:#92400e;">
+    <span>⚠ GitHub token not set — needed for Get Data and Send.</span>
+    <button onclick="openSettings()" style="background:#1f1f1f;color:#fff;border:none;border-radius:6px;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans);">Set token</button>
+  </div>
+
   <!-- Stats -->
   <div class="stats-row" id="stats-row" style="display:none">
     <div class="stat-pill">Date: <strong id="stat-date">—</strong></div>
@@ -221,8 +227,25 @@ tbody tr.sent td{opacity:.55}
 
 <div class="toast" id="toast"></div>
 
+<!-- Settings gear -->
+<button onclick="openSettings()" title="GitHub token settings" style="position:fixed;bottom:24px;left:244px;width:32px;height:32px;border-radius:50%;background:#fff;border:1px solid #e2e2e2;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;color:#6b7280;transition:border-color .12s;" onmouseover="this.style.borderColor='#1f1f1f'" onmouseout="this.style.borderColor='#e2e2e2'">⚙</button>
+
+<!-- Settings modal -->
+<div id="settings-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;" onclick="if(event.target===this)closeSettings()">
+  <div style="background:#fff;border-radius:14px;padding:28px;width:460px;box-shadow:0 20px 60px rgba(0,0,0,0.15);">
+    <div style="font-size:16px;font-weight:700;color:#111827;margin-bottom:6px">GitHub Token</div>
+    <div style="font-size:13px;color:#6b7280;margin-bottom:18px;line-height:1.6">Required to trigger data fetches and sends. Stored in your browser only — never in the repo.<br>Scope needed: <code style="background:#f4f4f4;padding:1px 5px;border-radius:4px;font-size:12px">workflow</code></div>
+    <input id="settings-input" type="password" placeholder="ghp_..." onkeydown="if(event.key==='Enter')saveToken()"
+      style="width:100%;border:1px solid #d1d5db;border-radius:8px;padding:9px 12px;font-family:var(--mono);font-size:13px;outline:none;margin-bottom:14px;"
+      onfocus="this.style.borderColor='#1f1f1f'" onblur="this.style.borderColor='#d1d5db'">
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button onclick="closeSettings()" style="background:#fff;border:1px solid #e2e2e2;border-radius:7px;padding:7px 16px;font-size:13px;font-family:var(--sans);cursor:pointer;color:#6b7280">Cancel</button>
+      <button onclick="saveToken()" style="background:#1f1f1f;color:#fff;border:none;border-radius:7px;padding:7px 18px;font-size:13px;font-weight:600;font-family:var(--sans);cursor:pointer">Save</button>
+    </div>
+  </div>
+</div>
+
 <script>
-const GH_PAT         = '***REDACTED-LEAKED-PAT***';
 const GH_REPO        = 'Robbosd/storage-reporting';
 const FETCH_WORKFLOW = 'fetch_rcs_jobs.yml';
 const SEND_WORKFLOW  = 'send_rcs_messages.yml';
@@ -232,15 +255,41 @@ const TEMPLATES      = ['Collection', 'Redelivery', 'Disposal'];
 let jobs = [];   // in-memory state — tracks template changes and exclusions
 let pollTimer;
 
+// ─── TOKEN ───────────────────────────────────────────────────────────────────
+
+function getToken() { return localStorage.getItem('rcs_gh_pat') || ''; }
+
+function saveToken() {
+  const val = document.getElementById('settings-input').value.trim();
+  if (!val) return;
+  localStorage.setItem('rcs_gh_pat', val);
+  closeSettings();
+  document.getElementById('token-prompt').style.display = 'none';
+  toast('GitHub token saved');
+}
+
+function openSettings() {
+  const m = document.getElementById('settings-modal');
+  m.style.display = 'flex';
+  document.getElementById('settings-input').value = getToken();
+  setTimeout(() => document.getElementById('settings-input').focus(), 50);
+}
+
+function closeSettings() {
+  document.getElementById('settings-modal').style.display = 'none';
+}
+
 // ─── GITHUB API ──────────────────────────────────────────────────────────────
 
 async function triggerWorkflow(workflow, inputs = {}) {
+  const pat = getToken();
+  if (!pat) { openSettings(); return false; }
   const r = await fetch(
     `https://api.github.com/repos/${GH_REPO}/actions/workflows/${workflow}/dispatches`,
     {
       method: 'POST',
       headers: {
-        Authorization: `token ${GH_PAT}`,
+        Authorization: `token ${pat}`,
         Accept: 'application/vnd.github.v3+json',
         'Content-Type': 'application/json',
       },
@@ -308,7 +357,7 @@ async function getFileSha() {
   try {
     const r = await fetch(
       `https://api.github.com/repos/${GH_REPO}/contents/data/rcs_today.json`,
-      { headers: { Authorization: `token ${GH_PAT}` } }
+      { headers: { Authorization: `token ${getToken()}` } }
     );
     if (!r.ok) return null;
     const d = await r.json();
@@ -398,7 +447,7 @@ async function pollWorkflowRun(workflow, onComplete) {
     try {
       const r = await fetch(
         `https://api.github.com/repos/${GH_REPO}/actions/workflows/${workflow}/runs?per_page=1`,
-        { headers: { Authorization: `token ${GH_PAT}` } }
+        { headers: { Authorization: `token ${getToken()}` } }
       );
       const d = await r.json();
       const run = d.workflow_runs?.[0];
@@ -545,8 +594,12 @@ function esc(s) {
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
 
-// On load: check if we already have today's data and show it
 (async () => {
+  // Show token prompt if not configured
+  if (!getToken()) {
+    document.getElementById('token-prompt').style.display = 'flex';
+  }
+  // Load any existing today's data
   const data = await loadJson();
   if (data && data.job_date === todayStr() && data.jobs?.length) {
     applyData(data);
