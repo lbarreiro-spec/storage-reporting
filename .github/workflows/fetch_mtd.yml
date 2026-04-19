@@ -38,6 +38,7 @@ jobs:
           ZOHO_CLIENT_ID=${{ secrets.ZOHO_CLIENT_ID }}
           ZOHO_CLIENT_SECRET=${{ secrets.ZOHO_CLIENT_SECRET }}
           ZOHO_REFRESH_TOKEN=${{ secrets.ZOHO_REFRESH_TOKEN }}
+          ZOHO_BOOKS_REFRESH_TOKEN=${{ secrets.ZOHO_BOOKS_REFRESH_TOKEN }}
           ZOHO_BOOKS_ORG_ID=${{ secrets.ZOHO_BOOKS_ORG_ID }}
           ZOHO_REGION=eu
           EOF
