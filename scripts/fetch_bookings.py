@@ -228,8 +228,8 @@ def fetch_app_books_revenue(year: int, month: int):
         for attempt in range(4):
             resp = requests.get(f"{BOOKS_BASE}/invoices", headers=books_headers(), params={
                 "organization_id": BOOKS_ORG_ID,
-                "date_after":  f"{year}-{month:02d}-01",
-                "date_before": f"{year}-{month:02d}-{last_day:02d}",
+                "date_start": f"{year}-{month:02d}-01",
+                "date_end":   f"{year}-{month:02d}-{last_day:02d}",
                 "per_page": 200, "page": page,
             }, timeout=30)
             if resp.status_code == 429:
