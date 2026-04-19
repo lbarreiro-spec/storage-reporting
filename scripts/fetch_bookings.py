@@ -234,9 +234,9 @@ def main():
     print("\nEntering (by Moving_Date)...")
     rows = []
     for year, month in entering_months:
-        key           = f"{year}-{month:02d}"
-        total, owners = fetch_entering_month(year, month)
-        rows.append({"label": key, "total": total, "by_owner": owners, "updated_at": now_iso})
+        key          = f"{year}-{month:02d}"
+        total, _     = fetch_entering_month(year, month)
+        rows.append({"label": key, "total": total, "updated_at": now_iso})
         print(f"  {key}: {total}")
     upsert("entering_monthly", rows)
 

@@ -237,12 +237,6 @@ tr.current-month td:first-child{color:#1f1f1f;font-weight:700}
   <div class="chart-caption" id="entering-caption"></div>
 </div>
 
-<!-- ENTERING: BY AGENT -->
-<div class="sec" id="entering-agent-sec" style="display:none">
-  <div class="sec-lbl">Customers entering storage — by agent</div>
-  <canvas id="entering-agent-chart" height="85"></canvas>
-</div>
-
 <!-- HISTORY -->
 <div class="sec">
   <div class="sec-lbl">Monthly history</div>
@@ -774,7 +768,7 @@ const AGENT_FALLBACK = ['#64748b','#0f766e','#7c3aed','#a16207']
 
 // Chart instances
 let teamBookingsChart = null, agentBookingsChart = null
-let teamEnteringChart = null, agentEnteringChart = null
+let teamEnteringChart = null
 
 async function _loadFromSupabase(table){
   const { data: rows, error } = await db
@@ -815,10 +809,7 @@ async function loadEntering(){
     if(!data) return
     renderTeamChart(data, 'entering-team-chart', 'entering-caption', 'customers entering', teamEnteringChart,
       c => { teamEnteringChart = c })
-    renderAgentChart(data, 'entering-agent-chart', agentEnteringChart,
-      c => { agentEnteringChart = c })
     document.getElementById('entering-team-sec').style.display = ''
-    document.getElementById('entering-agent-sec').style.display = ''
   }catch(e){ console.warn('Entering data unavailable:', e) }
 }
 
