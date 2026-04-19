@@ -1,25 +1,29 @@
 #!/usr/bin/env python3
 """
-Fetch storage bookings + entering data from Zoho CRM → Supabase.
+Fetch storage bookings, entering, and APP data from Zoho CRM + Books → Supabase.
 
-  Bookings : count by Created_Time month  → bookings_monthly
-  Entering : count by Moving_Date month   → entering_monthly
+  Bookings : count by Created_Time month        → bookings_monthly
+  Entering : count by Moving_Date month         → entering_monthly
+  APP      : CRM count (Did_the_customer_take_APP=Yes) by Created_Time month
+             + Books "AnyVan Protection Plus Cover" revenue for current month
+                                                → app_monthly
 
-Stage exclusions (both metrics):
+Stage exclusions (all CRM metrics):
   Cancel, Prospect, Enquiry, Estimate sent, Quoted by Sales
 
 Incremental run (default):
   Queries Modified_Time last 48h → re-fetches only affected months per metric
-  + always re-fetches the current month for both.
+  + always re-fetches the current month for all metrics.
 
 Full run:
   python3 scripts/fetch_bookings.py --full
   Seeds/overwrites all months Jan 2025 → present.
 """
 
-import os, sys, calendar, warnings, requests
+import os, sys, calendar, warnings, requests, time
 warnings.filterwarnings("ignore")
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -27,6 +31,8 @@ START          = (2025, 1)
 EXCLUDE_STAGES = {"Cancel", "Prospect", "Enquiry", "Estimate sent", "Quoted by Sales"}
 AUTH_URL       = "https://accounts.zoho.eu/oauth/v2/token"
 CRM_BASE       = "https://www.zohoapis.eu/crm/v3"
+BOOKS_BASE     = "https://www.zohoapis.eu/books/v3"
+BOOKS_ORG_ID   = "[ZOHO_ORG_ID_REMOVED]"
 SUPA_URL       = "[SUPABASE_URL_REMOVED]"
 SUPA_KEY       = "[SUPABASE_ANON_KEY_REMOVED]"
 FULL_MODE      = "--full" in sys.argv
@@ -46,11 +52,13 @@ def _load_kvfile(path):
 _load_kvfile(Path(__file__).parent.parent / ".env")
 _load_kvfile(Path.home() / ".anyvan" / "config.txt")
 
-CLIENT_ID     = os.environ["ZOHO_CLIENT_ID"]
-CLIENT_SECRET = os.environ["ZOHO_CLIENT_SECRET"]
-REFRESH_TOKEN = os.getenv("ZOHO_CRM_REFRESH_TOKEN") or os.environ["ZOHO_REFRESH_TOKEN"]
+CLIENT_ID          = os.environ["ZOHO_CLIENT_ID"]
+CLIENT_SECRET      = os.environ["ZOHO_CLIENT_SECRET"]
+REFRESH_TOKEN      = os.getenv("ZOHO_CRM_REFRESH_TOKEN") or os.environ["ZOHO_REFRESH_TOKEN"]
+BOOKS_REFRESH_TOKEN = os.getenv("ZOHO_BOOKS_REFRESH_TOKEN") or REFRESH_TOKEN
 
-_crm_token = None
+_crm_token   = None
+_books_token = None
 
 
 def crm_token():
@@ -66,8 +74,25 @@ def crm_token():
     return _crm_token
 
 
+def books_token():
+    global _books_token
+    if _books_token:
+        return _books_token
+    r = requests.post(AUTH_URL, params={
+        "refresh_token": BOOKS_REFRESH_TOKEN, "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET, "grant_type": "refresh_token",
+    }, timeout=30)
+    r.raise_for_status()
+    _books_token = r.json()["access_token"]
+    return _books_token
+
+
 def crm_headers():
     return {"Authorization": f"Zoho-oauthtoken {crm_token()}"}
+
+
+def books_headers():
+    return {"Authorization": f"Zoho-oauthtoken {books_token()}"}
 
 
 def supa_headers():
@@ -164,6 +189,89 @@ def fetch_entering_month(year: int, month: int):
     return _fetch_and_count(criteria)
 
 
+def fetch_app_crm_month(year: int, month: int):
+    """APP CRM count: deals with Did_the_customer_take_APP=Yes, by Created_Time month."""
+    today    = date.today()
+    last_day = today.day if (year == today.year and month == today.month) \
+               else calendar.monthrange(year, month)[1]
+    criteria = (
+        f"(Created_Time:between:"
+        f"{year}-{month:02d}-01T00:00:00+00:00,"
+        f"{year}-{month:02d}-{last_day:02d}T23:59:59+00:00)"
+        f"and(Did_the_customer_take_APP:equals:Yes)"
+    )
+    deals, page = [], 1
+    while True:
+        resp = requests.get(f"{CRM_BASE}/Deals/search", headers=crm_headers(), params={
+            "criteria": criteria, "fields": "Stage",
+            "per_page": 200, "page": page,
+        }, timeout=30)
+        if resp.status_code == 204:
+            break
+        resp.raise_for_status()
+        data = resp.json()
+        deals.extend(data.get("data", []))
+        if not data.get("info", {}).get("more_records"):
+            break
+        page += 1
+    return sum(1 for d in deals if d.get("Stage") not in EXCLUDE_STAGES)
+
+
+def fetch_app_books_revenue(year: int, month: int):
+    """Scan Books invoices for the month, sum AnyVan Protection Plus Cover lines (ex-VAT)."""
+    last_day  = calendar.monthrange(year, month)[1]
+    date_from = f"{year}-{month:02d}-01"
+    date_to   = f"{year}-{month:02d}-{last_day:02d}"
+
+    invoice_ids, page = [], 1
+    while True:
+        for attempt in range(4):
+            resp = requests.get(f"{BOOKS_BASE}/invoices", headers=books_headers(), params={
+                "organization_id": BOOKS_ORG_ID,
+                "date_after":  f"{year}-{month:02d}-01",
+                "date_before": f"{year}-{month:02d}-{last_day:02d}",
+                "per_page": 200, "page": page,
+            }, timeout=30)
+            if resp.status_code == 429:
+                time.sleep(2 ** attempt)
+                continue
+            resp.raise_for_status()
+            break
+        data = resp.json()
+        for inv in data.get("invoices", []):
+            invoice_ids.append(inv["invoice_id"])
+        if not data.get("page_context", {}).get("has_more_page"):
+            break
+        page += 1
+
+    if not invoice_ids:
+        return 0.0
+
+    total_inc_vat = 0.0
+
+    def _fetch_detail(inv_id):
+        for attempt in range(4):
+            r = requests.get(f"{BOOKS_BASE}/invoices/{inv_id}", headers=books_headers(), params={
+                "organization_id": BOOKS_ORG_ID,
+            }, timeout=30)
+            if r.status_code == 429:
+                time.sleep(2 ** attempt)
+                continue
+            r.raise_for_status()
+            return r.json().get("invoice", {}).get("line_items", [])
+        return []
+
+    with ThreadPoolExecutor(max_workers=5) as ex:
+        futures = {ex.submit(_fetch_detail, i): i for i in invoice_ids}
+        for fut in as_completed(futures):
+            for li in fut.result():
+                name = li.get("name", "") or li.get("description", "")
+                if "AnyVan Protection Plus" in name:
+                    total_inc_vat += float(li.get("item_total", 0) or 0)
+
+    return round(total_inc_vat / 1.2, 2)
+
+
 def upsert(table: str, rows: list):
     if not rows:
         return
@@ -239,6 +347,15 @@ def main():
         rows.append({"label": key, "total": total, "updated_at": now_iso})
         print(f"  {key}: {total}")
     upsert("entering_monthly", rows)
+
+    # ── APP ─────────────────────────────────────────────────────────────────
+    # APP only went live Apr 2026 — only ever fetch current month
+    print("\nAPP (Did_the_customer_take_APP=Yes + Books revenue)...")
+    crm_count = fetch_app_crm_month(today.year, today.month)
+    revenue   = fetch_app_books_revenue(today.year, today.month)
+    print(f"  {current_key}: CRM={crm_count}  Books=£{revenue}")
+    upsert("app_monthly", [{"label": current_key, "crm_count": crm_count,
+                            "books_revenue": revenue, "updated_at": now_iso}])
 
     print("\nDone!")
 

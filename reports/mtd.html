@@ -237,6 +237,14 @@ tr.current-month td:first-child{color:#1f1f1f;font-weight:700}
   <div class="chart-caption" id="entering-caption"></div>
 </div>
 
+<!-- APP: STATS + CHART -->
+<div class="sec" id="app-sec" style="display:none">
+  <div class="sec-lbl">AnyVan Protection Plus (APP)</div>
+  <div class="stat-row" id="app-stats" style="margin-bottom:14px"></div>
+  <canvas id="app-chart" height="85"></canvas>
+  <div class="chart-caption" id="app-caption"></div>
+</div>
+
 <!-- HISTORY -->
 <div class="sec">
   <div class="sec-lbl">Monthly history</div>
@@ -744,8 +752,9 @@ async function triggerRefresh(){
 loadAll()
 loadBookings()
 loadEntering()
+loadApp()
 
-// ── BOOKINGS + ENTERING ─────────────────────────────────────────────────────
+// ── BOOKINGS + ENTERING + APP ───────────────────────────────────────────────
 
 const MO_S      = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 const THIS_MONTH = new Date().toISOString().slice(0,7)
@@ -769,6 +778,7 @@ const AGENT_FALLBACK = ['#64748b','#0f766e','#7c3aed','#a16207']
 // Chart instances
 let teamBookingsChart = null, agentBookingsChart = null
 let teamEnteringChart = null
+let appChart = null
 
 async function _loadFromSupabase(table){
   const { data: rows, error } = await db
@@ -811,6 +821,48 @@ async function loadEntering(){
       c => { teamEnteringChart = c })
     document.getElementById('entering-team-sec').style.display = ''
   }catch(e){ console.warn('Entering data unavailable:', e) }
+}
+
+async function loadApp(){
+  try{
+    const { data: rows, error } = await db
+      .from('app_monthly')
+      .select('label,crm_count,books_revenue,updated_at')
+      .order('label', { ascending: true })
+    if(error || !rows || !rows.length) return
+
+    const months   = rows.map(r => r.label)
+    const counts   = Object.fromEntries(rows.map(r => [r.label, r.crm_count || 0]))
+    const revenues = Object.fromEntries(rows.map(r => [r.label, r.books_revenue]))
+    const updated  = rows[rows.length-1]?.updated_at?.slice(0,10) || ''
+
+    // Stat cards for current month
+    const cur = months[months.length-1]
+    const curCount = counts[cur] || 0
+    const curRev   = revenues[cur]
+    const fmtRev   = v => v != null ? '£'+Number(v).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—'
+    document.getElementById('app-stats').innerHTML = `
+      <div class="stat" style="grid-column:span 2">
+        <div class="stat-lbl">APP taken (CRM deals)</div>
+        <div class="stat-val">${curCount}</div>
+        <div class="stat-sub">${MO_S[+cur.slice(5)-1]} ${cur.slice(0,4)} MTD</div>
+      </div>
+      <div class="stat" style="grid-column:span 3">
+        <div class="stat-lbl">APP revenue (Books, ex-VAT)</div>
+        <div class="stat-val">${fmtRev(curRev)}</div>
+        <div class="stat-sub">${MO_S[+cur.slice(5)-1]} ${cur.slice(0,4)} MTD</div>
+      </div>`
+
+    // Bar chart — CRM count per month
+    const chartData = {
+      months,
+      total: counts,
+      by_owner: {},
+      updated,
+    }
+    renderTeamChart(chartData, 'app-chart', 'app-caption', 'APP taken', appChart, c => { appChart = c })
+    document.getElementById('app-sec').style.display = ''
+  }catch(e){ console.warn('APP data unavailable:', e) }
 }
 
 function renderTeamChart(data, canvasId, captionId, unit, existingChart, setChart){
