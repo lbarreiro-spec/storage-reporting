@@ -66,7 +66,7 @@ def main():
         account=SNOWFLAKE_ACCOUNT,
         user=SNOWFLAKE_USER,
         token=get_snowflake_token(),
-        authenticator="oauth",
+        authenticator="programmatic_access_token",
         warehouse=SNOWFLAKE_WH,
         role=SNOWFLAKE_ROLE,
     )
