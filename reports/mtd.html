@@ -381,7 +381,7 @@ function renderAll(){
   renderDailyChart(isLatest)
   renderCombined(m, t, isLatest)
   renderYoy(m, isLatest)
-  renderTransport(t)
+  renderTransport(t, isLatest)
   renderSqftFees(m, f)
   renderHistory()
 }
@@ -663,17 +663,38 @@ function renderYoy(m, isLatest){
     </div>`
 }
 
-function renderTransport(t){
+function renderTransport(t, isLatest){
   const totalJobs      = (t.coll_jobs      || 0) + (t.redel_jobs      || 0)
   const totalCompleted = (t.coll_completed || 0) + (t.redel_completed || 0)
-  const totalFee       = ((t.coll_av_fee   || 0) + (t.redel_av_fee   || 0))
+  const totalFee       = (t.coll_av_fee    || 0) + (t.redel_av_fee    || 0)
+  const y = (isLatest && YOY) ? YOY : null
+  const pyTotalFee = y ? ((y.coll_av_fee_prior_year||0) + (y.redel_av_fee_prior_year||0)) : null
+
   document.getElementById('transport-section').innerHTML = `
     <div class="t-card">
       <div class="t-row"><span class="t-lbl">Total jobs</span><span class="t-val">${fmtN(totalJobs)}</span></div>
       <div class="t-row"><span class="t-lbl">Completed jobs</span><span class="t-val">${fmtN(totalCompleted)}</span></div>
-      <div class="t-row"><span class="t-lbl">AV fee (combined)</span><span class="t-val">${fmt(totalFee)}</span></div>
-      <div class="t-row"><span class="t-lbl">Collections — jobs / fee</span><span class="t-val">${fmtN(t.coll_jobs)} · ${fmt(t.coll_av_fee)}</span></div>
-      <div class="t-row"><span class="t-lbl">Redeliveries — jobs / fee</span><span class="t-val">${fmtN(t.redel_jobs)} · ${fmt(t.redel_av_fee)}</span></div>
+      <div class="t-row">
+        <span class="t-lbl">AV fee (combined)</span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="t-val">${fmt(totalFee)}</span>
+          ${y ? `<span style="font-size:13px;color:#6b7280">vs ${fmt(pyTotalFee)}</span>${yoyBadge(yoyCalc(totalFee, pyTotalFee))}` : ''}
+        </div>
+      </div>
+      <div class="t-row">
+        <span class="t-lbl">Collections — jobs / fee</span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="t-val">${fmtN(t.coll_jobs)} · ${fmt(t.coll_av_fee)}</span>
+          ${y ? `<span style="font-size:13px;color:#6b7280">vs ${fmt(y.coll_av_fee_prior_year)}</span>${yoyBadge(y.coll_yoy_pct)}` : ''}
+        </div>
+      </div>
+      <div class="t-row">
+        <span class="t-lbl">Redeliveries — jobs / fee</span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="t-val">${fmtN(t.redel_jobs)} · ${fmt(t.redel_av_fee)}</span>
+          ${y ? `<span style="font-size:13px;color:#6b7280">vs ${fmt(y.redel_av_fee_prior_year)}</span>${yoyBadge(y.redel_yoy_pct)}` : ''}
+        </div>
+      </div>
     </div>`
 }
 
