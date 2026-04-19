@@ -22,6 +22,8 @@ SELECT
     EL.LISTING_PICK_UP_DATE,
     EL.TP_FULL_NAME,
     EL.LISTING_CHOSEN_PROVIDER_NICKNAME,
+    EL.CUSTOMER_FULL_NAME,
+    EL.CUSTOMER_EMAIL_ADDRESS,
     TP.PHONE_NUMBER,
     CASE
         WHEN EL.STORAGE_COLLECTION_DEAL_ID IS NOT NULL
@@ -85,12 +87,14 @@ def main():
         r = dict(zip(cols, row))
         job_type = r.get('JOB_TYPE') or 'Unknown'
         jobs.append({
-            'listing_id':   str(r['LISTING_ID']),
-            'tp_full_name': r.get('TP_FULL_NAME') or '',
-            'nickname':     r.get('LISTING_CHOSEN_PROVIDER_NICKNAME') or '',
-            'phone_number': r.get('PHONE_NUMBER') or '',
-            'job_type':     job_type,
-            'template':     TEMPLATES.get(job_type, ''),
+            'listing_id':     str(r['LISTING_ID']),
+            'tp_full_name':   r.get('TP_FULL_NAME') or '',
+            'nickname':       r.get('LISTING_CHOSEN_PROVIDER_NICKNAME') or '',
+            'customer_name':  r.get('CUSTOMER_FULL_NAME') or '',
+            'customer_email': r.get('CUSTOMER_EMAIL_ADDRESS') or '',
+            'phone_number':   r.get('PHONE_NUMBER') or '',
+            'job_type':       job_type,
+            'template':       TEMPLATES.get(job_type, ''),
         })
 
     output = {

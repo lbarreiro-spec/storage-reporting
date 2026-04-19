@@ -506,6 +506,9 @@ function renderTable() {
       <td><strong>${esc(j.tp_full_name || j.nickname || '—')}</strong></td>
       <td style="font-family:var(--mono);color:#6b7280">${maskPhone(j.phone_number)}</td>
       <td><span class="badge ${badgeCls}">${esc(j.job_type)}</span></td>
+      <td style="font-family:var(--mono);font-size:12px;color:#6b7280">${esc(j.listing_id)}</td>
+      <td>${esc(j.customer_name || '—')}</td>
+      <td style="font-size:12px;color:#6b7280">${esc(j.customer_email || '—')}</td>
       <td>
         <select class="tpl-select" ${canEdit ? '' : 'disabled'}
           onchange="changeTemplate('${j.listing_id}', this.value)">
@@ -522,6 +525,7 @@ function renderTable() {
     <table>
       <thead><tr>
         <th>Driver</th><th>Phone</th><th>Job Type</th>
+        <th>Listing ID</th><th>Customer</th><th>Email</th>
         <th>Template</th><th>Message Preview</th><th>Status</th>
         <th style="text-align:right">Actions</th>
       </tr></thead>
