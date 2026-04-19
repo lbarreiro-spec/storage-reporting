@@ -842,11 +842,17 @@ async function loadApp(){
     const curCount = counts[cur] || 0
     const curRev   = revenues[cur]
     const fmtRev   = v => v != null ? '£'+Number(v).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—'
+
+    // Fetch current month bookings total for CR%
+    const { data: bRows } = await db.from('bookings_monthly').select('total').eq('label', cur).limit(1)
+    const totalBookings = bRows?.[0]?.total || 0
+    const cr = totalBookings > 0 ? (curCount / totalBookings * 100).toFixed(1) : null
+
     document.getElementById('app-stats').innerHTML = `
       <div class="stat" style="grid-column:span 2">
         <div class="stat-lbl">APP booked in month (CRM)</div>
         <div class="stat-val">${curCount}</div>
-        <div class="stat-sub">${MO_S[+cur.slice(5)-1]} ${cur.slice(0,4)} MTD</div>
+        <div class="stat-sub">${MO_S[+cur.slice(5)-1]} ${cur.slice(0,4)} MTD${cr != null ? ` · <strong>${cr}% CR</strong> of bookings` : ''}</div>
       </div>
       <div class="stat" style="grid-column:span 3">
         <div class="stat-lbl">APP revenue (Books, ex-VAT)</div>
