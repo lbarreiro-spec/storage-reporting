@@ -1,0 +1,31 @@
+name: Fetch RCS Jobs
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 8 * * *'  # 8am UTC (9am BST / 8am GMT)
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests snowflake-connector-python
+
+      - name: Write Snowflake config
+        run: |
+          mkdir -p ~/.snowflake
+          cat > ~/.snowflake/connections.toml << 'EOF'
+          [connections.default]
+          token = "${{ secrets.SNOWFLAKE_PAT }}"
+          EOF
+
+      - name: Fetch jobs
+        run: python3 scripts/fetch_rcs_jobs.py

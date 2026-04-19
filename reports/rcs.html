@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RCS Driver Messaging — AnyVan Storage</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --mono:'SF Mono','Menlo','Monaco',monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
+}
+html,body{height:100%;overflow:hidden}
+body{display:flex;height:100%;font-family:var(--sans);background:#f6f7ed}
+
+/* SIDEBAR */
+.sidebar{
+  width:220px;min-width:220px;background:#1f1f1f;
+  display:flex;flex-direction:column;
+  padding:24px 0;flex-shrink:0;height:100%;overflow-y:auto;
+}
+.sidebar-brand{padding:0 24px 28px}
+.sidebar-label{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.5);margin-bottom:4px}
+.sidebar-title{font-size:16px;font-weight:600;color:#fff}
+.nav-link{
+  display:block;padding:10px 24px;font-size:13px;color:rgba(255,255,255,0.65);
+  text-decoration:none;transition:color .12s,background .12s;border-left:3px solid transparent;
+}
+.nav-link:hover{color:rgba(255,255,255,0.85)}
+.nav-link.active{color:#fff;border-left-color:#fff;background:rgba(255,255,255,0.06)}
+.sidebar-bottom{margin-top:auto;padding:16px 24px;border-top:1px solid rgba(255,255,255,0.08)}
+.sidebar-home{font-size:13px;color:rgba(255,255,255,0.65);text-decoration:none;transition:color .12s}
+.sidebar-home:hover{color:#fff}
+
+/* MAIN */
+.main{padding:32px 40px;flex:1;overflow-y:auto}
+
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px}
+.ph-lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#6b7280;margin-bottom:6px}
+.ph-title{font-size:24px;font-weight:700;color:#111827}
+.ph-sub{font-size:13px;color:#6b7280;margin-top:4px;font-family:var(--mono)}
+
+.actions{display:flex;gap:10px;align-items:center;flex-shrink:0;padding-top:4px}
+
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  border-radius:8px;font-family:var(--sans);font-size:13px;font-weight:600;
+  padding:8px 18px;cursor:pointer;transition:all .12s;border:none;
+}
+.btn-primary{background:#1f1f1f;color:#fff}
+.btn-primary:hover:not(:disabled){background:#333}
+.btn-primary:disabled{opacity:.45;cursor:default}
+.btn-send{background:#16a34a;color:#fff}
+.btn-send:hover:not(:disabled){background:#15803d}
+.btn-send:disabled{opacity:.45;cursor:default}
+.btn-ghost{background:#fff;border:1px solid #e2e2e2;color:#374151}
+.btn-ghost:hover:not(:disabled){border-color:#1f1f1f;color:#111827}
+.btn-ghost:disabled{opacity:.45;cursor:default}
+
+/* TOKEN BANNER */
+.token-bar{
+  background:#fffbeb;border:1px solid #fde68a;border-radius:10px;
+  padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:12px;
+  font-size:13px;color:#92400e;
+}
+.token-bar.ok{background:#f0fdf4;border-color:#bbf7d0;color:#14532d}
+.token-bar input{
+  flex:1;border:1px solid #d1d5db;border-radius:6px;padding:5px 10px;
+  font-family:var(--mono);font-size:12px;outline:none;
+  background:#fff;color:#111827;
+}
+.token-bar input:focus{border-color:#1f1f1f}
+.token-save{
+  background:#1f1f1f;color:#fff;border:none;border-radius:6px;
+  padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;
+  font-family:var(--sans);
+}
+.token-clear{
+  background:none;border:none;font-size:12px;color:#92400e;
+  cursor:pointer;text-decoration:underline;font-family:var(--sans);
+}
+.token-clear.ok{color:#14532d}
+
+/* STATS ROW */
+.stats-row{display:flex;gap:12px;margin-bottom:20px}
+.stat-pill{
+  background:#fff;border:1px solid #e2e2e2;border-radius:8px;
+  padding:10px 16px;font-size:13px;color:#6b7280;
+}
+.stat-pill strong{color:#111827;font-weight:600}
+
+/* SECTION */
+.sec{
+  background:#fff;border:1px solid #e2e2e2;border-radius:12px;
+  box-shadow:0 1px 3px rgba(0,0,0,0.06);
+}
+.sec-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 20px;border-bottom:1px solid #e2e2e2;
+}
+.sec-lbl{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#6b7280;font-weight:600}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead th{
+  background:#f9fafb;color:#6b7280;font-size:11px;text-transform:uppercase;
+  letter-spacing:.08em;padding:10px 16px;border-bottom:1px solid #e2e2e2;
+  font-weight:600;white-space:nowrap;text-align:left;
+}
+thead th:last-child{text-align:right}
+tbody td{
+  font-size:13px;padding:11px 16px;
+  border-bottom:1px solid #f0f0f0;color:#374151;
+  background:#fff;vertical-align:middle;
+}
+tbody tr:hover td{background:#fafafa}
+tbody tr.excluded td{opacity:.4;text-decoration:line-through}
+tbody tr.sent td{opacity:.6}
+
+/* JOB TYPE BADGES */
+.badge{
+  display:inline-block;font-size:11px;font-weight:600;
+  padding:2px 8px;border-radius:5px;letter-spacing:.04em;white-space:nowrap;
+}
+.badge-collection{background:#dbeafe;color:#1d4ed8}
+.badge-redelivery{background:#fef3c7;color:#b45309}
+.badge-disposal{background:#fee2e2;color:#b91c1c}
+.badge-unknown{background:#f3f4f6;color:#6b7280}
+
+/* STATUS BADGES */
+.status{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500}
+.status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.s-ready .status-dot{background:#16a34a}
+.s-ready{color:#166534}
+.s-sending .status-dot{background:#f59e0b;animation:pulse 1.2s ease-in-out infinite}
+.s-sending{color:#92400e}
+.s-sent .status-dot{background:#3b82f6}
+.s-sent{color:#1d4ed8}
+.s-excluded .status-dot{background:#d1d5db}
+.s-excluded{color:#9ca3af}
+.s-nophone .status-dot{background:#ef4444}
+.s-nophone{color:#b91c1c}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* TEMPLATE SELECT */
+.tpl-select{
+  border:1px solid #e2e2e2;border-radius:6px;padding:5px 8px;
+  font-family:var(--sans);font-size:12px;color:#111827;
+  background:#fff;outline:none;cursor:pointer;
+  transition:border-color .12s;
+}
+.tpl-select:focus,.tpl-select:hover{border-color:#6b7280}
+.tpl-select:disabled{opacity:.5;cursor:default}
+
+/* ROW ACTION BUTTONS */
+.row-btn{
+  border:none;border-radius:6px;font-family:var(--sans);
+  font-size:12px;font-weight:600;padding:5px 12px;cursor:pointer;
+  transition:all .12s;
+}
+.row-send{background:#16a34a;color:#fff}
+.row-send:hover:not(:disabled){background:#15803d}
+.row-send:disabled{opacity:.45;cursor:default}
+.row-remove{background:#fff;border:1px solid #e2e2e2;color:#ef4444}
+.row-remove:hover:not(:disabled){background:#fef2f2;border-color:#ef4444}
+.row-remove:disabled{opacity:.45;cursor:default}
+.row-restore{background:#fff;border:1px solid #e2e2e2;color:#6b7280;font-size:11px}
+.row-restore:hover{border-color:#6b7280;color:#374151}
+
+.row-actions{display:flex;gap:6px;justify-content:flex-end}
+
+/* EMPTY / LOADING */
+.empty{padding:60px 20px;text-align:center;color:#9ca3af;font-size:14px}
+.empty-icon{font-size:32px;margin-bottom:12px}
+.loading{padding:60px 20px;text-align:center;color:#6b7280;font-size:14px}
+
+.spin{display:inline-block;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* TOAST */
+.toast{
+  position:fixed;bottom:24px;right:24px;
+  background:#1f1f1f;color:#fff;border-radius:10px;
+  padding:12px 20px;font-size:13px;font-weight:500;
+  opacity:0;transform:translateY(8px);transition:all .2s;
+  pointer-events:none;z-index:999;
+}
+.toast.show{opacity:1;transform:translateY(0)}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#e2e2e2;border-radius:2px}
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-label">AnyVan Storage</div>
+    <div class="sidebar-title">Reporting</div>
+  </div>
+  <a class="nav-link" href="mtd.html">MTD Revenue</a>
+  <a class="nav-link" href="monthly.html">Monthly Trends</a>
+  <a class="nav-link" href="weekly.html">Weekly Revenue</a>
+  <a class="nav-link" href="daily.html">Daily Activity</a>
+  <a class="nav-link" href="voice.html">Voice Activity</a>
+  <a class="nav-link" href="whatsapp.html">WhatsApp</a>
+  <a class="nav-link" href="freshdesk.html">Freshdesk</a>
+  <a class="nav-link" href="csat.html">CSAT &amp; NPS</a>
+  <a class="nav-link" href="debt.html">Debt Intelligence</a>
+  <a class="nav-link" href="clearpass.html">Supplier Invoice Automation</a>
+  <a class="nav-link active" href="rcs.html">RCS Driver Messaging</a>
+  <div class="sidebar-bottom">
+    <a class="sidebar-home" href="../index.html">← Home</a>
+  </div>
+</nav>
+
+<div class="main">
+
+  <div class="topbar">
+    <div>
+      <div class="ph-lbl">Storage Ops</div>
+      <div class="ph-title">RCS Driver Messaging</div>
+      <div class="ph-sub" id="ph-sub">Morning briefing for today's Storage jobs</div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-ghost" id="btn-get" onclick="getJobs()">
+        <span id="get-icon">↓</span> Get Data
+      </button>
+      <button class="btn btn-send" id="btn-send-all" onclick="sendAll()" disabled>
+        <span id="send-icon">✉</span> Send All
+      </button>
+    </div>
+  </div>
+
+  <!-- GitHub Token Bar -->
+  <div class="token-bar" id="token-bar">
+    <span>⚠ GitHub token required to fetch data and trigger sends.</span>
+    <input type="password" id="token-input" placeholder="Paste GitHub fine-grained PAT (actions:write on this repo)">
+    <button class="token-save" onclick="saveToken()">Save</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row" id="stats-row" style="display:none">
+    <div class="stat-pill">Date: <strong id="stat-date">—</strong></div>
+    <div class="stat-pill">Jobs: <strong id="stat-total">0</strong></div>
+    <div class="stat-pill">Ready to send: <strong id="stat-ready">0</strong></div>
+    <div class="stat-pill">Sent: <strong id="stat-sent">0</strong></div>
+    <div class="stat-pill">Excluded: <strong id="stat-excl">0</strong></div>
+    <div class="stat-pill" id="stat-fetched-wrap">Fetched: <strong id="stat-fetched">—</strong></div>
+  </div>
+
+  <!-- Table -->
+  <div class="sec">
+    <div class="sec-head">
+      <span class="sec-lbl">Today's Jobs</span>
+      <span id="table-status" style="font-size:12px;color:#6b7280"></span>
+    </div>
+    <div class="tbl-wrap">
+      <div id="table-container">
+        <div class="empty">
+          <div class="empty-icon">📱</div>
+          <div>Press <strong>Get Data</strong> to load today's Storage jobs</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL     = '[SUPABASE_URL_REMOVED]';
+const SUPABASE_KEY     = '[SUPABASE_ANON_KEY_REMOVED]';
+const GH_REPO          = 'Robbosd/storage-reporting';
+const FETCH_WORKFLOW   = 'fetch_rcs_jobs.yml';
+const SEND_WORKFLOW    = 'send_rcs_messages.yml';
+const TEMPLATES        = ['Collection', 'Redelivery', 'Disposal'];
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let jobs = [];
+let pollTimer = null;
+
+// ─── TOKEN ──────────────────────────────────────────────────────────────────
+
+function getToken() { return sessionStorage.getItem('gh_pat') || ''; }
+
+function saveToken() {
+  const v = document.getElementById('token-input').value.trim();
+  if (!v) return;
+  sessionStorage.setItem('gh_pat', v);
+  renderTokenBar();
+  toast('GitHub token saved for this session');
+}
+
+function clearToken() {
+  sessionStorage.removeItem('gh_pat');
+  renderTokenBar();
+}
+
+function renderTokenBar() {
+  const bar  = document.getElementById('token-bar');
+  const inp  = document.getElementById('token-input');
+  if (getToken()) {
+    bar.className = 'token-bar ok';
+    bar.innerHTML = `<span>✓ GitHub token active — fetches and sends are enabled.</span>
+      <button class="token-clear ok" onclick="clearToken()">Clear token</button>`;
+  } else {
+    bar.className = 'token-bar';
+    bar.innerHTML = `<span>⚠ GitHub token required to fetch data and trigger sends.</span>
+      <input type="password" id="token-input" placeholder="Paste GitHub fine-grained PAT (actions:write on this repo)">
+      <button class="token-save" onclick="saveToken()">Save</button>`;
+  }
+}
+
+// ─── GITHUB ACTIONS ─────────────────────────────────────────────────────────
+
+async function triggerWorkflow(workflow, inputs = {}) {
+  const pat = getToken();
+  if (!pat) { toast('⚠ Set your GitHub token first'); return false; }
+  const r = await fetch(
+    `https://api.github.com/repos/${GH_REPO}/actions/workflows/${workflow}/dispatches`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `token ${pat}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ref: 'main', inputs }),
+    }
+  );
+  return r.status === 204;
+}
+
+// ─── GET DATA ────────────────────────────────────────────────────────────────
+
+async function getJobs() {
+  const btn = document.getElementById('btn-get');
+  const icon = document.getElementById('get-icon');
+  btn.disabled = true;
+  icon.innerHTML = '<span class="spin">↻</span>';
+  document.getElementById('table-status').textContent = 'Triggering Snowflake query…';
+
+  const ok = await triggerWorkflow(FETCH_WORKFLOW);
+  if (!ok) {
+    btn.disabled = false;
+    icon.textContent = '↓';
+    document.getElementById('table-status').textContent = '';
+    return;
+  }
+
+  toast('Fetching jobs from Snowflake — this takes ~60s…');
+  document.getElementById('table-status').textContent = 'Waiting for data…';
+
+  // Show loading state in table
+  document.getElementById('table-container').innerHTML =
+    '<div class="loading"><span class="spin" style="font-size:20px;margin-bottom:12px;display:block">↻</span>Querying Snowflake…</div>';
+
+  // Poll Supabase until rows appear (or timeout)
+  const today = todayStr();
+  const start = Date.now();
+  clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    const rows = await fetchRows(today);
+    if (rows.length > 0) {
+      clearInterval(pollTimer);
+      jobs = rows;
+      renderTable();
+      btn.disabled = false;
+      icon.textContent = '↓';
+      document.getElementById('table-status').textContent = `Last fetched ${new Date().toLocaleTimeString('en-GB')}`;
+      document.getElementById('btn-send-all').disabled = false;
+      toast(`✓ Loaded ${rows.length} job${rows.length !== 1 ? 's' : ''}`);
+    } else if (Date.now() - start > 180000) {
+      clearInterval(pollTimer);
+      btn.disabled = false;
+      icon.textContent = '↓';
+      document.getElementById('table-status').textContent = 'Timed out — no jobs found';
+      document.getElementById('table-container').innerHTML =
+        '<div class="empty"><div class="empty-icon">🔍</div><div>No Storage jobs found for today</div></div>';
+    }
+  }, 4000);
+}
+
+// ─── SUPABASE ────────────────────────────────────────────────────────────────
+
+async function fetchRows(today) {
+  const { data, error } = await sb
+    .from('rcs_jobs')
+    .select('*')
+    .eq('job_date', today)
+    .order('job_type');
+  return error ? [] : (data || []);
+}
+
+async function refreshFromSupabase() {
+  const today = todayStr();
+  const rows = await fetchRows(today);
+  if (rows.length > 0) {
+    jobs = rows;
+    renderTable();
+    document.getElementById('btn-send-all').disabled = false;
+  }
+}
+
+async function updateRow(listingId, patch) {
+  const today = todayStr();
+  await sb.from('rcs_jobs')
+    .update(patch)
+    .eq('listing_id', listingId)
+    .eq('job_date', today);
+}
+
+// ─── SEND ────────────────────────────────────────────────────────────────────
+
+async function sendAll() {
+  const ready = jobs.filter(j => !j.excluded && !j.sent && j.phone_number);
+  if (!ready.length) { toast('No jobs ready to send'); return; }
+  if (!confirm(`Send ${ready.length} RCS message${ready.length !== 1 ? 's' : ''}?`)) return;
+
+  const btn = document.getElementById('btn-send-all');
+  const icon = document.getElementById('send-icon');
+  btn.disabled = true;
+  icon.innerHTML = '<span class="spin">↻</span>';
+
+  const ok = await triggerWorkflow(SEND_WORKFLOW);
+  if (!ok) {
+    btn.disabled = false;
+    icon.textContent = '✉';
+    return;
+  }
+
+  toast('Sending messages via Twilio…');
+
+  // Poll until all sent
+  const today = todayStr();
+  let attempts = 0;
+  const check = setInterval(async () => {
+    attempts++;
+    const rows = await fetchRows(today);
+    jobs = rows;
+    renderTable();
+    const pendingCount = rows.filter(j => !j.excluded && !j.sent && j.phone_number).length;
+    if (pendingCount === 0 || attempts > 30) {
+      clearInterval(check);
+      btn.disabled = false;
+      icon.textContent = '✉';
+      const sentCount = rows.filter(j => j.sent).length;
+      toast(`✓ ${sentCount} message${sentCount !== 1 ? 's' : ''} sent`);
+    }
+  }, 4000);
+}
+
+async function sendOne(listingId) {
+  const job = jobs.find(j => j.listing_id === listingId);
+  if (!job) return;
+  if (!confirm(`Send RCS to ${job.tp_full_name || job.nickname}?`)) return;
+
+  // Mark as send_requested in Supabase, then trigger workflow
+  await updateRow(listingId, { send_requested: true });
+  const ok = await triggerWorkflow(SEND_WORKFLOW);
+  if (ok) {
+    toast(`Sending to ${job.tp_full_name || job.nickname}…`);
+    setTimeout(refreshFromSupabase, 8000);
+  }
+}
+
+// ─── TEMPLATE CHANGE ─────────────────────────────────────────────────────────
+
+async function changeTemplate(listingId, newTemplate) {
+  const idx = jobs.findIndex(j => j.listing_id === listingId);
+  if (idx === -1) return;
+  jobs[idx].template = newTemplate;
+  await updateRow(listingId, { template: newTemplate });
+  updateStats();
+}
+
+// ─── EXCLUDE / RESTORE ───────────────────────────────────────────────────────
+
+async function excludeRow(listingId) {
+  const idx = jobs.findIndex(j => j.listing_id === listingId);
+  if (idx === -1) return;
+  jobs[idx].excluded = true;
+  await updateRow(listingId, { excluded: true });
+  renderTable();
+  toast('Job removed from send list');
+}
+
+async function restoreRow(listingId) {
+  const idx = jobs.findIndex(j => j.listing_id === listingId);
+  if (idx === -1) return;
+  jobs[idx].excluded = false;
+  await updateRow(listingId, { excluded: false });
+  renderTable();
+  toast('Job restored');
+}
+
+// ─── RENDER ──────────────────────────────────────────────────────────────────
+
+function renderTable() {
+  const today = todayStr();
+  updateStats();
+
+  if (!jobs.length) {
+    document.getElementById('table-container').innerHTML =
+      '<div class="empty"><div class="empty-icon">🔍</div><div>No Storage jobs found for today</div></div>';
+    return;
+  }
+
+  const rows = jobs.map(j => {
+    const noPhone = !j.phone_number;
+    const trClass = j.excluded ? 'excluded' : (j.sent ? 'sent' : '');
+    const statusHtml = j.sent
+      ? `<span class="status s-sent"><span class="status-dot"></span>Sent</span>`
+      : j.excluded
+      ? `<span class="status s-excluded"><span class="status-dot"></span>Excluded</span>`
+      : noPhone
+      ? `<span class="status s-nophone"><span class="status-dot"></span>No phone</span>`
+      : `<span class="status s-ready"><span class="status-dot"></span>Ready</span>`;
+
+    const badgeClass = {
+      Collection: 'badge-collection',
+      Redelivery: 'badge-redelivery',
+      Disposal:   'badge-disposal',
+    }[j.job_type] || 'badge-unknown';
+
+    const tplOptions = TEMPLATES.map(t =>
+      `<option value="${t}" ${j.template === t ? 'selected' : ''}>${t}</option>`
+    ).join('');
+
+    const canAct = !j.sent;
+
+    const actionsHtml = j.excluded
+      ? `<div class="row-actions">
+          <button class="row-btn row-restore" onclick="restoreRow('${j.listing_id}')">Restore</button>
+         </div>`
+      : `<div class="row-actions">
+          <button class="row-btn row-send" ${!canAct || noPhone ? 'disabled' : ''} onclick="sendOne('${j.listing_id}')">Send</button>
+          <button class="row-btn row-remove" ${!canAct ? 'disabled' : ''} onclick="excludeRow('${j.listing_id}')">✕</button>
+         </div>`;
+
+    return `<tr class="${trClass}">
+      <td>${escHtml(j.tp_full_name || j.nickname || '—')}</td>
+      <td style="font-family:var(--mono)">${maskPhone(j.phone_number)}</td>
+      <td><span class="badge ${badgeClass}">${escHtml(j.job_type || '—')}</span></td>
+      <td>
+        <select class="tpl-select" ${!canAct ? 'disabled' : ''}
+          onchange="changeTemplate('${j.listing_id}', this.value)">
+          ${tplOptions}
+        </select>
+      </td>
+      <td style="font-size:12px;color:#6b7280;font-style:italic;max-width:260px;white-space:normal">${escHtml(j.template || '')}</td>
+      <td>${statusHtml}</td>
+      <td>${actionsHtml}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('table-container').innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Driver</th>
+          <th>Phone</th>
+          <th>Job Type</th>
+          <th>Template</th>
+          <th>Message Preview</th>
+          <th>Status</th>
+          <th style="text-align:right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+function updateStats() {
+  if (!jobs.length) return;
+  const today = todayStr();
+  const ready   = jobs.filter(j => !j.excluded && !j.sent && j.phone_number).length;
+  const sent    = jobs.filter(j => j.sent).length;
+  const excl    = jobs.filter(j => j.excluded).length;
+  const fetchTs = jobs.reduce((m,j) => j.fetched_at > m ? j.fetched_at : m, '');
+
+  document.getElementById('stats-row').style.display = 'flex';
+  document.getElementById('stat-date').textContent   = formatDate(today);
+  document.getElementById('stat-total').textContent  = jobs.length;
+  document.getElementById('stat-ready').textContent  = ready;
+  document.getElementById('stat-sent').textContent   = sent;
+  document.getElementById('stat-excl').textContent   = excl;
+  document.getElementById('stat-fetched').textContent = fetchTs
+    ? new Date(fetchTs).toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'})
+    : '—';
+}
+
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function formatDate(s) {
+  return new Date(s + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'short',day:'numeric',month:'short',year:'numeric'});
+}
+
+function maskPhone(p) {
+  if (!p) return '—';
+  return '••••' + p.slice(-4);
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+
+renderTokenBar();
+refreshFromSupabase(); // Load any existing today's data on page open
+</script>
+
+</body>
+</html>
