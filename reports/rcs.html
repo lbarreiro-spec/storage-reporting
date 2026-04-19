@@ -59,29 +59,6 @@ body{display:flex;height:100%;font-family:var(--sans);background:#f6f7ed}
 .btn-ghost:hover:not(:disabled){border-color:#1f1f1f;color:#111827}
 .btn-ghost:disabled{opacity:.45;cursor:default}
 
-/* TOKEN BANNER */
-.token-bar{
-  background:#fffbeb;border:1px solid #fde68a;border-radius:10px;
-  padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:12px;
-  font-size:13px;color:#92400e;
-}
-.token-bar.ok{background:#f0fdf4;border-color:#bbf7d0;color:#14532d}
-.token-bar input{
-  flex:1;border:1px solid #d1d5db;border-radius:6px;padding:5px 10px;
-  font-family:var(--mono);font-size:12px;outline:none;
-  background:#fff;color:#111827;
-}
-.token-bar input:focus{border-color:#1f1f1f}
-.token-save{
-  background:#1f1f1f;color:#fff;border:none;border-radius:6px;
-  padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;
-  font-family:var(--sans);
-}
-.token-clear{
-  background:none;border:none;font-size:12px;color:#92400e;
-  cursor:pointer;text-decoration:underline;font-family:var(--sans);
-}
-.token-clear.ok{color:#14532d}
 
 /* STATS ROW */
 .stats-row{display:flex;gap:12px;margin-bottom:20px}
@@ -236,13 +213,6 @@ tbody tr.sent td{opacity:.6}
     </div>
   </div>
 
-  <!-- GitHub Token Bar -->
-  <div class="token-bar" id="token-bar">
-    <span>⚠ GitHub token required to fetch data and trigger sends.</span>
-    <input type="password" id="token-input" placeholder="Paste GitHub fine-grained PAT (actions:write on this repo)">
-    <button class="token-save" onclick="saveToken()">Save</button>
-  </div>
-
   <!-- Stats -->
   <div class="stats-row" id="stats-row" style="display:none">
     <div class="stat-pill">Date: <strong id="stat-date">—</strong></div>
@@ -276,6 +246,7 @@ tbody tr.sent td{opacity:.6}
 <script>
 const SUPABASE_URL     = '[SUPABASE_URL_REMOVED]';
 const SUPABASE_KEY     = '[SUPABASE_ANON_KEY_REMOVED]';
+const GH_PAT           = '***REDACTED-LEAKED-PAT***';
 const GH_REPO          = 'Robbosd/storage-reporting';
 const FETCH_WORKFLOW   = 'fetch_rcs_jobs.yml';
 const SEND_WORKFLOW    = 'send_rcs_messages.yml';
@@ -288,35 +259,7 @@ let pollTimer = null;
 
 // ─── TOKEN ──────────────────────────────────────────────────────────────────
 
-function getToken() { return sessionStorage.getItem('gh_pat') || ''; }
-
-function saveToken() {
-  const v = document.getElementById('token-input').value.trim();
-  if (!v) return;
-  sessionStorage.setItem('gh_pat', v);
-  renderTokenBar();
-  toast('GitHub token saved for this session');
-}
-
-function clearToken() {
-  sessionStorage.removeItem('gh_pat');
-  renderTokenBar();
-}
-
-function renderTokenBar() {
-  const bar  = document.getElementById('token-bar');
-  const inp  = document.getElementById('token-input');
-  if (getToken()) {
-    bar.className = 'token-bar ok';
-    bar.innerHTML = `<span>✓ GitHub token active — fetches and sends are enabled.</span>
-      <button class="token-clear ok" onclick="clearToken()">Clear token</button>`;
-  } else {
-    bar.className = 'token-bar';
-    bar.innerHTML = `<span>⚠ GitHub token required to fetch data and trigger sends.</span>
-      <input type="password" id="token-input" placeholder="Paste GitHub fine-grained PAT (actions:write on this repo)">
-      <button class="token-save" onclick="saveToken()">Save</button>`;
-  }
-}
+function getToken() { return GH_PAT; }
 
 // ─── GITHUB ACTIONS ─────────────────────────────────────────────────────────
 
@@ -626,7 +569,6 @@ function toast(msg) {
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
 
-renderTokenBar();
 refreshFromSupabase(); // Load any existing today's data on page open
 </script>
 
