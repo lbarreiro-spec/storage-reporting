@@ -206,15 +206,20 @@ function buildCurve(curveData) {
   const W = 800, H = 200, PL = 50, PR = 16, PT = 14, PB = 36;
   const iW = W-PL-PR, iH = H-PT-PB;
   const n = BUCKETS.length;
-  const Y0 = 70, Y1 = 100;
+  const allPcts = months.flatMap(m => m.buckets.map(b => b.cumulative_pct));
+  const minPct = Math.min(...allPcts);
+  const Y0 = Math.max(0, Math.floor(minPct / 5) * 5);
+  const Y1 = 100;
   const xS = i => PL + (i/(n-1))*iW;
   const yS = p => PT + iH - ((p-Y0)/(Y1-Y0))*iH;
 
   let grid = '';
-  [70,75,80,85,90,95,100].forEach(y => {
+  const range = Y1 - Y0;
+  const step = range <= 10 ? 1 : range <= 30 ? 5 : 10;
+  for (let y = Y0; y <= Y1; y += step) {
     grid += `<line x1="${PL}" y1="${yS(y)}" x2="${W-PR}" y2="${yS(y)}" stroke="#e2e2e2" stroke-width="1"/>`;
     grid += `<text x="${PL-5}" y="${yS(y)+4}" text-anchor="end" font-size="9" fill="#6b7280">${y}%</text>`;
-  });
+  }
 
   const xlabels = BUCKETS.map((b,i) =>
     i%2===0 ? `<text x="${xS(i)}" y="${H-8}" text-anchor="middle" font-size="8" fill="#6b7280">${b}</text>` : ''
