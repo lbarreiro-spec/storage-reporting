@@ -1,5 +1,5 @@
 {
-  "updated": "2026-04-17",
+  "updated": "2026-04-19",
   "metrics": [
     {
       "key": "gross_profit",
@@ -42,7 +42,7 @@
         "2026": [
           129942.0,
           140218.0,
-          null,
+          151668.0,
           null,
           null,
           null,
