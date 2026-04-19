@@ -139,11 +139,11 @@ def get_modified_months(since: date):
 
 
 def _fetch_and_count(criteria: str):
-    """Paginate Deals/search for a criteria, return (total, {owner: count})."""
+    """Paginate Deals/search for a criteria, return (total, {owner: count}, sqft)."""
     deals, page = [], 1
     while True:
         resp = requests.get(f"{CRM_BASE}/Deals/search", headers=crm_headers(), params={
-            "criteria": criteria, "fields": "Stage,Owner",
+            "criteria": criteria, "fields": "Stage,Owner,Estimated_sq_ft",
             "per_page": 200, "page": page,
         }, timeout=30)
         if resp.status_code == 204:
@@ -156,13 +156,15 @@ def _fetch_and_count(criteria: str):
         page += 1
 
     owner_counts = defaultdict(int)
+    total_sqft   = 0
     for d in deals:
         if d.get("Stage") in EXCLUDE_STAGES:
             continue
         owner = d.get("Owner", {})
         name  = owner.get("name", "Unknown") if isinstance(owner, dict) else "Unknown"
         owner_counts[name] += 1
-    return sum(owner_counts.values()), dict(owner_counts)
+        total_sqft += int(d.get("Estimated_sq_ft") or 0)
+    return sum(owner_counts.values()), dict(owner_counts), total_sqft
 
 
 def fetch_bookings_month(year: int, month: int):
@@ -332,20 +334,20 @@ def main():
     print("\nBookings (by Created_Time)...")
     rows = []
     for year, month in booked_months:
-        key           = f"{year}-{month:02d}"
-        total, owners = fetch_bookings_month(year, month)
-        rows.append({"label": key, "total": total, "by_owner": owners, "updated_at": now_iso})
-        print(f"  {key}: {total}")
+        key                  = f"{year}-{month:02d}"
+        total, owners, sqft  = fetch_bookings_month(year, month)
+        rows.append({"label": key, "total": total, "by_owner": owners, "sqft": sqft, "updated_at": now_iso})
+        print(f"  {key}: {total} bookings, {sqft:,} sq ft")
     upsert("bookings_monthly", rows)
 
     # ── Entering ────────────────────────────────────────────────────────────
     print("\nEntering (by Moving_Date)...")
     rows = []
     for year, month in entering_months:
-        key          = f"{year}-{month:02d}"
-        total, _     = fetch_entering_month(year, month)
-        rows.append({"label": key, "total": total, "updated_at": now_iso})
-        print(f"  {key}: {total}")
+        key              = f"{year}-{month:02d}"
+        total, _, sqft   = fetch_entering_month(year, month)
+        rows.append({"label": key, "total": total, "sqft": sqft, "updated_at": now_iso})
+        print(f"  {key}: {total} entering, {sqft:,} sq ft")
     upsert("entering_monthly", rows)
 
     # ── APP ─────────────────────────────────────────────────────────────────

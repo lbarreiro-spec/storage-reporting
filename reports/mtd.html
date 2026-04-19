@@ -235,6 +235,7 @@ tr.current-month td:first-child{color:#1f1f1f;font-weight:700}
 
 <!-- BOOKINGS + ENTERING side by side -->
 <div class="sec" id="pipeline-charts-sec" style="display:none">
+  <div class="stat-row" id="pipeline-sqft-stats" style="margin-bottom:20px;display:none"></div>
   <div class="pipeline-grid">
     <div>
       <div class="sec-lbl">New bookings — team total (Jan 2025 – MTD)</div>
@@ -833,11 +834,12 @@ let appChart = null
 async function _loadFromSupabase(table){
   const { data: rows, error } = await db
     .from(table)
-    .select('label,total,by_owner,updated_at')
+    .select('label,total,sqft,by_owner,updated_at')
     .order('label', { ascending: true })
   if(error || !rows || !rows.length) return null
   const months   = rows.map(r => r.label)
   const total    = Object.fromEntries(rows.map(r => [r.label, r.total]))
+  const sqft     = Object.fromEntries(rows.map(r => [r.label, r.sqft]))
   const by_owner = {}
   for(const row of rows){
     for(const [name, count] of Object.entries(row.by_owner || {})){
@@ -847,19 +849,49 @@ async function _loadFromSupabase(table){
   }
   for(const name of Object.keys(by_owner))
     for(const m of months) by_owner[name][m] = by_owner[name][m] || 0
-  return { updated: rows[rows.length-1]?.updated_at?.slice(0,10) || '', months, total, by_owner }
+  return { updated: rows[rows.length-1]?.updated_at?.slice(0,10) || '', months, total, sqft, by_owner }
+}
+
+let _sqftBooked = null, _sqftEntering = null
+
+function _maybeRenderSqftStats(){
+  if(_sqftBooked === null || _sqftEntering === null) return
+  const el = document.getElementById('pipeline-sqft-stats')
+  if(!el) return
+  const cur = THIS_MONTH
+  const b = _sqftBooked[cur], e = _sqftEntering[cur]
+  if(!b && !e){ el.style.display = 'none'; return }
+  el.style.display = ''
+  el.innerHTML = `
+    <div class="stat" style="grid-column:span 2">
+      <div class="stat-lbl">Sq ft booked in month (CRM)</div>
+      <div class="stat-val">${b != null ? Number(b).toLocaleString('en-GB') : '—'}</div>
+      <div class="stat-sub">${MO_S[+cur.slice(5)-1]} ${cur.slice(0,4)} MTD</div>
+    </div>
+    <div class="stat" style="grid-column:span 2">
+      <div class="stat-lbl">Sq ft entering storage (CRM)</div>
+      <div class="stat-val">${e != null ? Number(e).toLocaleString('en-GB') : '—'}</div>
+      <div class="stat-sub">${MO_S[+cur.slice(5)-1]} ${cur.slice(0,4)} MTD</div>
+    </div>
+    <div class="stat" style="grid-column:span 1">
+      <div class="stat-lbl">Net sq ft (in − out)</div>
+      <div class="stat-val" style="color:${(e||0)>=(b||0)?'#16a34a':'#dc2626'}">${b!=null&&e!=null?(e>=b?'+':'')+Number(e-b).toLocaleString('en-GB'):'—'}</div>
+      <div class="stat-sub">entering minus booked</div>
+    </div>`
 }
 
 async function loadBookings(){
   try{
     const data = await _loadFromSupabase('bookings_monthly')
     if(!data) return
+    _sqftBooked = data.sqft
     renderTeamChart(data, 'bookings-team-chart', 'bookings-caption', 'bookings', teamBookingsChart,
       c => { teamBookingsChart = c })
     renderAgentChart(data, 'bookings-agent-chart', agentBookingsChart,
       c => { agentBookingsChart = c })
     document.getElementById('pipeline-charts-sec').style.display = ''
     document.getElementById('bookings-agent-sec').style.display = ''
+    _maybeRenderSqftStats()
   }catch(e){ console.warn('Bookings data unavailable:', e) }
 }
 
@@ -867,9 +899,11 @@ async function loadEntering(){
   try{
     const data = await _loadFromSupabase('entering_monthly')
     if(!data) return
+    _sqftEntering = data.sqft
     renderTeamChart(data, 'entering-team-chart', 'entering-caption', 'customers entering', teamEnteringChart,
       c => { teamEnteringChart = c })
     document.getElementById('pipeline-charts-sec').style.display = ''
+    _maybeRenderSqftStats()
   }catch(e){ console.warn('Entering data unavailable:', e) }
 }
 
