@@ -281,10 +281,12 @@ tr.current-month td:first-child{color:#1f1f1f;font-weight:700}
           <th>Write-offs</th>
           <th>Collections</th>
           <th>Redeliveries</th>
+          <th>APP Booked</th>
+          <th>APP Rev</th>
         </tr>
       </thead>
       <tbody id="history-body">
-        <tr><td colspan="9" class="loading">Loading…</td></tr>
+        <tr><td colspan="11" class="loading">Loading…</td></tr>
       </tbody>
     </table>
   </div>
@@ -303,6 +305,7 @@ const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','D
 let ALL_MONTHLY = []
 let ALL_TRANSPORT = []
 let ALL_FEES = []
+let ALL_APP = []
 let YOY = null
 let DAILY = []
 let dailyChart = null
@@ -322,17 +325,19 @@ function yoyBadge(pct){
 
 async function loadAll(){
   const curLabel = new Date().toISOString().slice(0, 7)
-  const [mRes, tRes, fRes, yRes, dRes] = await Promise.all([
+  const [mRes, tRes, fRes, yRes, dRes, aRes] = await Promise.all([
     db.from('mtd_monthly').select('*').order('label', { ascending: false }),
     db.from('mtd_transport_monthly').select('*').order('label', { ascending: false }),
     db.from('mtd_fees_monthly').select('*').order('label', { ascending: false }),
     db.from('mtd_yoy').select('*').eq('id', 1).single(),
     db.from('mtd_daily_revenue').select('*').eq('label', curLabel).order('day'),
+    db.from('app_monthly').select('label,crm_count,books_revenue').order('label', { ascending: false }),
   ])
 
   ALL_MONTHLY   = mRes.data || []
   ALL_TRANSPORT = tRes.data || []
   ALL_FEES      = fRes.data || []
+  ALL_APP       = aRes.data || []
   YOY           = yRes.data || null
   DAILY         = dRes.data || []
 
@@ -708,8 +713,10 @@ function renderSqftFees(m, f){
 
 function renderHistory(){
   const latest = ALL_MONTHLY[0]?.label
+  const fmtRev2 = v => v != null ? '£'+Number(v).toLocaleString('en-GB',{minimumFractionDigits:0,maximumFractionDigits:0}) : '—'
   document.getElementById('history-body').innerHTML = ALL_MONTHLY.map(m => {
-    const t = ALL_TRANSPORT.find(x => x.label === m.label) || {}
+    const t   = ALL_TRANSPORT.find(x => x.label === m.label) || {}
+    const app = ALL_APP.find(x => x.label === m.label)
     return `<tr class="${m.label === latest ? 'current-month' : ''}">
       <td>${monthLabel(m.label)}</td>
       <td>${fmt(m.invoiced_revenue)}</td>
@@ -720,6 +727,8 @@ function renderHistory(){
       <td>${fmt(m.writeoff_value)}</td>
       <td>${fmtN(t.coll_jobs)||'—'}</td>
       <td>${fmtN(t.redel_jobs)||'—'}</td>
+      <td>${app ? fmtN(app.crm_count) : '—'}</td>
+      <td>${app ? fmtRev2(app.books_revenue) : '—'}</td>
     </tr>`
   }).join('')
 }
