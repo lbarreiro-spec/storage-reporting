@@ -133,6 +133,21 @@ tr.current-month td:first-child{color:#1f1f1f;font-weight:700}
 ::-webkit-scrollbar-thumb{background:#e2e2e2;border-radius:2px}
 
 .chart-caption{font-size:11px;color:#9ca3af;margin-top:8px;text-align:right;font-family:var(--mono)}
+
+/* GROUP HEADERS */
+.group-hdr{
+  display:flex;align-items:center;gap:12px;
+  font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.15em;color:#9ca3af;
+  margin:4px 0 14px;
+}
+.group-hdr::after{content:'';flex:1;height:1px;background:#e5e7eb}
+
+/* PIPELINE SIDE-BY-SIDE */
+.pipeline-grid{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+
+/* MERGED YOY SUB-LABEL */
+.sec-sub-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:#9ca3af;
+  border-top:1px solid #e2e2e2;padding-top:14px;margin:18px 0 12px}
 </style>
 </head>
 <body>
@@ -172,6 +187,9 @@ tr.current-month td:first-child{color:#1f1f1f;font-weight:700}
   </div>
 </div>
 
+<!-- ── REVENUE ──────────────────────────────────────────────────────────── -->
+<div class="group-hdr">Revenue</div>
+
 <!-- HEADLINE STATS -->
 <div class="sec">
   <div class="sec-lbl">This month</div>
@@ -186,20 +204,14 @@ tr.current-month td:first-child{color:#1f1f1f;font-weight:700}
   <canvas id="daily-chart" height="80"></canvas>
 </div>
 
-<!-- COMBINED REVENUE -->
+<!-- YOY + COMBINED merged -->
 <div class="sec">
-  <div class="sec-lbl">Combined revenue (incl. transport)</div>
-  <div class="yoy-grid" id="combined-section">
-    <div class="loading">Loading…</div>
-  </div>
-</div>
-
-<!-- YOY -->
-<div class="sec">
-  <div class="sec-lbl">Year on year</div>
+  <div class="sec-lbl">Year on year — storage revenue</div>
   <div class="yoy-grid" id="yoy-section">
     <div class="loading">Loading…</div>
   </div>
+  <div class="sec-sub-lbl">Including transport</div>
+  <div class="yoy-grid" id="combined-section"></div>
 </div>
 
 <!-- TRANSPORT -->
@@ -218,11 +230,23 @@ tr.current-month td:first-child{color:#1f1f1f;font-weight:700}
   </div>
 </div>
 
-<!-- BOOKINGS: TEAM TOTAL -->
-<div class="sec" id="bookings-team-sec" style="display:none">
-  <div class="sec-lbl">New bookings — team total (Jan 2025 – MTD)</div>
-  <canvas id="bookings-team-chart" height="85"></canvas>
-  <div class="chart-caption" id="bookings-caption"></div>
+<!-- ── PIPELINE & CONVERSION ───────────────────────────────────────────── -->
+<div class="group-hdr">Pipeline &amp; Conversion</div>
+
+<!-- BOOKINGS + ENTERING side by side -->
+<div class="sec" id="pipeline-charts-sec" style="display:none">
+  <div class="pipeline-grid">
+    <div>
+      <div class="sec-lbl">New bookings — team total (Jan 2025 – MTD)</div>
+      <canvas id="bookings-team-chart" height="110"></canvas>
+      <div class="chart-caption" id="bookings-caption"></div>
+    </div>
+    <div>
+      <div class="sec-lbl">Customers entering storage — team total (Jan 2025 – MTD)</div>
+      <canvas id="entering-team-chart" height="110"></canvas>
+      <div class="chart-caption" id="entering-caption"></div>
+    </div>
+  </div>
 </div>
 
 <!-- BOOKINGS: BY AGENT -->
@@ -231,22 +255,17 @@ tr.current-month td:first-child{color:#1f1f1f;font-weight:700}
   <canvas id="bookings-agent-chart" height="85"></canvas>
 </div>
 
-<!-- ENTERING: TEAM TOTAL -->
-<div class="sec" id="entering-team-sec" style="display:none">
-  <div class="sec-lbl">Customers entering storage — team total (Jan 2025 – MTD)</div>
-  <canvas id="entering-team-chart" height="85"></canvas>
-  <div class="chart-caption" id="entering-caption"></div>
-</div>
-
 <!-- APP: STATS + CHART -->
 <div class="sec" id="app-sec" style="display:none">
   <div class="sec-lbl">AnyVan Protection Plus (APP)</div>
   <div class="stat-row" id="app-stats" style="margin-bottom:14px"></div>
-  <canvas id="app-chart" height="85"></canvas>
+  <canvas id="app-chart" height="85" id="app-chart-canvas"></canvas>
   <div class="chart-caption" id="app-caption"></div>
 </div>
 
-<!-- HISTORY -->
+<!-- ── HISTORY ─────────────────────────────────────────────────────────── -->
+<div class="group-hdr">History</div>
+
 <div class="sec">
   <div class="sec-lbl">Monthly history</div>
   <div class="tbl-wrap">
@@ -809,7 +828,7 @@ async function loadBookings(){
       c => { teamBookingsChart = c })
     renderAgentChart(data, 'bookings-agent-chart', agentBookingsChart,
       c => { agentBookingsChart = c })
-    document.getElementById('bookings-team-sec').style.display = ''
+    document.getElementById('pipeline-charts-sec').style.display = ''
     document.getElementById('bookings-agent-sec').style.display = ''
   }catch(e){ console.warn('Bookings data unavailable:', e) }
 }
@@ -820,7 +839,7 @@ async function loadEntering(){
     if(!data) return
     renderTeamChart(data, 'entering-team-chart', 'entering-caption', 'customers entering', teamEnteringChart,
       c => { teamEnteringChart = c })
-    document.getElementById('entering-team-sec').style.display = ''
+    document.getElementById('pipeline-charts-sec').style.display = ''
   }catch(e){ console.warn('Entering data unavailable:', e) }
 }
 
@@ -860,14 +879,18 @@ async function loadApp(){
         <div class="stat-sub">${MO_S[+cur.slice(5)-1]} ${cur.slice(0,4)} MTD</div>
       </div>`
 
-    // Bar chart — CRM count per month
-    const chartData = {
-      months,
-      total: counts,
-      by_owner: {},
-      updated,
+    // Bar chart — only show when 2+ months of data, single bar looks broken
+    const appChartEl = document.getElementById('app-chart')
+    const appCapEl   = document.getElementById('app-caption')
+    if(months.length >= 2){
+      appChartEl.style.display = ''
+      appCapEl.style.display   = ''
+      const chartData = { months, total: counts, by_owner: {}, updated }
+      renderTeamChart(chartData, 'app-chart', 'app-caption', 'APP taken', appChart, c => { appChart = c })
+    } else {
+      appChartEl.style.display = 'none'
+      appCapEl.style.display   = 'none'
     }
-    renderTeamChart(chartData, 'app-chart', 'app-caption', 'APP taken', appChart, c => { appChart = c })
     document.getElementById('app-sec').style.display = ''
   }catch(e){ console.warn('APP data unavailable:', e) }
 }
