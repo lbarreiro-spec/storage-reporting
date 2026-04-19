@@ -844,7 +844,7 @@ async function loadApp(){
     const fmtRev   = v => v != null ? '£'+Number(v).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—'
     document.getElementById('app-stats').innerHTML = `
       <div class="stat" style="grid-column:span 2">
-        <div class="stat-lbl">APP taken (CRM deals)</div>
+        <div class="stat-lbl">APP booked in month (CRM)</div>
         <div class="stat-val">${curCount}</div>
         <div class="stat-sub">${MO_S[+cur.slice(5)-1]} ${cur.slice(0,4)} MTD</div>
       </div>
