@@ -1,47 +1,20 @@
 #!/usr/bin/env python3
 """
 Storage RCS — Today's job fetcher
-Queries Snowflake for today's Storage jobs and upserts to Supabase rcs_jobs.
+Queries Snowflake for today's Storage jobs and writes data/rcs_today.json.
 Runs at 8am UK daily via GitHub Actions, or on demand via workflow_dispatch.
-
-Supabase table required:
-  CREATE TABLE rcs_jobs (
-    id           BIGSERIAL PRIMARY KEY,
-    listing_id   TEXT NOT NULL,
-    job_date     DATE NOT NULL,
-    tp_full_name TEXT,
-    nickname     TEXT,
-    phone_number TEXT,
-    job_type     TEXT,
-    template     TEXT,
-    excluded     BOOLEAN DEFAULT FALSE,
-    sent         BOOLEAN DEFAULT FALSE,
-    sent_at      TIMESTAMPTZ,
-    send_requested BOOLEAN DEFAULT FALSE,
-    fetched_at   TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE (listing_id, job_date)
-  );
 """
 
+import json
 import os
 import sys
-import requests
+from datetime import date, datetime, timezone
 import snowflake.connector
-from datetime import date
 
 SNOWFLAKE_ACCOUNT = "[SNOWFLAKE_ACCOUNT_REMOVED]"
 SNOWFLAKE_USER    = "[SNOWFLAKE_USER_REMOVED]"
 SNOWFLAKE_WH      = "MART_SALES_OPS_WH"
 SNOWFLAKE_ROLE    = "MART_SALES_OPS_GROUP"
-
-SUPABASE_URL      = "[SUPABASE_URL_REMOVED]"
-SUPABASE_ANON_KEY = "[SUPABASE_ANON_KEY_REMOVED]"
-SUPABASE_HEADERS  = {
-    "apikey":        SUPABASE_ANON_KEY,
-    "Authorization": f"Bearer {SUPABASE_ANON_KEY}",
-    "Content-Type":  "application/json",
-    "Prefer":        "resolution=ignore-duplicates",
-}
 
 QUERY = """
 SELECT
@@ -77,15 +50,17 @@ TEMPLATES = {
     'Disposal':   'This is a Storage Disposal Job',
 }
 
+OUTPUT_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'rcs_today.json')
+
 
 def get_snowflake_token():
     path = os.path.expanduser("~/.snowflake/connections.toml")
-    content = open(path).read()
-    return content.split('token = "')[1].split('"')[0]
+    return open(path).read().split('token = "')[1].split('"')[0]
 
 
 def main():
-    print(f"Fetching Storage RCS jobs for {date.today()}")
+    today = str(date.today())
+    print(f"Fetching Storage RCS jobs for {today}")
 
     conn = snowflake.connector.connect(
         account=SNOWFLAKE_ACCOUNT,
@@ -103,37 +78,32 @@ def main():
     cur.close()
     conn.close()
 
-    print(f"Found {len(rows)} jobs in Snowflake")
+    print(f"Found {len(rows)} jobs")
 
-    if not rows:
-        print("No Storage jobs today — nothing to upsert")
-        return
-
-    records = []
+    jobs = []
     for row in rows:
         r = dict(zip(cols, row))
         job_type = r.get('JOB_TYPE') or 'Unknown'
-        records.append({
+        jobs.append({
             'listing_id':   str(r['LISTING_ID']),
-            'job_date':     str(r['LISTING_PICK_UP_DATE']),
             'tp_full_name': r.get('TP_FULL_NAME') or '',
             'nickname':     r.get('LISTING_CHOSEN_PROVIDER_NICKNAME') or '',
             'phone_number': r.get('PHONE_NUMBER') or '',
             'job_type':     job_type,
             'template':     TEMPLATES.get(job_type, ''),
-            'excluded':     False,
-            'sent':         False,
         })
 
-    resp = requests.post(
-        f"{SUPABASE_URL}/rest/v1/rcs_jobs",
-        headers=SUPABASE_HEADERS,
-        json=records,
-    )
-    print(f"Supabase upsert: {resp.status_code}")
-    if resp.status_code not in (200, 201):
-        print(resp.text)
-        sys.exit(1)
+    output = {
+        'job_date':   today,
+        'fetched_at': datetime.now(timezone.utc).isoformat(),
+        'jobs':       jobs,
+    }
+
+    out_path = os.path.normpath(OUTPUT_PATH)
+    with open(out_path, 'w') as f:
+        json.dump(output, f, indent=2)
+
+    print(f"Written {len(jobs)} jobs to {out_path}")
 
 
 if __name__ == '__main__':

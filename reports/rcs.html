@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RCS Driver Messaging — AnyVan Storage</title>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -36,14 +34,13 @@ body{display:flex;height:100%;font-family:var(--sans);background:#f6f7ed}
 
 /* MAIN */
 .main{padding:32px 40px;flex:1;overflow-y:auto}
-
 .topbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px}
 .ph-lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#6b7280;margin-bottom:6px}
 .ph-title{font-size:24px;font-weight:700;color:#111827}
 .ph-sub{font-size:13px;color:#6b7280;margin-top:4px;font-family:var(--mono)}
-
 .actions{display:flex;gap:10px;align-items:center;flex-shrink:0;padding-top:4px}
 
+/* BUTTONS */
 .btn{
   display:inline-flex;align-items:center;gap:6px;
   border-radius:8px;font-family:var(--sans);font-size:13px;font-weight:600;
@@ -55,13 +52,9 @@ body{display:flex;height:100%;font-family:var(--sans);background:#f6f7ed}
 .btn-send{background:#16a34a;color:#fff}
 .btn-send:hover:not(:disabled){background:#15803d}
 .btn-send:disabled{opacity:.45;cursor:default}
-.btn-ghost{background:#fff;border:1px solid #e2e2e2;color:#374151}
-.btn-ghost:hover:not(:disabled){border-color:#1f1f1f;color:#111827}
-.btn-ghost:disabled{opacity:.45;cursor:default}
 
-
-/* STATS ROW */
-.stats-row{display:flex;gap:12px;margin-bottom:20px}
+/* STATS */
+.stats-row{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
 .stat-pill{
   background:#fff;border:1px solid #e2e2e2;border-radius:8px;
   padding:10px 16px;font-size:13px;color:#6b7280;
@@ -69,15 +62,13 @@ body{display:flex;height:100%;font-family:var(--sans);background:#f6f7ed}
 .stat-pill strong{color:#111827;font-weight:600}
 
 /* SECTION */
-.sec{
-  background:#fff;border:1px solid #e2e2e2;border-radius:12px;
-  box-shadow:0 1px 3px rgba(0,0,0,0.06);
-}
+.sec{background:#fff;border:1px solid #e2e2e2;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
 .sec-head{
   display:flex;align-items:center;justify-content:space-between;
   padding:16px 20px;border-bottom:1px solid #e2e2e2;
 }
 .sec-lbl{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#6b7280;font-weight:600}
+.sec-meta{font-size:12px;color:#9ca3af}
 
 /* TABLE */
 .tbl-wrap{overflow-x:auto}
@@ -89,15 +80,16 @@ thead th{
 }
 thead th:last-child{text-align:right}
 tbody td{
-  font-size:13px;padding:11px 16px;
-  border-bottom:1px solid #f0f0f0;color:#374151;
-  background:#fff;vertical-align:middle;
+  font-size:13px;padding:11px 16px;border-bottom:1px solid #f0f0f0;
+  color:#374151;background:#fff;vertical-align:middle;
 }
+tbody tr:last-child td{border-bottom:none}
 tbody tr:hover td{background:#fafafa}
-tbody tr.excluded td{opacity:.4;text-decoration:line-through}
-tbody tr.sent td{opacity:.6}
+tbody tr.excluded td{opacity:.38}
+tbody tr.excluded td .tpl-select{pointer-events:none}
+tbody tr.sent td{opacity:.55}
 
-/* JOB TYPE BADGES */
+/* BADGES */
 .badge{
   display:inline-block;font-size:11px;font-weight:600;
   padding:2px 8px;border-radius:5px;letter-spacing:.04em;white-space:nowrap;
@@ -105,38 +97,31 @@ tbody tr.sent td{opacity:.6}
 .badge-collection{background:#dbeafe;color:#1d4ed8}
 .badge-redelivery{background:#fef3c7;color:#b45309}
 .badge-disposal{background:#fee2e2;color:#b91c1c}
-.badge-unknown{background:#f3f4f6;color:#6b7280}
 
-/* STATUS BADGES */
-.status{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500}
-.status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.s-ready .status-dot{background:#16a34a}
-.s-ready{color:#166534}
-.s-sending .status-dot{background:#f59e0b;animation:pulse 1.2s ease-in-out infinite}
-.s-sending{color:#92400e}
-.s-sent .status-dot{background:#3b82f6}
-.s-sent{color:#1d4ed8}
-.s-excluded .status-dot{background:#d1d5db}
-.s-excluded{color:#9ca3af}
-.s-nophone .status-dot{background:#ef4444}
-.s-nophone{color:#b91c1c}
+/* STATUS */
+.status{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;white-space:nowrap}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.s-ready .dot{background:#16a34a} .s-ready{color:#166534}
+.s-sending .dot{background:#f59e0b;animation:pulse 1.2s ease-in-out infinite} .s-sending{color:#92400e}
+.s-sent .dot{background:#3b82f6} .s-sent{color:#1d4ed8}
+.s-excluded .dot{background:#d1d5db} .s-excluded{color:#9ca3af}
+.s-nophone .dot{background:#ef4444} .s-nophone{color:#b91c1c}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* TEMPLATE SELECT */
 .tpl-select{
   border:1px solid #e2e2e2;border-radius:6px;padding:5px 8px;
   font-family:var(--sans);font-size:12px;color:#111827;
-  background:#fff;outline:none;cursor:pointer;
-  transition:border-color .12s;
+  background:#fff;outline:none;cursor:pointer;transition:border-color .12s;max-width:140px;
 }
-.tpl-select:focus,.tpl-select:hover{border-color:#6b7280}
+.tpl-select:hover,.tpl-select:focus{border-color:#6b7280}
 .tpl-select:disabled{opacity:.5;cursor:default}
 
-/* ROW ACTION BUTTONS */
+/* ROW ACTIONS */
+.row-actions{display:flex;gap:6px;justify-content:flex-end}
 .row-btn{
   border:none;border-radius:6px;font-family:var(--sans);
-  font-size:12px;font-weight:600;padding:5px 12px;cursor:pointer;
-  transition:all .12s;
+  font-size:12px;font-weight:600;padding:5px 12px;cursor:pointer;transition:all .12s;
 }
 .row-send{background:#16a34a;color:#fff}
 .row-send:hover:not(:disabled){background:#15803d}
@@ -144,26 +129,22 @@ tbody tr.sent td{opacity:.6}
 .row-remove{background:#fff;border:1px solid #e2e2e2;color:#ef4444}
 .row-remove:hover:not(:disabled){background:#fef2f2;border-color:#ef4444}
 .row-remove:disabled{opacity:.45;cursor:default}
-.row-restore{background:#fff;border:1px solid #e2e2e2;color:#6b7280;font-size:11px}
+.row-restore{background:#fff;border:1px solid #e2e2e2;color:#6b7280;font-size:11px;padding:5px 10px}
 .row-restore:hover{border-color:#6b7280;color:#374151}
 
-.row-actions{display:flex;gap:6px;justify-content:flex-end}
-
 /* EMPTY / LOADING */
-.empty{padding:60px 20px;text-align:center;color:#9ca3af;font-size:14px}
+.empty{padding:64px 20px;text-align:center;color:#9ca3af;font-size:14px;line-height:1.8}
 .empty-icon{font-size:32px;margin-bottom:12px}
-.loading{padding:60px 20px;text-align:center;color:#6b7280;font-size:14px}
+.loading{padding:64px 20px;text-align:center;color:#6b7280;font-size:14px}
 
 .spin{display:inline-block;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* TOAST */
 .toast{
-  position:fixed;bottom:24px;right:24px;
-  background:#1f1f1f;color:#fff;border-radius:10px;
-  padding:12px 20px;font-size:13px;font-weight:500;
-  opacity:0;transform:translateY(8px);transition:all .2s;
-  pointer-events:none;z-index:999;
+  position:fixed;bottom:24px;right:24px;background:#1f1f1f;color:#fff;
+  border-radius:10px;padding:12px 20px;font-size:13px;font-weight:500;
+  opacity:0;transform:translateY(8px);transition:all .2s;pointer-events:none;z-index:999;
 }
 .toast.show{opacity:1;transform:translateY(0)}
 
@@ -204,7 +185,7 @@ tbody tr.sent td{opacity:.6}
       <div class="ph-sub" id="ph-sub">Morning briefing for today's Storage jobs</div>
     </div>
     <div class="actions">
-      <button class="btn btn-ghost" id="btn-get" onclick="getJobs()">
+      <button class="btn btn-primary" id="btn-get" onclick="getJobs()">
         <span id="get-icon">↓</span> Get Data
       </button>
       <button class="btn btn-send" id="btn-send-all" onclick="sendAll()" disabled>
@@ -217,24 +198,21 @@ tbody tr.sent td{opacity:.6}
   <div class="stats-row" id="stats-row" style="display:none">
     <div class="stat-pill">Date: <strong id="stat-date">—</strong></div>
     <div class="stat-pill">Jobs: <strong id="stat-total">0</strong></div>
-    <div class="stat-pill">Ready to send: <strong id="stat-ready">0</strong></div>
+    <div class="stat-pill">Ready: <strong id="stat-ready">0</strong></div>
     <div class="stat-pill">Sent: <strong id="stat-sent">0</strong></div>
     <div class="stat-pill">Excluded: <strong id="stat-excl">0</strong></div>
-    <div class="stat-pill" id="stat-fetched-wrap">Fetched: <strong id="stat-fetched">—</strong></div>
   </div>
 
   <!-- Table -->
   <div class="sec">
     <div class="sec-head">
       <span class="sec-lbl">Today's Jobs</span>
-      <span id="table-status" style="font-size:12px;color:#6b7280"></span>
+      <span class="sec-meta" id="sec-meta"></span>
     </div>
-    <div class="tbl-wrap">
-      <div id="table-container">
-        <div class="empty">
-          <div class="empty-icon">📱</div>
-          <div>Press <strong>Get Data</strong> to load today's Storage jobs</div>
-        </div>
+    <div class="tbl-wrap" id="tbl-wrap">
+      <div class="empty">
+        <div class="empty-icon">📱</div>
+        Press <strong>Get Data</strong> to load today's Storage jobs from Snowflake
       </div>
     </div>
   </div>
@@ -244,35 +222,26 @@ tbody tr.sent td{opacity:.6}
 <div class="toast" id="toast"></div>
 
 <script>
-const SUPABASE_URL     = '[SUPABASE_URL_REMOVED]';
-const SUPABASE_KEY     = '[SUPABASE_ANON_KEY_REMOVED]';
-const GH_PAT           = '***REDACTED-LEAKED-PAT***';
-const GH_REPO          = 'Robbosd/storage-reporting';
-const FETCH_WORKFLOW   = 'fetch_rcs_jobs.yml';
-const SEND_WORKFLOW    = 'send_rcs_messages.yml';
-const TEMPLATES        = ['Collection', 'Redelivery', 'Disposal'];
+const GH_PAT         = '***REDACTED-LEAKED-PAT***';
+const GH_REPO        = 'Robbosd/storage-reporting';
+const FETCH_WORKFLOW = 'fetch_rcs_jobs.yml';
+const SEND_WORKFLOW  = 'send_rcs_messages.yml';
+const DATA_URL       = `https://raw.githubusercontent.com/${GH_REPO}/main/data/rcs_today.json`;
+const TEMPLATES      = ['Collection', 'Redelivery', 'Disposal'];
 
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let jobs = [];   // in-memory state — tracks template changes and exclusions
+let pollTimer;
 
-let jobs = [];
-let pollTimer = null;
-
-// ─── TOKEN ──────────────────────────────────────────────────────────────────
-
-function getToken() { return GH_PAT; }
-
-// ─── GITHUB ACTIONS ─────────────────────────────────────────────────────────
+// ─── GITHUB API ──────────────────────────────────────────────────────────────
 
 async function triggerWorkflow(workflow, inputs = {}) {
-  const pat = getToken();
-  if (!pat) { toast('⚠ Set your GitHub token first'); return false; }
   const r = await fetch(
     `https://api.github.com/repos/${GH_REPO}/actions/workflows/${workflow}/dispatches`,
     {
       method: 'POST',
       headers: {
-        'Authorization': `token ${pat}`,
-        'Accept': 'application/vnd.github.v3+json',
+        Authorization: `token ${GH_PAT}`,
+        Accept: 'application/vnd.github.v3+json',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ ref: 'main', inputs }),
@@ -284,292 +253,306 @@ async function triggerWorkflow(workflow, inputs = {}) {
 // ─── GET DATA ────────────────────────────────────────────────────────────────
 
 async function getJobs() {
-  const btn = document.getElementById('btn-get');
+  const btn  = document.getElementById('btn-get');
   const icon = document.getElementById('get-icon');
   btn.disabled = true;
   icon.innerHTML = '<span class="spin">↻</span>';
-  document.getElementById('table-status').textContent = 'Triggering Snowflake query…';
+  setMeta('Triggering Snowflake query…');
+  showLoading('Querying Snowflake…');
 
   const ok = await triggerWorkflow(FETCH_WORKFLOW);
   if (!ok) {
     btn.disabled = false;
     icon.textContent = '↓';
-    document.getElementById('table-status').textContent = '';
+    setMeta('');
+    toast('Failed to trigger workflow — check GitHub token');
+    showEmpty();
     return;
   }
 
-  toast('Fetching jobs from Snowflake — this takes ~60s…');
-  document.getElementById('table-status').textContent = 'Waiting for data…';
+  toast('Fetching from Snowflake — takes ~60s…');
 
-  // Show loading state in table
-  document.getElementById('table-container').innerHTML =
-    '<div class="loading"><span class="spin" style="font-size:20px;margin-bottom:12px;display:block">↻</span>Querying Snowflake…</div>';
+  // Grab sha of current file so we know when it updates
+  const currentSha = await getFileSha();
+  const started    = Date.now();
 
-  // Poll Supabase until rows appear (or timeout)
-  const today = todayStr();
-  const start = Date.now();
   clearInterval(pollTimer);
   pollTimer = setInterval(async () => {
-    const rows = await fetchRows(today);
-    if (rows.length > 0) {
+    const sha = await getFileSha();
+    if (sha && sha !== currentSha) {
+      // File updated — load it
       clearInterval(pollTimer);
-      jobs = rows;
-      renderTable();
+      const data = await loadJson();
+      if (data && data.job_date === todayStr()) {
+        applyData(data);
+        btn.disabled = false;
+        icon.textContent = '↓';
+        toast(`✓ Loaded ${jobs.length} job${jobs.length !== 1 ? 's' : ''}`);
+      } else {
+        showEmpty('No Storage jobs found for today');
+        btn.disabled = false;
+        icon.textContent = '↓';
+        setMeta('');
+      }
+    } else if (Date.now() - started > 180000) {
+      clearInterval(pollTimer);
       btn.disabled = false;
       icon.textContent = '↓';
-      document.getElementById('table-status').textContent = `Last fetched ${new Date().toLocaleTimeString('en-GB')}`;
-      document.getElementById('btn-send-all').disabled = false;
-      toast(`✓ Loaded ${rows.length} job${rows.length !== 1 ? 's' : ''}`);
-    } else if (Date.now() - start > 180000) {
-      clearInterval(pollTimer);
-      btn.disabled = false;
-      icon.textContent = '↓';
-      document.getElementById('table-status').textContent = 'Timed out — no jobs found';
-      document.getElementById('table-container').innerHTML =
-        '<div class="empty"><div class="empty-icon">🔍</div><div>No Storage jobs found for today</div></div>';
+      setMeta('Timed out');
+      showEmpty('Request timed out — try again');
     }
   }, 4000);
 }
 
-// ─── SUPABASE ────────────────────────────────────────────────────────────────
-
-async function fetchRows(today) {
-  const { data, error } = await sb
-    .from('rcs_jobs')
-    .select('*')
-    .eq('job_date', today)
-    .order('job_type');
-  return error ? [] : (data || []);
+async function getFileSha() {
+  try {
+    const r = await fetch(
+      `https://api.github.com/repos/${GH_REPO}/contents/data/rcs_today.json`,
+      { headers: { Authorization: `token ${GH_PAT}` } }
+    );
+    if (!r.ok) return null;
+    const d = await r.json();
+    return d.sha;
+  } catch { return null; }
 }
 
-async function refreshFromSupabase() {
-  const today = todayStr();
-  const rows = await fetchRows(today);
-  if (rows.length > 0) {
-    jobs = rows;
-    renderTable();
-    document.getElementById('btn-send-all').disabled = false;
-  }
+async function loadJson() {
+  try {
+    const r = await fetch(`${DATA_URL}?cb=${Date.now()}`);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
 }
 
-async function updateRow(listingId, patch) {
-  const today = todayStr();
-  await sb.from('rcs_jobs')
-    .update(patch)
-    .eq('listing_id', listingId)
-    .eq('job_date', today);
+function applyData(data) {
+  jobs = (data.jobs || []).map(j => ({ ...j, excluded: false }));
+  renderTable();
+  updateStats();
+  document.getElementById('btn-send-all').disabled = jobs.length === 0;
+  const ts = data.fetched_at
+    ? new Date(data.fetched_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+    : '';
+  setMeta(ts ? `Fetched at ${ts}` : '');
+  document.getElementById('stats-row').style.display = 'flex';
 }
 
 // ─── SEND ────────────────────────────────────────────────────────────────────
 
 async function sendAll() {
-  const ready = jobs.filter(j => !j.excluded && !j.sent && j.phone_number);
-  if (!ready.length) { toast('No jobs ready to send'); return; }
-  if (!confirm(`Send ${ready.length} RCS message${ready.length !== 1 ? 's' : ''}?`)) return;
+  const toSend = jobs.filter(j => !j.excluded && j.phone_number);
+  if (!toSend.length) { toast('No jobs ready to send'); return; }
 
-  const btn = document.getElementById('btn-send-all');
-  const icon = document.getElementById('send-icon');
-  btn.disabled = true;
-  icon.innerHTML = '<span class="spin">↻</span>';
+  const noun = `${toSend.length} message${toSend.length !== 1 ? 's' : ''}`;
+  if (!confirm(`Send ${noun} via RCS?`)) return;
 
-  const ok = await triggerWorkflow(SEND_WORKFLOW);
+  setSendLoading(true);
+
+  const ok = await triggerWorkflow(SEND_WORKFLOW, {
+    jobs_json: JSON.stringify(toSend),
+  });
+
   if (!ok) {
-    btn.disabled = false;
-    icon.textContent = '✉';
+    setSendLoading(false);
+    toast('Failed to trigger send workflow');
     return;
   }
 
-  toast('Sending messages via Twilio…');
+  toast(`Sending ${noun} via Twilio…`);
 
-  // Poll until all sent
-  const today = todayStr();
-  let attempts = 0;
-  const check = setInterval(async () => {
-    attempts++;
-    const rows = await fetchRows(today);
-    jobs = rows;
+  // Poll the latest workflow run until it completes
+  await pollWorkflowRun(SEND_WORKFLOW, () => {
+    jobs.forEach(j => { if (!j.excluded && j.phone_number) j.sent = true; });
     renderTable();
-    const pendingCount = rows.filter(j => !j.excluded && !j.sent && j.phone_number).length;
-    if (pendingCount === 0 || attempts > 30) {
-      clearInterval(check);
-      btn.disabled = false;
-      icon.textContent = '✉';
-      const sentCount = rows.filter(j => j.sent).length;
-      toast(`✓ ${sentCount} message${sentCount !== 1 ? 's' : ''} sent`);
-    }
-  }, 4000);
+    updateStats();
+    setSendLoading(false);
+    toast(`✓ ${noun} sent`);
+  });
 }
 
 async function sendOne(listingId) {
   const job = jobs.find(j => j.listing_id === listingId);
-  if (!job) return;
-  if (!confirm(`Send RCS to ${job.tp_full_name || job.nickname}?`)) return;
+  if (!job || !job.phone_number) return;
 
-  // Mark as send_requested in Supabase, then trigger workflow
-  await updateRow(listingId, { send_requested: true });
-  const ok = await triggerWorkflow(SEND_WORKFLOW);
-  if (ok) {
-    toast(`Sending to ${job.tp_full_name || job.nickname}…`);
-    setTimeout(refreshFromSupabase, 8000);
-  }
+  const name = job.tp_full_name || job.nickname;
+  if (!confirm(`Send RCS to ${name}?`)) return;
+
+  const ok = await triggerWorkflow(SEND_WORKFLOW, {
+    jobs_json: JSON.stringify([job]),
+  });
+
+  if (!ok) { toast('Failed to trigger send'); return; }
+  toast(`Sending to ${name}…`);
+
+  await pollWorkflowRun(SEND_WORKFLOW, () => {
+    job.sent = true;
+    renderTable();
+    updateStats();
+    toast(`✓ Sent to ${name}`);
+  });
 }
 
-// ─── TEMPLATE CHANGE ─────────────────────────────────────────────────────────
-
-async function changeTemplate(listingId, newTemplate) {
-  const idx = jobs.findIndex(j => j.listing_id === listingId);
-  if (idx === -1) return;
-  jobs[idx].template = newTemplate;
-  await updateRow(listingId, { template: newTemplate });
-  updateStats();
+async function pollWorkflowRun(workflow, onComplete) {
+  const started = Date.now();
+  await new Promise(r => setTimeout(r, 5000)); // give GH a moment to register the run
+  const timer = setInterval(async () => {
+    try {
+      const r = await fetch(
+        `https://api.github.com/repos/${GH_REPO}/actions/workflows/${workflow}/runs?per_page=1`,
+        { headers: { Authorization: `token ${GH_PAT}` } }
+      );
+      const d = await r.json();
+      const run = d.workflow_runs?.[0];
+      if (run && run.status === 'completed') {
+        clearInterval(timer);
+        onComplete();
+      } else if (Date.now() - started > 300000) {
+        clearInterval(timer);
+        setSendLoading(false);
+        toast('Send timed out — check GitHub Actions');
+      }
+    } catch { /* keep polling */ }
+  }, 5000);
 }
 
-// ─── EXCLUDE / RESTORE ───────────────────────────────────────────────────────
-
-async function excludeRow(listingId) {
-  const idx = jobs.findIndex(j => j.listing_id === listingId);
-  if (idx === -1) return;
-  jobs[idx].excluded = true;
-  await updateRow(listingId, { excluded: true });
-  renderTable();
-  toast('Job removed from send list');
+function setSendLoading(on) {
+  const btn  = document.getElementById('btn-send-all');
+  const icon = document.getElementById('send-icon');
+  btn.disabled = on;
+  icon.innerHTML = on ? '<span class="spin">↻</span>' : '✉';
 }
 
-async function restoreRow(listingId) {
-  const idx = jobs.findIndex(j => j.listing_id === listingId);
-  if (idx === -1) return;
-  jobs[idx].excluded = false;
-  await updateRow(listingId, { excluded: false });
-  renderTable();
-  toast('Job restored');
-}
-
-// ─── RENDER ──────────────────────────────────────────────────────────────────
+// ─── TABLE ───────────────────────────────────────────────────────────────────
 
 function renderTable() {
-  const today = todayStr();
-  updateStats();
-
-  if (!jobs.length) {
-    document.getElementById('table-container').innerHTML =
-      '<div class="empty"><div class="empty-icon">🔍</div><div>No Storage jobs found for today</div></div>';
-    return;
-  }
+  if (!jobs.length) { showEmpty('No Storage jobs found for today'); return; }
 
   const rows = jobs.map(j => {
     const noPhone = !j.phone_number;
-    const trClass = j.excluded ? 'excluded' : (j.sent ? 'sent' : '');
+    const trCls   = j.excluded ? 'excluded' : j.sent ? 'sent' : '';
+
     const statusHtml = j.sent
-      ? `<span class="status s-sent"><span class="status-dot"></span>Sent</span>`
+      ? `<span class="status s-sent"><span class="dot"></span>Sent</span>`
       : j.excluded
-      ? `<span class="status s-excluded"><span class="status-dot"></span>Excluded</span>`
+      ? `<span class="status s-excluded"><span class="dot"></span>Excluded</span>`
       : noPhone
-      ? `<span class="status s-nophone"><span class="status-dot"></span>No phone</span>`
-      : `<span class="status s-ready"><span class="status-dot"></span>Ready</span>`;
+      ? `<span class="status s-nophone"><span class="dot"></span>No phone</span>`
+      : `<span class="status s-ready"><span class="dot"></span>Ready</span>`;
 
-    const badgeClass = {
-      Collection: 'badge-collection',
-      Redelivery: 'badge-redelivery',
-      Disposal:   'badge-disposal',
-    }[j.job_type] || 'badge-unknown';
+    const badgeCls = { Collection:'badge-collection', Redelivery:'badge-redelivery', Disposal:'badge-disposal' }[j.job_type] || '';
 
-    const tplOptions = TEMPLATES.map(t =>
-      `<option value="${t}" ${j.template === t ? 'selected' : ''}>${t}</option>`
+    const tplOpts = TEMPLATES.map(t =>
+      `<option value="${t}"${j.template === t ? ' selected' : ''}>${t}</option>`
     ).join('');
 
-    const canAct = !j.sent;
+    const canEdit = !j.sent && !j.excluded;
 
-    const actionsHtml = j.excluded
-      ? `<div class="row-actions">
-          <button class="row-btn row-restore" onclick="restoreRow('${j.listing_id}')">Restore</button>
-         </div>`
+    const actHtml = j.excluded
+      ? `<div class="row-actions"><button class="row-btn row-restore" onclick="restoreRow('${j.listing_id}')">Restore</button></div>`
       : `<div class="row-actions">
-          <button class="row-btn row-send" ${!canAct || noPhone ? 'disabled' : ''} onclick="sendOne('${j.listing_id}')">Send</button>
-          <button class="row-btn row-remove" ${!canAct ? 'disabled' : ''} onclick="excludeRow('${j.listing_id}')">✕</button>
+           <button class="row-btn row-send"   ${j.sent || noPhone ? 'disabled' : ''} onclick="sendOne('${j.listing_id}')">Send</button>
+           <button class="row-btn row-remove" ${j.sent ? 'disabled' : ''}            onclick="excludeRow('${j.listing_id}')">✕</button>
          </div>`;
 
-    return `<tr class="${trClass}">
-      <td>${escHtml(j.tp_full_name || j.nickname || '—')}</td>
-      <td style="font-family:var(--mono)">${maskPhone(j.phone_number)}</td>
-      <td><span class="badge ${badgeClass}">${escHtml(j.job_type || '—')}</span></td>
+    return `<tr class="${trCls}">
+      <td><strong>${esc(j.tp_full_name || j.nickname || '—')}</strong></td>
+      <td style="font-family:var(--mono);color:#6b7280">${maskPhone(j.phone_number)}</td>
+      <td><span class="badge ${badgeCls}">${esc(j.job_type)}</span></td>
       <td>
-        <select class="tpl-select" ${!canAct ? 'disabled' : ''}
+        <select class="tpl-select" ${canEdit ? '' : 'disabled'}
           onchange="changeTemplate('${j.listing_id}', this.value)">
-          ${tplOptions}
+          ${tplOpts}
         </select>
       </td>
-      <td style="font-size:12px;color:#6b7280;font-style:italic;max-width:260px;white-space:normal">${escHtml(j.template || '')}</td>
+      <td style="font-size:12px;color:#9ca3af;font-style:italic">${esc(j.template)}</td>
       <td>${statusHtml}</td>
-      <td>${actionsHtml}</td>
+      <td>${actHtml}</td>
     </tr>`;
   }).join('');
 
-  document.getElementById('table-container').innerHTML = `
+  document.getElementById('tbl-wrap').innerHTML = `
     <table>
-      <thead>
-        <tr>
-          <th>Driver</th>
-          <th>Phone</th>
-          <th>Job Type</th>
-          <th>Template</th>
-          <th>Message Preview</th>
-          <th>Status</th>
-          <th style="text-align:right">Actions</th>
-        </tr>
-      </thead>
+      <thead><tr>
+        <th>Driver</th><th>Phone</th><th>Job Type</th>
+        <th>Template</th><th>Message Preview</th><th>Status</th>
+        <th style="text-align:right">Actions</th>
+      </tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
 }
 
-function updateStats() {
-  if (!jobs.length) return;
-  const today = todayStr();
-  const ready   = jobs.filter(j => !j.excluded && !j.sent && j.phone_number).length;
-  const sent    = jobs.filter(j => j.sent).length;
-  const excl    = jobs.filter(j => j.excluded).length;
-  const fetchTs = jobs.reduce((m,j) => j.fetched_at > m ? j.fetched_at : m, '');
-
-  document.getElementById('stats-row').style.display = 'flex';
-  document.getElementById('stat-date').textContent   = formatDate(today);
-  document.getElementById('stat-total').textContent  = jobs.length;
-  document.getElementById('stat-ready').textContent  = ready;
-  document.getElementById('stat-sent').textContent   = sent;
-  document.getElementById('stat-excl').textContent   = excl;
-  document.getElementById('stat-fetched').textContent = fetchTs
-    ? new Date(fetchTs).toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'})
-    : '—';
+function changeTemplate(listingId, val) {
+  const j = jobs.find(j => j.listing_id === listingId);
+  if (j) { j.template = val; updateStats(); }
 }
 
-// ─── UTILS ───────────────────────────────────────────────────────────────────
+function excludeRow(listingId) {
+  const j = jobs.find(j => j.listing_id === listingId);
+  if (j) { j.excluded = true; renderTable(); updateStats(); toast('Job removed from send list'); }
+}
+
+function restoreRow(listingId) {
+  const j = jobs.find(j => j.listing_id === listingId);
+  if (j) { j.excluded = false; renderTable(); updateStats(); toast('Job restored'); }
+}
+
+function updateStats() {
+  if (!jobs.length) return;
+  document.getElementById('stat-date').textContent  = fmtDate(todayStr());
+  document.getElementById('stat-total').textContent = jobs.length;
+  document.getElementById('stat-ready').textContent = jobs.filter(j => !j.excluded && !j.sent && j.phone_number).length;
+  document.getElementById('stat-sent').textContent  = jobs.filter(j => j.sent).length;
+  document.getElementById('stat-excl').textContent  = jobs.filter(j => j.excluded).length;
+
+  const ready = jobs.filter(j => !j.excluded && !j.sent && j.phone_number).length;
+  document.getElementById('btn-send-all').disabled = ready === 0;
+}
+
+// ─── UI HELPERS ──────────────────────────────────────────────────────────────
+
+function showLoading(msg) {
+  document.getElementById('tbl-wrap').innerHTML =
+    `<div class="loading"><span class="spin" style="font-size:22px;display:block;margin-bottom:14px">↻</span>${msg}</div>`;
+}
+
+function showEmpty(msg = 'Press Get Data to load today\'s Storage jobs from Snowflake') {
+  document.getElementById('tbl-wrap').innerHTML =
+    `<div class="empty"><div class="empty-icon">📱</div>${msg}</div>`;
+}
+
+function setMeta(s) { document.getElementById('sec-meta').textContent = s; }
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3200);
+}
 
 function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-function formatDate(s) {
-  return new Date(s + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'short',day:'numeric',month:'short',year:'numeric'});
+function fmtDate(s) {
+  return new Date(s + 'T12:00:00').toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
 }
 
-function maskPhone(p) {
-  if (!p) return '—';
-  return '••••' + p.slice(-4);
-}
+function maskPhone(p) { return p ? '•••• ' + p.slice(-4) : '—'; }
 
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function toast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 3000);
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
 
-refreshFromSupabase(); // Load any existing today's data on page open
+// On load: check if we already have today's data and show it
+(async () => {
+  const data = await loadJson();
+  if (data && data.job_date === todayStr() && data.jobs?.length) {
+    applyData(data);
+    setMeta(`Fetched at ${new Date(data.fetched_at).toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'})}`);
+  }
+})();
 </script>
 
 </body>
