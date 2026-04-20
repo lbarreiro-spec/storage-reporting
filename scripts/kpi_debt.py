@@ -93,22 +93,23 @@ def get_token() -> str:
 def _books_get(path, params=None):
     headers = {"Authorization": f"Zoho-oauthtoken {get_token()}"}
     p = {"organization_id": ZOHO_ORG_ID, **(params or {})}
-    for attempt in range(3):
+    MAX_ATTEMPTS = 8
+    for attempt in range(MAX_ATTEMPTS):
         try:
             r = requests.get(f"{BOOKS_BASE}{path}", headers=headers, params=p, timeout=30)
             if r.status_code == 429:
-                wait = 20 * (attempt + 1)
-                print(f"  ⏳ Rate limited — waiting {wait}s")
+                wait = min(60 * (attempt + 1), 300)
+                print(f"  ⏳ Rate limited (attempt {attempt+1}/{MAX_ATTEMPTS}) — waiting {wait}s")
                 time.sleep(wait)
                 continue
             r.raise_for_status()
             return r.json()
         except (requests.ConnectionError, requests.Timeout) as e:
-            if attempt < 2:
-                time.sleep(10 * (attempt + 1))
+            if attempt < MAX_ATTEMPTS - 1:
+                time.sleep(15 * (attempt + 1))
             else:
-                raise RuntimeError(f"Books GET {path} failed: {e}")
-    return {}
+                raise RuntimeError(f"Books GET {path} failed after {MAX_ATTEMPTS} attempts: {e}")
+    raise RuntimeError(f"Books GET {path} rate-limited on all {MAX_ATTEMPTS} attempts — aborting")
 
 # ── Fetching ──────────────────────────────────────────────────────────────────
 
@@ -716,6 +717,15 @@ def main():
     for inv in merged:
         counts[classify(inv)] += 1
     print(f"   Classifications: " + ", ".join(f"{k}={v}" for k, v in sorted(counts.items())))
+
+    # Sanity check — if paid count is suspiciously low, Zoho returned partial data
+    paid_count = counts.get("paid", 0)
+    MIN_PAID_INVOICES = 20000
+    if paid_count < MIN_PAID_INVOICES:
+        raise RuntimeError(
+            f"Aborting: only {paid_count} paid invoices fetched (expected ≥{MIN_PAID_INVOICES}). "
+            "Zoho API returned incomplete data — possibly rate-limited or temporarily unavailable."
+        )
 
     print("\n🧮 Computing metrics...")
     summary = build_summary(merged)
