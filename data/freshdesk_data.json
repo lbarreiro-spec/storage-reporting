@@ -7030,36 +7030,36 @@
     ]
   },
   "2026-04-17": {
-    "inn": 178,
+    "inn": 190,
     "resolved": 78,
-    "backlog": 62,
-    "fr_sla": 92.7,
+    "backlog": 106,
+    "fr_sla": 70.0,
     "res_sla": 98.7,
     "avg_r": "11.8h",
     "p90": "25.0h",
     "queues": [
       {
-        "in": 92,
+        "in": 99,
         "res": 52,
-        "blg": 34,
-        "fr": 92.4
+        "blg": 63,
+        "fr": 67.7
       },
       {
-        "in": 59,
+        "in": 62,
         "res": 24,
-        "blg": 24,
-        "fr": 94.9
+        "blg": 35,
+        "fr": 69.4
       },
       {
-        "in": 25,
+        "in": 27,
         "res": 1,
-        "blg": 4,
-        "fr": 88.0
+        "blg": 7,
+        "fr": 77.8
       },
       {
         "in": 2,
         "res": 1,
-        "blg": 0,
+        "blg": 1,
         "fr": 100.0
       },
       {
@@ -7112,7 +7112,7 @@
       {
         "assigned": 19,
         "resolved": 0,
-        "backlog": 0,
+        "backlog": 1,
         "fr": 89.5,
         "avg": "\u2014",
         "p90": "\u2014",
@@ -7125,36 +7125,36 @@
     ]
   },
   "2026-04-18": {
-    "inn": 124,
-    "resolved": 7,
-    "backlog": 89,
-    "fr_sla": 70.2,
+    "inn": 132,
+    "resolved": 6,
+    "backlog": 106,
+    "fr_sla": 62.9,
     "res_sla": 100.0,
-    "avg_r": "75.9h",
+    "avg_r": "72.3h",
     "p90": "266.7h",
     "queues": [
       {
-        "in": 76,
+        "in": 81,
         "res": 0,
-        "blg": 52,
-        "fr": 72.4
+        "blg": 63,
+        "fr": 64.2
       },
       {
-        "in": 38,
+        "in": 41,
         "res": 1,
-        "blg": 31,
-        "fr": 63.2
+        "blg": 35,
+        "fr": 58.5
       },
       {
         "in": 9,
-        "res": 6,
-        "blg": 6,
-        "fr": 77.8
+        "res": 5,
+        "blg": 7,
+        "fr": 66.7
       },
       {
         "in": 1,
         "res": 0,
-        "blg": 0,
+        "blg": 1,
         "fr": 100.0
       },
       {
@@ -7206,16 +7206,111 @@
       },
       {
         "assigned": 2,
-        "resolved": 6,
-        "backlog": 0,
+        "resolved": 5,
+        "backlog": 1,
         "fr": 100.0,
-        "avg": "44.0h",
-        "p90": "96.9h",
+        "avg": "33.5h",
+        "p90": "69.6h",
         "replied": 0,
-        "note_only": 6,
+        "note_only": 5,
         "nothing": 0,
         "reply_rate": "0%",
         "fast": 2
+      }
+    ]
+  },
+  "2026-04-19": {
+    "inn": 63,
+    "resolved": 0,
+    "backlog": 106,
+    "fr_sla": 42.9,
+    "res_sla": 0,
+    "avg_r": "\u2014",
+    "p90": "\u2014",
+    "queues": [
+      {
+        "in": 37,
+        "res": 0,
+        "blg": 63,
+        "fr": 45.9
+      },
+      {
+        "in": 20,
+        "res": 0,
+        "blg": 35,
+        "fr": 35.0
+      },
+      {
+        "in": 5,
+        "res": 0,
+        "blg": 7,
+        "fr": 40.0
+      },
+      {
+        "in": 1,
+        "res": 0,
+        "blg": 1,
+        "fr": 100.0
+      },
+      {
+        "in": 0,
+        "res": 0,
+        "blg": 0,
+        "fr": 0
+      }
+    ],
+    "agents": [
+      {
+        "assigned": 0,
+        "resolved": 0,
+        "backlog": 4,
+        "fr": 0,
+        "avg": "\u2014",
+        "p90": "\u2014",
+        "replied": 0,
+        "note_only": 0,
+        "nothing": 0,
+        "reply_rate": "\u2014",
+        "fast": 0
+      },
+      {
+        "assigned": 0,
+        "resolved": 0,
+        "backlog": 0,
+        "fr": 0,
+        "avg": "\u2014",
+        "p90": "\u2014",
+        "replied": 0,
+        "note_only": 0,
+        "nothing": 0,
+        "reply_rate": "\u2014",
+        "fast": 0
+      },
+      {
+        "assigned": 0,
+        "resolved": 0,
+        "backlog": 0,
+        "fr": 0,
+        "avg": "\u2014",
+        "p90": "\u2014",
+        "replied": 0,
+        "note_only": 0,
+        "nothing": 0,
+        "reply_rate": "\u2014",
+        "fast": 0
+      },
+      {
+        "assigned": 2,
+        "resolved": 0,
+        "backlog": 1,
+        "fr": 100.0,
+        "avg": "\u2014",
+        "p90": "\u2014",
+        "replied": 0,
+        "note_only": 0,
+        "nothing": 0,
+        "reply_rate": "\u2014",
+        "fast": 0
       }
     ]
   }
