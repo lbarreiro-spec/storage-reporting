@@ -3,6 +3,10 @@ name: Fetch Debt Data
 on:
   workflow_dispatch:
 
+concurrency:
+  group: fetch-debt
+  cancel-in-progress: false
+
 permissions:
   contents: write
 

@@ -34,8 +34,8 @@ ZOHO_ORG_ID = "[ZOHO_ORG_ID_REMOVED]"
 TOKEN_URL   = f"https://accounts.zoho.{ZOHO_REGION}/oauth/v2/token"
 BOOKS_BASE  = f"https://www.zohoapis.{ZOHO_REGION}/books/v3"
 
-OUTPUT_FILE  = os.environ.get("OUTPUT_FILE",  os.path.expanduser("~/Documents/anyvan-kpi/data/debt_data.json"))
-HISTORY_FILE = os.environ.get("HISTORY_FILE", os.path.expanduser("~/Documents/anyvan-kpi/data/debt_history.json"))
+OUTPUT_FILE  = os.environ.get("OUTPUT_FILE",  os.path.expanduser("~/Documents/storage-reporting/data/debt_data.json"))
+HISTORY_FILE = os.environ.get("HISTORY_FILE", os.path.expanduser("~/Documents/storage-reporting/data/debt_history.json"))
 
 CREDS_FILES = [
     ".env",  # GitHub Actions writes creds here
