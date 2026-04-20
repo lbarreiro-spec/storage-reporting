@@ -7031,8 +7031,8 @@
   },
   "2026-04-17": {
     "inn": 190,
-    "resolved": 77,
-    "backlog": 125,
+    "resolved": 76,
+    "backlog": 127,
     "fr_sla": 70.0,
     "res_sla": 98.7,
     "avg_r": "11.1h",
@@ -7041,13 +7041,13 @@
       {
         "in": 99,
         "res": 51,
-        "blg": 74,
+        "blg": 75,
         "fr": 67.7
       },
       {
         "in": 62,
-        "res": 24,
-        "blg": 41,
+        "res": 23,
+        "blg": 42,
         "fr": 69.4
       },
       {
@@ -7071,10 +7071,10 @@
     ],
     "agents": [
       {
-        "assigned": 74,
+        "assigned": 77,
         "resolved": 52,
-        "backlog": 5,
-        "fr": 97.3,
+        "backlog": 12,
+        "fr": 96.1,
         "avg": "4.6h",
         "p90": "16.5h",
         "replied": 16,
@@ -7084,9 +7084,9 @@
         "fast": 1
       },
       {
-        "assigned": 16,
+        "assigned": 17,
         "resolved": 6,
-        "backlog": 0,
+        "backlog": 6,
         "fr": 100.0,
         "avg": "7.6h",
         "p90": "21.1h",
@@ -7097,22 +7097,22 @@
         "fast": 0
       },
       {
-        "assigned": 25,
-        "resolved": 19,
-        "backlog": 3,
-        "fr": 80.0,
-        "avg": "29.9h",
+        "assigned": 29,
+        "resolved": 18,
+        "backlog": 10,
+        "fr": 75.9,
+        "avg": "31.3h",
         "p90": "90.6h",
-        "replied": 7,
+        "replied": 6,
         "note_only": 1,
         "nothing": 11,
-        "reply_rate": "37%",
+        "reply_rate": "33%",
         "fast": 0
       },
       {
         "assigned": 19,
         "resolved": 0,
-        "backlog": 1,
+        "backlog": 2,
         "fr": 89.5,
         "avg": "\u2014",
         "p90": "\u2014",
@@ -7127,8 +7127,8 @@
   "2026-04-18": {
     "inn": 132,
     "resolved": 6,
-    "backlog": 125,
-    "fr_sla": 62.1,
+    "backlog": 126,
+    "fr_sla": 59.8,
     "res_sla": 100.0,
     "avg_r": "72.3h",
     "p90": "266.7h",
@@ -7136,19 +7136,19 @@
       {
         "in": 81,
         "res": 0,
-        "blg": 74,
-        "fr": 64.2
+        "blg": 75,
+        "fr": 61.7
       },
       {
         "in": 41,
         "res": 1,
-        "blg": 41,
-        "fr": 56.1
+        "blg": 42,
+        "fr": 53.7
       },
       {
         "in": 9,
         "res": 5,
-        "blg": 8,
+        "blg": 7,
         "fr": 66.7
       },
       {
@@ -7168,7 +7168,7 @@
       {
         "assigned": 49,
         "resolved": 1,
-        "backlog": 5,
+        "backlog": 12,
         "fr": 98.0,
         "avg": "266.7h",
         "p90": "266.7h",
@@ -7179,9 +7179,9 @@
         "fast": 0
       },
       {
-        "assigned": 4,
+        "assigned": 5,
         "resolved": 0,
-        "backlog": 0,
+        "backlog": 6,
         "fr": 100.0,
         "avg": "\u2014",
         "p90": "\u2014",
@@ -7194,7 +7194,7 @@
       {
         "assigned": 8,
         "resolved": 0,
-        "backlog": 3,
+        "backlog": 12,
         "fr": 100.0,
         "avg": "\u2014",
         "p90": "\u2014",
@@ -7205,10 +7205,10 @@
         "fast": 0
       },
       {
-        "assigned": 2,
+        "assigned": 3,
         "resolved": 5,
-        "backlog": 1,
-        "fr": 100.0,
+        "backlog": 3,
+        "fr": 66.7,
         "avg": "33.5h",
         "p90": "69.6h",
         "replied": 0,
@@ -7220,31 +7220,31 @@
     ]
   },
   "2026-04-19": {
-    "inn": 84,
+    "inn": 88,
     "resolved": 0,
-    "backlog": 125,
-    "fr_sla": 56.0,
+    "backlog": 126,
+    "fr_sla": 54.5,
     "res_sla": 0,
     "avg_r": "\u2014",
     "p90": "\u2014",
     "queues": [
       {
-        "in": 49,
+        "in": 51,
         "res": 0,
-        "blg": 74,
-        "fr": 59.2
+        "blg": 75,
+        "fr": 56.9
       },
       {
         "in": 26,
         "res": 0,
-        "blg": 41,
-        "fr": 46.2
+        "blg": 42,
+        "fr": 42.3
       },
       {
-        "in": 7,
+        "in": 9,
         "res": 0,
-        "blg": 8,
-        "fr": 57.1
+        "blg": 7,
+        "fr": 66.7
       },
       {
         "in": 2,
@@ -7263,7 +7263,7 @@
       {
         "assigned": 0,
         "resolved": 0,
-        "backlog": 5,
+        "backlog": 16,
         "fr": 0,
         "avg": "\u2014",
         "p90": "\u2014",
@@ -7276,7 +7276,7 @@
       {
         "assigned": 0,
         "resolved": 0,
-        "backlog": 0,
+        "backlog": 8,
         "fr": 0,
         "avg": "\u2014",
         "p90": "\u2014",
@@ -7289,7 +7289,7 @@
       {
         "assigned": 0,
         "resolved": 0,
-        "backlog": 3,
+        "backlog": 13,
         "fr": 0,
         "avg": "\u2014",
         "p90": "\u2014",
@@ -7300,9 +7300,9 @@
         "fast": 0
       },
       {
-        "assigned": 5,
+        "assigned": 8,
         "resolved": 0,
-        "backlog": 1,
+        "backlog": 6,
         "fr": 100.0,
         "avg": "\u2014",
         "p90": "\u2014",
