@@ -470,6 +470,11 @@ const WORKFLOW_ID = 'fetch_debt.yml'
 async function triggerRefresh() {
   const btn = document.getElementById('refresh-btn')
   btn.disabled = true
+  const startTs = Date.now()
+  const elapsed = () => {
+    const s = Math.floor((Date.now()-startTs)/1000)
+    return s < 60 ? `${s}s` : `${Math.floor(s/60)}m${s%60}s`
+  }
   btn.innerHTML = '<span class="spin">↻</span> Refreshing…'
   const prevTs = await fetch('../data/debt_data.json?_=' + Date.now())
     .then(r => r.json()).then(j => j.generated_at).catch(() => null)
@@ -491,8 +496,10 @@ async function triggerRefresh() {
       await new Promise(r => setTimeout(r, 3000))
     }
     if (!runId) throw new Error('Could not find workflow run')
-    for (let i = 0; i < 50; i++) {
+    let completed = false
+    for (let i = 0; i < 400; i++) {
       await new Promise(r => setTimeout(r, 6000))
+      btn.innerHTML = `<span class="spin">↻</span> Running… ${elapsed()}`
       const check = await fetch(
         `https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/runs/${runId}`,
         {headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json'}}
@@ -500,9 +507,11 @@ async function triggerRefresh() {
       const run = await check.json()
       if (run.status === 'completed') {
         if (run.conclusion !== 'success') throw new Error(`Workflow ${run.conclusion}`)
+        completed = true
         break
       }
     }
+    if (!completed) throw new Error('Workflow timed out after 40 minutes — check GitHub Actions')
     // Poll until GitHub Pages serves the updated JSON (deploy typically takes 30-90s)
     let deployed = false
     for (let i = 0; i < 24; i++) {
