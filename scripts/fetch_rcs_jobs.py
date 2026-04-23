@@ -7,7 +7,6 @@ Runs at 8am UK daily via GitHub Actions, or on demand via workflow_dispatch.
 
 import json
 import os
-import sys
 from datetime import date, datetime, timezone
 import snowflake.connector
 
@@ -24,6 +23,7 @@ SELECT
     EL.LISTING_CHOSEN_PROVIDER_NICKNAME,
     EL.CUSTOMER_FULL_NAME,
     EL.CUSTOMER_EMAIL_ADDRESS,
+    EL.LISTING_SPECIAL_INSTRUCTIONS,
     TP.PHONE_NUMBER,
     CASE
         WHEN EL.STORAGE_COLLECTION_DEAL_ID IS NOT NULL
@@ -33,12 +33,23 @@ SELECT
             THEN 'Disposal'
         WHEN EL.STORAGE_REDELIVERY_DEAL_ID IS NOT NULL
             THEN 'Redelivery'
-    END AS JOB_TYPE
+    END AS JOB_TYPE,
+    W.COMPANY_NAME AS WAREHOUSE_NAME,
+    CASE
+        WHEN W.COMPANY_NAME ILIKE 'Access Self Storage%' THEN 'Access'
+        WHEN W.COMPANY_NAME IS NOT NULL THEN 'Non-Access'
+        ELSE 'Non-Access'
+    END AS FACILITY_TYPE
 FROM MART_ENTERPRISE.PRODUCTION.ENTERPRISE_LISTING_EXTRACT EL
 JOIN CONFORMED.PRODUCTION.FCT_STORAGE FS
     ON EL.LISTING_ID = FS.LISTING_ID
 LEFT JOIN MART_SALES_OPS.PRODUCTION.TP_DETAILS TP
     ON EL.LISTING_CHOSEN_PROVIDER_NICKNAME = TP.NICKNAME
+LEFT JOIN CONFORMED.PRODUCTION.DIM_STORAGE_WAREHOUSE W
+    ON CASE
+        WHEN EL.STORAGE_COLLECTION_DEAL_ID IS NOT NULL THEN EL.LISTING_DELIVERY_ADDRESS
+        ELSE EL.LISTING_PICK_UP_ADDRESS
+       END ILIKE '%' || W.POST_CODE || '%'
 WHERE
     EL.LISTING_PICK_UP_DATE = CURRENT_DATE()
     AND EL.LISTING_JOB_CLASSIFICATION_REGION IN ('AVC | V4 - UK', 'AVB - UK')
@@ -49,18 +60,94 @@ WHERE
     AND FS.DEAL_STAGE != 'Cancel'
 """
 
-TEMPLATES = {
-    'Collection': 'This is a Storage Collection Job',
-    'Redelivery': 'This is a Storage Redelivery Job',
-    'Disposal':   'This is a Storage Disposal Job',
-}
-
 OUTPUT_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'rcs_today.json')
 
 
 def get_snowflake_token():
     path = os.path.expanduser("~/.snowflake/connections.toml")
     return open(path).read().split('token = "')[1].split('"')[0]
+
+
+def build_message(job_type, facility_type, driver_name, customer_name,
+                  facility_name, unit_number, padlock, access_code, listing_id):
+    first_name = driver_name.split()[0] if driver_name else 'there'
+    unit_str   = unit_number  or '[See special instructions]'
+    padlock_str = padlock     or '[See special instructions]'
+    access_str  = access_code or '[See special instructions]'
+    facility_str = facility_name or '[Facility]'
+
+    if job_type == 'Collection' and facility_type == 'Access':
+        return (
+            f"📦 AnyVan Storage — Customer Collection → Storage\n"
+            f"Ref: {listing_id}\n\n"
+            f"Hi {first_name}, here are your key reminders for today's job:\n\n"
+            f"👤 Customer: {customer_name}\n"
+            f"🏢 Facility: {facility_str}\n"
+            f"🔢 Unit: {unit_str}\n"
+            f"🔑 Access code: {access_str}\n"
+            f"🔒 Padlock: {padlock_str}\n\n"
+            f"ℹ️ No unit number? Reception will allocate one on arrival — all items must go into your allocated unit.\n"
+            f"⏰ Be at the facility before 4pm.\n"
+            f"🚛 Load the unit carefully — you're responsible for any damage caused by poor loading.\n"
+            f"📸 Take photos of everything loaded into the unit, anything not on the inventory list, and any pre-existing damage at the collection address.\n\n"
+            f"If you need to contact the team about this Storage job, just reply to this message."
+        )
+    elif job_type == 'Collection':
+        return (
+            f"📦 AnyVan Storage — Customer Collection → Storage\n"
+            f"Ref: {listing_id}\n\n"
+            f"Hi {first_name}, here are your key reminders for today's job:\n\n"
+            f"👤 Customer: {customer_name}\n"
+            f"🏢 Facility: {facility_str}\n"
+            f"🔢 Unit: {unit_str}\n\n"
+            f"🦺 PPE required on site — high-vis vest and safety shoes must be worn before entering the facility. No exceptions.\n"
+            f"⏰ Be at the facility before 4pm.\n"
+            f"🚛 Load the unit carefully — you're responsible for any damage caused by poor loading.\n"
+            f"📸 Take photos of everything loaded into the unit, anything not on the inventory list, and any pre-existing damage at the collection address.\n\n"
+            f"If you need to contact the team about this Storage job, just reply to this message."
+        )
+    elif job_type == 'Redelivery' and facility_type == 'Access':
+        return (
+            f"🚚 AnyVan Storage — Storage → Customer Delivery\n"
+            f"Ref: {listing_id}\n\n"
+            f"Hi {first_name}, here are your key reminders for today's job:\n\n"
+            f"👤 Customer: {customer_name}\n"
+            f"🏢 Facility: {facility_str}\n"
+            f"🔢 Unit: {unit_str}\n"
+            f"🔑 Access code: {access_str}\n"
+            f"🔒 Padlock: {padlock_str}\n\n"
+            f"📸 Before you start loading — photograph everything in the unit. This is how we check against the original collection.\n"
+            f"📸 Also photograph anything not on the inventory list and any damage before loading into your vehicle.\n"
+            f"🏁 Before you leave: photo of the empty unit, then leave it unlocked with keys inside or hand the padlock to reception.\n\n"
+            f"If you need to contact the team about this Storage job, just reply to this message."
+        )
+    elif job_type == 'Redelivery':
+        return (
+            f"🚚 AnyVan Storage — Storage → Customer Delivery\n"
+            f"Ref: {listing_id}\n\n"
+            f"Hi {first_name}, here are your key reminders for today's job:\n\n"
+            f"👤 Customer: {customer_name}\n"
+            f"🏢 Facility: {facility_str}\n"
+            f"🔢 Unit: {unit_str}\n\n"
+            f"🦺 PPE required on site — high-vis vest and safety shoes must be worn before entering the facility. No exceptions.\n"
+            f"✅ Check in with reception on arrival and again when you're done.\n"
+            f"⏰ You must arrive within your pre-arranged timeslot.\n"
+            f"📸 Before you start loading — photograph everything in the unit, anything not on the inventory list, and any damage before loading into your vehicle.\n\n"
+            f"If you need to contact the team about this Storage job, just reply to this message."
+        )
+    else:  # Disposal
+        return (
+            f"🗑️ AnyVan Storage — Collect & Dispose\n"
+            f"Ref: {listing_id}\n\n"
+            f"Hi {first_name}, here are your key reminders for today's job:\n\n"
+            f"👤 Customer: {customer_name}\n"
+            f"🏢 Facility: {facility_str}\n"
+            f"🔢 Unit: {unit_str}\n\n"
+            f"✅ All items must be removed — nothing left behind.\n"
+            f"📸 Photograph everything in the unit before you start, and any pre-existing damage.\n"
+            f"🏁 Before you leave: photo of the empty unit, then leave it unlocked or hand the padlock to reception.\n\n"
+            f"If you need to contact the team about this Storage job, just reply to this message."
+        )
 
 
 def main():
@@ -87,17 +174,36 @@ def main():
 
     jobs = []
     for row in rows:
-        r = dict(zip(cols, row))
-        job_type = r.get('JOB_TYPE') or 'Unknown'
+        r            = dict(zip(cols, row))
+        job_type     = r.get('JOB_TYPE') or 'Unknown'
+        facility_type = r.get('FACILITY_TYPE') or 'Non-Access'
+        facility_name = r.get('WAREHOUSE_NAME') or ''
+        driver_name  = r.get('TP_FULL_NAME') or ''
+        customer_name = r.get('CUSTOMER_FULL_NAME') or ''
+        listing_id   = str(r['LISTING_ID'])
+
+        # Zoho fields — populated once Zoho CRM integration is built
+        unit_number  = ''
+        padlock      = ''
+        access_code  = ''
+
+        message = build_message(
+            job_type, facility_type, driver_name, customer_name,
+            facility_name, unit_number, padlock, access_code, listing_id
+        )
+
         jobs.append({
-            'listing_id':     str(r['LISTING_ID']),
-            'tp_full_name':   r.get('TP_FULL_NAME') or '',
-            'nickname':       r.get('LISTING_CHOSEN_PROVIDER_NICKNAME') or '',
-            'customer_name':  r.get('CUSTOMER_FULL_NAME') or '',
+            'listing_id':    listing_id,
+            'tp_full_name':  driver_name,
+            'nickname':      r.get('LISTING_CHOSEN_PROVIDER_NICKNAME') or '',
+            'customer_name': customer_name,
             'customer_email': r.get('CUSTOMER_EMAIL_ADDRESS') or '',
-            'phone_number':   r.get('PHONE_NUMBER') or '',
-            'job_type':       job_type,
-            'template':       TEMPLATES.get(job_type, ''),
+            'phone_number':  r.get('PHONE_NUMBER') or '',
+            'job_type':      job_type,
+            'facility_type': facility_type,
+            'facility_name': facility_name,
+            'unit_number':   unit_number,
+            'message':       message,
         })
 
     output = {
