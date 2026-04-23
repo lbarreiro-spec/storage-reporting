@@ -70,7 +70,8 @@ def get_snowflake_token():
 
 def build_message(job_type, facility_type, driver_name, customer_name,
                   facility_name, unit_number, padlock, access_code, listing_id):
-    first_name = driver_name.split()[0] if driver_name else 'there'
+    parts = driver_name.split() if driver_name else []
+    first_name = next((p for p in parts if len(p) > 1), parts[0] if parts else 'there')
     unit_str   = unit_number  or '[See special instructions]'
     padlock_str = padlock     or '[See special instructions]'
     access_str  = access_code or '[See special instructions]'
