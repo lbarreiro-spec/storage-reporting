@@ -7505,24 +7505,24 @@
     ]
   },
   "2026-04-22": {
-    "inn": 149,
+    "inn": 155,
     "resolved": 58,
-    "backlog": 97,
-    "fr_sla": 77.9,
+    "backlog": 102,
+    "fr_sla": 76.8,
     "res_sla": 81.0,
     "avg_r": "51.3h",
     "p90": "117.3h",
     "queues": [
       {
-        "in": 79,
+        "in": 85,
         "res": 29,
-        "blg": 60,
-        "fr": 77.2
+        "blg": 66,
+        "fr": 75.3
       },
       {
         "in": 53,
         "res": 21,
-        "blg": 31,
+        "blg": 30,
         "fr": 77.4
       },
       {
@@ -7572,10 +7572,10 @@
         "fast": 0
       },
       {
-        "assigned": 14,
+        "assigned": 23,
         "resolved": 16,
-        "backlog": 3,
-        "fr": 85.7,
+        "backlog": 15,
+        "fr": 60.9,
         "avg": "78.6h",
         "p90": "139.5h",
         "replied": 11,
@@ -7585,10 +7585,10 @@
         "fast": 0
       },
       {
-        "assigned": 14,
+        "assigned": 22,
         "resolved": 9,
-        "backlog": 3,
-        "fr": 92.9,
+        "backlog": 13,
+        "fr": 68.2,
         "avg": "49.0h",
         "p90": "215.2h",
         "replied": 3,
