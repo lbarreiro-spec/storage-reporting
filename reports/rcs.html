@@ -130,6 +130,7 @@ tbody tr.sent td{opacity:.55}
 .row-remove:hover:not(:disabled){background:#fef2f2;border-color:#ef4444}
 .row-remove:disabled{opacity:.45;cursor:default}
 .row-restore{background:#fff;border:1px solid #e2e2e2;color:#6b7280;font-size:11px;padding:5px 10px}
+.row-preview{background:#f3f4f6;border:1px solid #e2e2e2;color:#374151}
 .row-restore:hover{border-color:#6b7280;color:#374151}
 
 /* EMPTY / LOADING */
@@ -489,17 +490,16 @@ function renderTable() {
 
     const badgeCls = { Collection:'badge-collection', Redelivery:'badge-redelivery', Disposal:'badge-disposal' }[j.job_type] || '';
 
-    const tplOpts = TEMPLATES.map(t =>
       `<option value="${t}"${j.job_type === t ? ' selected' : ''}>${t}</option>`
     ).join('');
 
-    const canEdit = !j.sent && !j.excluded;
 
     const actHtml = j.excluded
       ? `<div class="row-actions"><button class="row-btn row-restore" onclick="restoreRow('${j.listing_id}')">Restore</button></div>`
       : `<div class="row-actions">
-           <button class="row-btn row-send"   ${j.sent || noPhone ? 'disabled' : ''} onclick="sendOne('${j.listing_id}')">Send</button>
-           <button class="row-btn row-remove" ${j.sent ? 'disabled' : ''}            onclick="excludeRow('${j.listing_id}')">✕</button>
+           <button class="row-btn row-preview" onclick="openPreview('${j.listing_id}')">👁 Preview</button>
+           <button class="row-btn row-send"    ${j.sent || noPhone ? 'disabled' : ''} onclick="sendOne('${j.listing_id}')">Send</button>
+           <button class="row-btn row-remove"  ${j.sent ? 'disabled' : ''}            onclick="excludeRow('${j.listing_id}')">✕</button>
          </div>`;
 
     return `<tr class="${trCls}">
@@ -509,13 +509,8 @@ function renderTable() {
       <td style="font-family:var(--mono);font-size:12px;color:#6b7280">${esc(j.listing_id)}</td>
       <td>${esc(j.customer_name || '—')}</td>
       <td style="font-size:12px;color:#6b7280">${esc(j.customer_email || '—')}</td>
-      <td>
-        <select class="tpl-select" ${canEdit ? '' : 'disabled'}
-          onchange="changeTemplate('${j.listing_id}', this.value)">
-          ${tplOpts}
-        </select>
-      </td>
-      <td style="font-size:12px;color:#9ca3af;font-style:italic">${esc(j.template)}</td>
+      <td style="font-size:12px;color:#6b7280">${esc(j.facility_name || '—')}</td>
+      <td style="font-family:var(--mono);font-size:12px;color:#6b7280">${esc(j.unit_number || '—')}</td>
       <td>${statusHtml}</td>
       <td>${actHtml}</td>
     </tr>`;
@@ -524,19 +519,15 @@ function renderTable() {
   document.getElementById('tbl-wrap').innerHTML = `
     <table>
       <thead><tr>
-        <th>Driver</th><th>Phone</th><th>Job Type</th>
-        <th>Listing ID</th><th>Customer</th><th>Email</th>
-        <th>Template</th><th>Message Preview</th><th>Status</th>
+        <th>Driver</th><th>Phone</th><th>Job Type</th><th>Facility</th>
+        <th>Listing ID</th><th>Customer</th><th>Unit #</th><th>Status</th>
         <th style="text-align:right">Actions</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
 }
 
-function changeTemplate(listingId, val) {
-  const j = jobs.find(j => j.listing_id === listingId);
-  if (j) { j.job_type = val; updateStats(); }
-}
+
 
 function excludeRow(listingId) {
   const j = jobs.find(j => j.listing_id === listingId);
@@ -610,7 +601,37 @@ function esc(s) {
     setMeta(`Fetched at ${new Date(data.fetched_at).toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'})}`);
   }
 })();
+
+function openPreview(listingId) {
+  const j = jobs.find(j => j.listing_id === listingId);
+  if (!j) return;
+  document.getElementById('preview-driver').textContent = j.tp_full_name || j.nickname || '—';
+  document.getElementById('preview-meta').textContent   = j.job_type + (j.facility_name ? ' · ' + j.facility_name : '');
+  document.getElementById('preview-body').textContent   = j.message || '';
+  document.getElementById('preview-modal').style.display = 'flex';
+}
+function closePreview() {
+  document.getElementById('preview-modal').style.display = 'none';
+}
+
 </script>
+
+
+<!-- Preview modal -->
+<div id="preview-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;align-items:center;justify-content:center;" onclick="if(event.target===this)closePreview()">
+  <div style="background:#fff;border-radius:14px;padding:28px;width:520px;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.18);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div style="font-size:15px;font-weight:700;color:#111827" id="preview-driver"></div>
+      <button onclick="closePreview()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#9ca3af;line-height:1">✕</button>
+    </div>
+    <div style="font-size:12px;color:#6b7280;margin-bottom:16px" id="preview-meta"></div>
+    <div style="background:#f3f4f6;border-radius:12px;padding:16px 18px;font-size:13px;line-height:1.75;white-space:pre-wrap;font-family:var(--sans);color:#111827" id="preview-body"></div>
+    <div style="margin-top:14px;display:flex;gap:8px">
+      <div style="background:#e5e7eb;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:#374151">✅ Got it</div>
+      <div style="background:#e5e7eb;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:#374151">⏰ Running late</div>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
