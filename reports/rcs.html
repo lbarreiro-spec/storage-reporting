@@ -490,7 +490,7 @@ function renderTable() {
     const badgeCls = { Collection:'badge-collection', Redelivery:'badge-redelivery', Disposal:'badge-disposal' }[j.job_type] || '';
 
     const tplOpts = TEMPLATES.map(t =>
-      `<option value="${t}"${j.template === t ? ' selected' : ''}>${t}</option>`
+      `<option value="${t}"${j.job_type === t ? ' selected' : ''}>${t}</option>`
     ).join('');
 
     const canEdit = !j.sent && !j.excluded;
@@ -535,7 +535,7 @@ function renderTable() {
 
 function changeTemplate(listingId, val) {
   const j = jobs.find(j => j.listing_id === listingId);
-  if (j) { j.template = val; updateStats(); }
+  if (j) { j.job_type = val; updateStats(); }
 }
 
 function excludeRow(listingId) {
@@ -614,3 +614,4 @@ function esc(s) {
 
 </body>
 </html>
+
