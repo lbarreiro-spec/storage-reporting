@@ -490,10 +490,6 @@ function renderTable() {
 
     const badgeCls = { Collection:'badge-collection', Redelivery:'badge-redelivery', Disposal:'badge-disposal' }[j.job_type] || '';
 
-      `<option value="${t}"${j.job_type === t ? ' selected' : ''}>${t}</option>`
-    ).join('');
-
-
     const actHtml = j.excluded
       ? `<div class="row-actions"><button class="row-btn row-restore" onclick="restoreRow('${j.listing_id}')">Restore</button></div>`
       : `<div class="row-actions">
@@ -519,9 +515,9 @@ function renderTable() {
   document.getElementById('tbl-wrap').innerHTML = `
     <table>
       <thead><tr>
-        <th>Driver</th><th>Phone</th><th>Job Type</th><th>Facility</th>
-        <th>Listing ID</th><th>Customer</th><th>Unit #</th><th>Status</th>
-        <th style="text-align:right">Actions</th>
+        <th>Driver</th><th>Phone</th><th>Job Type</th><th>Listing ID</th>
+        <th>Customer</th><th>Email</th><th>Facility</th><th>Unit #</th>
+        <th>Status</th><th style="text-align:right">Actions</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
