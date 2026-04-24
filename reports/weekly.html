@@ -107,7 +107,7 @@ tr.dr>td{
   border-bottom:1px solid #f0f0f0;
   vertical-align:middle;
 }
-tr.dr:hover>td{background:#fafafa !important}
+tr.dr:hover>td{background:#fafafa}
 
 td.c-section{
   position:sticky;left:0;z-index:9;
@@ -139,6 +139,14 @@ td.c-val{
   background:#fff;
 }
 td.c-val.empty{color:#d1d5db}
+
+/* CONDITIONAL FORMATTING */
+td.c-val.cf-green{background:#f0fdf4}
+td.c-val.cf-amber{background:#fffbeb}
+td.c-val.cf-red  {background:#fff1f2}
+tr.dr:hover>td.cf-green{background:#dcfce7 !important}
+tr.dr:hover>td.cf-amber{background:#fef9c3 !important}
+tr.dr:hover>td.cf-red  {background:#fee2e2 !important}
 
 /* STATE */
 .state{
@@ -202,6 +210,31 @@ td.c-val.empty{color:#d1d5db}
 </div>
 
 <script>
+// Metrics where a lower value is better
+const LOWER_IS_BETTER = new Set([
+  '% Prospecting','Outstanding Tickets','% Outstanding',
+  'Not Striped','Not E-Signed','Promotions','Promo %','Refunds / Write-off'
+])
+
+function parseVal(v){
+  if(!v||v==='—') return null
+  const n=parseFloat(v.replace(/[£%,\s]/g,''))
+  return isNaN(n)?null:n
+}
+
+function rowAvg(values){
+  const nums=values.map(parseVal).filter(n=>n!==null)
+  if(nums.length<2) return null
+  return nums.reduce((a,b)=>a+b,0)/nums.length
+}
+
+function cfClass(val,avg,lowerBetter){
+  if(val===null||avg===null||avg===0) return ''
+  const r=val/avg
+  if(lowerBetter) return r<0.93?'cf-green':r>1.08?'cf-red':'cf-amber'
+  return r>1.08?'cf-green':r<0.93?'cf-red':'cf-amber'
+}
+
 let _tableData = null
 let _activeWindow = 12
 
@@ -295,11 +328,17 @@ async function load(){
       tdMet.textContent = row.metric
       tr.appendChild(tdMet)
 
+      const lowerBetter = LOWER_IS_BETTER.has(row.metric)
+      const avg = rowAvg(row.values)
       row.values.forEach(v => {
         const td = document.createElement('td')
         const empty = v === ''
         td.className = 'c-val' + (empty ? ' empty' : '')
         td.textContent = empty ? '—' : v
+        if(!empty){
+          const cls = cfClass(parseVal(v), avg, lowerBetter)
+          if(cls) td.classList.add(cls)
+        }
         tr.appendChild(td)
       })
     })
