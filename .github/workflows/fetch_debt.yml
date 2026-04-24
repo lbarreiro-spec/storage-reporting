@@ -42,7 +42,12 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          cp data/debt_data.json /tmp/debt_data.json
+          cp data/debt_history.json /tmp/debt_history.json
+          git fetch origin
+          git reset --hard origin/main
+          cp /tmp/debt_data.json data/debt_data.json
+          cp /tmp/debt_history.json data/debt_history.json
           git add data/debt_data.json data/debt_history.json
           git diff --staged --quiet || git commit -m "auto: refresh debt data $(date -u '+%Y-%m-%d %H:%M UTC')"
-          git pull --rebase
           git push
