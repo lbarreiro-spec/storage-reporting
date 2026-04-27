@@ -1,20 +1,20 @@
 {
-  "generated_at": "2026-04-27T17:24:17",
+  "generated_at": "2026-04-27T18:22:59",
   "summary": {
-    "total_overdue_balance": 27043.68,
-    "overdue_invoice_count": 538,
-    "avg_days_overdue": 78.2,
+    "total_overdue_balance": 27010.44,
+    "overdue_invoice_count": 537,
+    "avg_days_overdue": 78.3,
     "oldest_overdue_days": 662,
-    "unique_overdue_customers": 160,
+    "unique_overdue_customers": 159,
     "wow": {
-      "wow_value": 1758.11,
-      "wow_pct": 7.0,
+      "wow_value": 1724.87,
+      "wow_pct": 6.8,
       "vs_date": "2026-04-20"
     }
   },
   "bad_debt_segmentation": {
-    "total": 28532.03,
-    "active": 23256.49,
+    "total": 28498.79,
+    "active": 23223.25,
     "at_risk": 1432.86,
     "bad_debt": 3842.68,
     "active_pct": 81.5,
@@ -22,20 +22,20 @@
     "bad_debt_pct": 13.5
   },
   "customer_risk_tiers": {
-    "total_customers": 162,
+    "total_customers": 161,
     "red": 60,
     "amber": 15,
-    "green": 87,
-    "red_pct": 37.0,
+    "green": 86,
+    "red_pct": 37.3,
     "amber_pct": 9.3,
-    "green_pct": 53.7
+    "green_pct": 53.4
   },
   "mtd_recovered_overdue": {
     "month": "2026-04",
     "month_label": "Apr 2026",
-    "total_paid_mtd": 210142.7,
+    "total_paid_mtd": 210175.94,
     "recovered": 32434.06,
-    "on_time": 177708.64,
+    "on_time": 177741.88,
     "recovered_pct": 15.4
   },
   "recovered_overdue_history": [
@@ -88,9 +88,9 @@
       "month": "2026-04",
       "month_label": "Apr 2026 MTD",
       "is_mtd": true,
-      "total_paid": 210142.7,
+      "total_paid": 210175.94,
       "recovered": 32434.06,
-      "on_time": 177708.64,
+      "on_time": 177741.88,
       "recovered_pct": 15.4
     }
   ],
@@ -448,66 +448,66 @@
       "buckets": [
         {
           "bucket": "<1",
-          "amount": 177708.64,
-          "cumulative_pct": 82.14
+          "amount": 177741.88,
+          "cumulative_pct": 82.15
         },
         {
           "bucket": "1-5",
           "amount": 17122.88,
-          "cumulative_pct": 90.05
+          "cumulative_pct": 90.07
         },
         {
           "bucket": "6-10",
           "amount": 1749.55,
-          "cumulative_pct": 90.86
+          "cumulative_pct": 90.88
         },
         {
           "bucket": "11-15",
           "amount": 1951.92,
-          "cumulative_pct": 91.76
+          "cumulative_pct": 91.78
         },
         {
           "bucket": "16-20",
           "amount": 1577.86,
-          "cumulative_pct": 92.49
+          "cumulative_pct": 92.51
         },
         {
           "bucket": "21-25",
           "amount": 50.99,
-          "cumulative_pct": 92.52
+          "cumulative_pct": 92.53
         },
         {
           "bucket": "26-30",
           "amount": 0.0,
-          "cumulative_pct": 92.52
+          "cumulative_pct": 92.53
         },
         {
           "bucket": "31-35",
           "amount": 0.0,
-          "cumulative_pct": 92.52
+          "cumulative_pct": 92.53
         },
         {
           "bucket": "36-40",
           "amount": 0.0,
-          "cumulative_pct": 92.52
+          "cumulative_pct": 92.53
         },
         {
           "bucket": "41-45",
           "amount": 0.0,
-          "cumulative_pct": 92.52
+          "cumulative_pct": 92.53
         },
         {
           "bucket": "46-51",
           "amount": 0.0,
-          "cumulative_pct": 92.52
+          "cumulative_pct": 92.53
         },
         {
           "bucket": ">51",
           "amount": 0.0,
-          "cumulative_pct": 92.52
+          "cumulative_pct": 92.53
         }
       ],
-      "uncollected_pct": 7.48
+      "uncollected_pct": 7.47
     }
   ],
   "outstanding_by_cohort": [
@@ -516,10 +516,10 @@
       "label": "Apr 2026",
       "is_partial": true,
       "invoiced": 216355.81,
-      "collected": 200161.84,
+      "collected": 200195.08,
       "collected_overdue": 22453.2,
       "collected_overdue_pct": 11.2,
-      "outstanding": 14341.17,
+      "outstanding": 14307.93,
       "written_off": 1852.8,
       "collection_pct": 92.5,
       "flag": "active",
