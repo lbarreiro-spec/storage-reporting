@@ -118,5 +118,10 @@
     "date": "2026-04-25",
     "total_overdue_balance": 27024.43,
     "overdue_count": 535
+  },
+  {
+    "date": "2026-04-27",
+    "total_overdue_balance": 27822.19,
+    "overdue_count": 553
   }
 ]
