@@ -34,10 +34,10 @@ SELECT
     EL.CUSTOMER_EMAIL_ADDRESS,
     EL.LISTING_SPECIAL_INSTRUCTIONS,
     TP.PHONE_NUMBER,
-    EL.TP_PRESCRIBED_PICK_UP_TIMESLOT_START_NTZ,
-    EL.TP_PRESCRIBED_PICK_UP_TIMESLOT_END_NTZ,
-    EL.TP_PRESCRIBED_DELIVERY_TIMESLOT_START_NTZ,
-    EL.TP_PRESCRIBED_DELIVERY_TIMESLOT_END_NTZ,
+    EL.BOOKED_PICKUP_TIME_START_NTZ,
+    EL.BOOKED_PICKUP_TIME_END_NTZ,
+    EL.BOOKED_DELIVERY_TIME_START_NTZ,
+    EL.BOOKED_DELIVERY_TIME_END_NTZ,
     CASE
         WHEN EL.STORAGE_COLLECTION_DEAL_ID IS NOT NULL
             THEN 'Collection'
@@ -292,13 +292,13 @@ def main():
         # Timeslot: pickup window for Collection, delivery window for Redelivery/Disposal
         if job_type == 'Collection':
             timeslot = fmt_timeslot(
-                r.get('TP_PRESCRIBED_PICK_UP_TIMESLOT_START_NTZ'),
-                r.get('TP_PRESCRIBED_PICK_UP_TIMESLOT_END_NTZ'),
+                r.get('BOOKED_PICKUP_TIME_START_NTZ'),
+                r.get('BOOKED_PICKUP_TIME_END_NTZ'),
             )
         else:
             timeslot = fmt_timeslot(
-                r.get('TP_PRESCRIBED_DELIVERY_TIMESLOT_START_NTZ'),
-                r.get('TP_PRESCRIBED_DELIVERY_TIMESLOT_END_NTZ'),
+                r.get('BOOKED_DELIVERY_TIME_START_NTZ'),
+                r.get('BOOKED_DELIVERY_TIME_END_NTZ'),
             )
 
         message = build_message(
