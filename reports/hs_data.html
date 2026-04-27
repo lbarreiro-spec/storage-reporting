@@ -92,16 +92,34 @@ thead th.wk-col.latest{background:#fffbeb;border-bottom-color:#f59e0b}
 
 /* agent table */
 .ag-table{margin-bottom:0}
-.ag-table thead th{min-width:110px}
-.ag-table td{padding:10px 16px;background:#fff;vertical-align:top}
+.ag-table thead th{min-width:130px}
+.ag-table td{padding:12px 16px;background:#fff;vertical-align:middle;text-align:center}
 .ag-table td.latest-col{background:#fffbeb}
 .ag-table tr:hover td{background:#fafafa !important}
 .ag-table tr:hover td.latest-col{background:#fef3c7 !important}
-.ac-lc{font-family:var(--mono);font-size:15px;font-weight:500;color:#111827;text-align:center}
-.ac-lns{font-size:11px;margin-top:3px;color:#9ca3af;text-align:center}
+
+/* agent left-side label */
+.agent-lbl{
+  text-align:left !important;
+  padding-left:20px !important;
+  border-left:3px solid #e2e2e2;
+}
+.ag-table tbody tr:nth-child(1) .agent-lbl{border-left-color:#6366f1}
+.ag-table tbody tr:nth-child(2) .agent-lbl{border-left-color:#f59e0b}
+.ag-table tbody tr:nth-child(3) .agent-lbl{border-left-color:#10b981}
+.ag-table tbody tr:nth-child(4) .agent-lbl{border-left-color:#ef4444}
+.ag-table tbody tr:nth-child(5) .agent-lbl{border-left-color:#3b82f6}
+.ag-table tbody tr:nth-child(6) .agent-lbl{border-left-color:#9ca3af}
+
+/* cell values */
+.ac-lc{font-family:var(--mono);font-size:16px;font-weight:600;color:#111827}
+.ac-lc-lbl{font-size:10px;color:#9ca3af;letter-spacing:.05em;text-transform:uppercase;margin-top:1px}
+.ac-div{height:8px}
+.ac-lns{font-family:var(--mono);font-size:14px;font-weight:500;color:#9ca3af}
 .ac-lns.good{color:#16a34a}
 .ac-lns.warn{color:#d97706}
 .ac-lns.bad{color:#dc2626}
+.ac-lns-lbl{font-size:10px;letter-spacing:.05em;text-transform:uppercase;margin-top:1px;color:inherit}
 
 /* shared */
 .pct.good{color:#16a34a}
@@ -215,9 +233,13 @@ function render() {
       const lc  = d.lc  ?? null
       const lns = d.lns ?? null
       const pct = (lc && lns != null) ? lns / lc * 100 : null
+      const cls = pctClass(pct)
       return `<td class="${i===0?'latest-col':''}">
         <div class="ac-lc">${lc != null ? fmtN(lc) : '—'}</div>
-        <div class="ac-lns ${pctClass(pct)}">${lns != null ? fmtN(lns) + ' new' : '—'}</div>
+        <div class="ac-lc-lbl">created</div>
+        <div class="ac-div"></div>
+        <div class="ac-lns ${cls}">${lns != null ? fmtN(lns) : '—'}</div>
+        <div class="ac-lns-lbl ${cls}">${pct != null ? 'untouched · '+pct.toFixed(0)+'%' : 'untouched'}</div>
       </td>`
     }).join('')
     return `<tr><td class="metric-lbl agent-lbl">${a}</td>${cells}</tr>`
