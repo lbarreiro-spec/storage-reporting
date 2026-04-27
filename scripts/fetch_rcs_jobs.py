@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """
 Storage RCS — Today's job fetcher
-Queries Snowflake for today's Storage jobs and writes data/rcs_today.json.
+Queries Snowflake for today's Storage jobs, enriches with Zoho CRM deal data
+(unit number, access code, padlock), and writes data/rcs_today.json.
 Runs at 8am UK daily via GitHub Actions, or on demand via workflow_dispatch.
 """
 
 import json
 import os
+import requests
 from datetime import date, datetime, timezone
 import snowflake.connector
 
@@ -14,6 +16,10 @@ SNOWFLAKE_ACCOUNT = "[SNOWFLAKE_ACCOUNT_REMOVED]"
 SNOWFLAKE_USER    = "[SNOWFLAKE_USER_REMOVED]"
 SNOWFLAKE_WH      = "MART_SALES_OPS_WH"
 SNOWFLAKE_ROLE    = "MART_SALES_OPS_GROUP"
+
+ZOHO_AUTH_URL  = "https://accounts.zoho.eu/oauth/v2/token"
+ZOHO_API_BASE  = "https://www.zohoapis.eu/crm/v3"
+ZOHO_DEAL_FIELDS = "Unit_Numbers,Access_Code_For_Facility,Padlock_combination"
 
 QUERY = """
 SELECT
@@ -61,6 +67,46 @@ WHERE
 """
 
 OUTPUT_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'rcs_today.json')
+
+
+def get_zoho_token():
+    resp = requests.post(ZOHO_AUTH_URL, params={
+        "refresh_token": os.environ["ZOHO_REFRESH_TOKEN"],
+        "client_id":     os.environ["ZOHO_CLIENT_ID"],
+        "client_secret": os.environ["ZOHO_CLIENT_SECRET"],
+        "grant_type":    "refresh_token",
+    })
+    resp.raise_for_status()
+    token = resp.json().get("access_token")
+    if not token:
+        raise ValueError(f"Zoho token exchange failed: {resp.json()}")
+    return token
+
+
+def fetch_zoho_deal(listing_id: str, token: str) -> dict:
+    """Returns unit_number, access_code, padlock for a listing, or empty strings on miss/error."""
+    try:
+        resp = requests.get(
+            f"{ZOHO_API_BASE}/Deals/search",
+            headers={"Authorization": f"Zoho-oauthtoken {token}"},
+            params={
+                "criteria": f"(Listing_ID:equals:{listing_id})",
+                "fields": ZOHO_DEAL_FIELDS,
+            },
+        )
+        resp.raise_for_status()
+        deals = resp.json().get("data", [])
+        if not deals:
+            return {}
+        d = deals[0]
+        return {
+            "unit_number":  str(d["Unit_Numbers"])            if d.get("Unit_Numbers")            is not None else "",
+            "access_code":  str(int(d["Access_Code_For_Facility"])) if d.get("Access_Code_For_Facility") is not None else "",
+            "padlock":      str(int(d["Padlock_combination"]))       if d.get("Padlock_combination")       is not None else "",
+        }
+    except Exception as e:
+        print(f"  WARN Zoho lookup failed for {listing_id}: {e}")
+        return {}
 
 
 def get_snowflake_token():
@@ -155,6 +201,10 @@ def main():
     today = str(date.today())
     print(f"Fetching Storage RCS jobs for {today}")
 
+    print("Getting Zoho CRM token...")
+    zoho_token = get_zoho_token()
+    print("Zoho token OK")
+
     conn = snowflake.connector.connect(
         account=SNOWFLAKE_ACCOUNT,
         user=SNOWFLAKE_USER,
@@ -183,10 +233,10 @@ def main():
         customer_name = r.get('CUSTOMER_FULL_NAME') or ''
         listing_id   = str(r['LISTING_ID'])
 
-        # Zoho fields — populated once Zoho CRM integration is built
-        unit_number  = ''
-        padlock      = ''
-        access_code  = ''
+        zoho = fetch_zoho_deal(listing_id, zoho_token)
+        unit_number  = zoho.get('unit_number', '')
+        access_code  = zoho.get('access_code', '')
+        padlock      = zoho.get('padlock', '')
 
         message = build_message(
             job_type, facility_type, driver_name, customer_name,

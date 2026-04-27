@@ -19,7 +19,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install snowflake-connector-python
+        run: pip install snowflake-connector-python requests
 
       - name: Write Snowflake config
         run: |
@@ -31,6 +31,10 @@ jobs:
 
       - name: Fetch jobs
         run: python3 scripts/fetch_rcs_jobs.py
+        env:
+          ZOHO_CLIENT_ID:     ${{ secrets.ZOHO_CLIENT_ID }}
+          ZOHO_CLIENT_SECRET: ${{ secrets.ZOHO_CLIENT_SECRET }}
+          ZOHO_REFRESH_TOKEN: ${{ secrets.ZOHO_REFRESH_TOKEN }}
 
       - name: Commit and push
         run: |
