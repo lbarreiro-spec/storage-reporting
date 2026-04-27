@@ -19,7 +19,7 @@ SNOWFLAKE_ROLE    = "MART_SALES_OPS_GROUP"
 
 ZOHO_AUTH_URL  = "https://accounts.zoho.eu/oauth/v2/token"
 ZOHO_API_BASE  = "https://www.zohoapis.eu/crm/v3"
-ZOHO_DEAL_FIELDS = "Unit_Numbers,Access_Code_For_Facility,Padlock_combination"
+ZOHO_DEAL_FIELDS = "Unit_Numbers,Access_Code_For_Facility,Padlock_combination,Warehouse_Name1"
 
 QUERY = """
 SELECT
@@ -85,9 +85,10 @@ def get_zoho_token():
 
 def _parse_zoho_deal(d: dict) -> dict:
     return {
-        "unit_number": str(d["Unit_Numbers"]).strip() if d.get("Unit_Numbers") else "",
-        "access_code": str(int(d["Access_Code_For_Facility"])) if d.get("Access_Code_For_Facility") is not None else "",
-        "padlock":     str(int(d["Padlock_combination"]))       if d.get("Padlock_combination")       is not None else "",
+        "unit_number":    str(d["Unit_Numbers"]).strip()          if d.get("Unit_Numbers")                     else "",
+        "access_code":    str(int(d["Access_Code_For_Facility"])) if d.get("Access_Code_For_Facility") is not None else "",
+        "padlock":        str(int(d["Padlock_combination"]))       if d.get("Padlock_combination")       is not None else "",
+        "warehouse_name": str(d["Warehouse_Name1"]).strip()       if d.get("Warehouse_Name1")                  else "",
     }
 
 
@@ -264,6 +265,7 @@ def main():
         unit_number  = zoho.get('unit_number', '')
         access_code  = zoho.get('access_code', '')
         padlock      = zoho.get('padlock', '')
+        facility_name = facility_name or zoho.get('warehouse_name', '')
 
         message = build_message(
             job_type, facility_type, driver_name, customer_name,
