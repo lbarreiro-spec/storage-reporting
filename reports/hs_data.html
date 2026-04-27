@@ -41,10 +41,6 @@ body{display:flex}
 .topbar-right{display:flex;align-items:center;gap:10px}
 .topbar-meta{font-size:13px;color:#6b7280;font-family:var(--mono)}
 
-.week-sel{
-  background:#fff;border:1px solid #e2e2e2;border-radius:8px;padding:6px 12px;
-  font-family:var(--mono);font-size:13px;color:#111827;outline:none;cursor:pointer;
-}
 .refresh-btn{
   background:#fff;border:1px solid #e2e2e2;border-radius:8px;padding:6px 14px;
   font-family:var(--sans);font-size:14px;color:#6b7280;cursor:pointer;transition:all .12s;
@@ -54,18 +50,34 @@ body{display:flex}
 .spin{display:inline-block;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-.content{flex:1;overflow-y:auto;padding:28px 32px;position:relative}
+.matrix-wrap{flex:1;overflow:auto;position:relative}
 
-.section-hdr{
-  font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#6b7280;
-  border-bottom:1px solid #e2e2e2;padding-bottom:8px;margin-bottom:16px;
+table{border-collapse:collapse;white-space:nowrap;font-size:13px;width:100%}
+
+thead th{
+  position:sticky;top:0;z-index:20;
+  background:#f4f4f4;border-bottom:2px solid #e2e2e2;
+  padding:10px 20px;font-size:11px;font-weight:600;
+  color:#6b7280;letter-spacing:.08em;text-transform:uppercase;
+  text-align:left;
 }
+thead th.r{text-align:right}
 
-.stat-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:28px}
-.stat{background:#f4f4f4;border:1px solid #e2e2e2;border-radius:12px;padding:18px 20px}
-.stat-lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#6b7280;margin-bottom:8px}
-.stat-val{font-family:var(--mono);font-size:28px;font-weight:500;line-height:1;letter-spacing:-.02em;color:#111827}
-.stat-sub{font-size:13px;color:#6b7280;margin-top:5px}
+tbody tr{border-bottom:1px solid #f0f0f0}
+tbody tr:hover td{background:#fafafa}
+tbody tr.latest td{background:#fffbeb}
+tbody tr.latest:hover td{background:#fef3c7}
+
+td{padding:12px 20px;color:#374151;background:#fff;vertical-align:middle}
+td.week-cell{font-size:13px;color:#111827;font-weight:500;min-width:160px}
+td.num{font-family:var(--mono);font-size:14px;font-weight:500;color:#111827;text-align:right}
+td.pct{font-family:var(--mono);font-size:13px;text-align:right}
+td.pct.good{color:#16a34a}
+td.pct.warn{color:#d97706}
+td.pct.bad{color:#dc2626}
+
+.week-lbl{font-size:13px;color:#111827}
+.week-sub{font-size:11px;color:#9ca3af;margin-top:2px}
 
 .state{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#6b7280}
 
@@ -102,68 +114,91 @@ body{display:flex}
 <div class="topbar">
   <span class="topbar-title">HubSpot Data</span>
   <div class="topbar-right">
-    <select class="week-sel" id="week-sel" onchange="switchWeek(this.value)"></select>
-    <button class="refresh-btn" id="refresh-btn" onclick="triggerRefresh()">↻ Refresh</button>
     <span class="topbar-meta" id="meta"></span>
+    <button class="refresh-btn" id="refresh-btn" onclick="triggerRefresh()">↻ Refresh</button>
   </div>
 </div>
 
-<div class="content" id="content">
+<div class="matrix-wrap" id="wrap">
   <div class="state" id="state">Loading…</div>
 </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
-const SUPABASE_URL     = '[SUPABASE_URL_REMOVED]'
-const SUPABASE_ANON    = '[SUPABASE_ANON_KEY_REMOVED]'
-const db               = supabase.createClient(SUPABASE_URL, SUPABASE_ANON)
-const GITHUB_REPO      = 'Robbosd/storage-reporting'
-const WORKFLOW_ID      = 'fetch_hs_data.yml'
+const SUPABASE_URL  = '[SUPABASE_URL_REMOVED]'
+const SUPABASE_ANON = '[SUPABASE_ANON_KEY_REMOVED]'
+const db            = supabase.createClient(SUPABASE_URL, SUPABASE_ANON)
+const GITHUB_REPO   = 'Robbosd/storage-reporting'
+const WORKFLOW_ID   = 'fetch_hs_data.yml'
 
 const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
-let ALL_DATA = []
-let SELECTED_WEEK = null
-
-function weekLabel(isoMonday) {
-  const mon = new Date(isoMonday + 'T00:00:00')
-  const sun = new Date(mon); sun.setDate(sun.getDate() + 6)
+function weekLabel(isoSat) {
+  const sat = new Date(isoSat + 'T00:00:00')
+  const fri = new Date(sat); fri.setDate(fri.getDate() + 6)
   const fmt = d => `${d.getDate()} ${MO[d.getMonth()]}`
-  return `${fmt(mon)} – ${fmt(sun)} ${sun.getFullYear()}`
+  const yearSuffix = sat.getFullYear() !== new Date().getFullYear() ? ` ${sat.getFullYear()}` : ''
+  return `${fmt(sat)} – ${fmt(fri)}${yearSuffix}`
 }
 
 function fmtN(n) { return n != null ? Number(n).toLocaleString('en-GB') : '—' }
 
-function render() {
-  const row = ALL_DATA.find(r => r.week_commencing === SELECTED_WEEK)
-  const content = document.getElementById('content')
-
-  content.innerHTML = `
-    <div class="section-hdr">Team Overview · ${weekLabel(SELECTED_WEEK)}</div>
-    <div class="stat-row" id="stat-row">
-      <div class="stat">
-        <div class="stat-lbl">Leads Created</div>
-        <div class="stat-val">${fmtN(row?.leads_created)}</div>
-        <div class="stat-sub">UK Storage pipeline</div>
-      </div>
-    </div>
-  `
-
-  document.getElementById('meta').textContent = row
-    ? `Updated ${new Date(row.updated_at).toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'})}`
-    : 'No data for this week'
+function pctClass(pct) {
+  if (pct == null) return ''
+  if (pct < 5)  return 'good'
+  if (pct < 15) return 'warn'
+  return 'bad'
 }
 
-function switchWeek(val) {
-  SELECTED_WEEK = val
-  render()
+let ALL_DATA = []
+
+function render() {
+  const wrap = document.getElementById('wrap')
+  if (!ALL_DATA.length) {
+    wrap.innerHTML = '<div class="state">No data yet — click Refresh to populate</div>'
+    return
+  }
+
+  const rows = ALL_DATA.map((r, i) => {
+    const pct = r.leads_created ? (r.leads_in_new_stage / r.leads_created * 100) : null
+    const pctFmt = pct != null ? pct.toFixed(1) + '%' : '—'
+    const isLatest = i === 0
+    return `
+      <tr${isLatest ? ' class="latest"' : ''}>
+        <td class="week-cell">
+          <div class="week-lbl">${weekLabel(r.week_commencing)}</div>
+          ${isLatest ? '<div class="week-sub">Most recent</div>' : ''}
+        </td>
+        <td class="num">${fmtN(r.leads_created)}</td>
+        <td class="num">${fmtN(r.leads_in_new_stage)}</td>
+        <td class="pct ${pctClass(pct)}">${pctFmt}</td>
+      </tr>`
+  }).join('')
+
+  wrap.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Week (Sat – Fri)</th>
+          <th class="r">Leads Created</th>
+          <th class="r">Still in New Stage</th>
+          <th class="r">% Untouched</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`
+
+  const updated = ALL_DATA[0]?.updated_at
+  document.getElementById('meta').textContent = updated
+    ? `Updated ${new Date(updated).toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'})}`
+    : ''
 }
 
 async function loadData() {
   const { data, error } = await db
     .from('hs_weekly_stats')
-    .select('week_commencing,leads_created,updated_at')
+    .select('week_commencing,leads_created,leads_in_new_stage,updated_at')
     .order('week_commencing', { ascending: false })
   if (error) throw error
   ALL_DATA = data || []
@@ -174,21 +209,7 @@ async function init() {
     document.getElementById('state').textContent = 'Failed to load data'
     return
   }
-  if (!ALL_DATA.length) {
-    document.getElementById('state').textContent = 'No data yet — click Refresh to populate'
-    return
-  }
   document.getElementById('state').remove()
-
-  const sel = document.getElementById('week-sel')
-  ALL_DATA.forEach(r => {
-    const opt = document.createElement('option')
-    opt.value = r.week_commencing
-    opt.textContent = weekLabel(r.week_commencing)
-    sel.appendChild(opt)
-  })
-  SELECTED_WEEK = ALL_DATA[0].week_commencing
-  sel.value = SELECTED_WEEK
   render()
 }
 
@@ -227,18 +248,6 @@ async function triggerRefresh() {
       }
     }
     await loadData()
-    const existingState = document.getElementById('state')
-    if (existingState) existingState.remove()
-    const sel = document.getElementById('week-sel')
-    sel.innerHTML = ''
-    ALL_DATA.forEach(r => {
-      const opt = document.createElement('option')
-      opt.value = r.week_commencing
-      opt.textContent = weekLabel(r.week_commencing)
-      sel.appendChild(opt)
-    })
-    SELECTED_WEEK = ALL_DATA[0].week_commencing
-    sel.value = SELECTED_WEEK
     render()
   } catch(e) {
     alert('Refresh failed: ' + e.message)
