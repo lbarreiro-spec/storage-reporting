@@ -1,0 +1,25 @@
+name: Fetch HubSpot Data
+
+on:
+  schedule:
+    - cron: '0 7 * * 1'   # Every Monday at 07:00 UTC (captures last week Mon–Sun)
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run fetch
+        env:
+          HUBSPOT_TOKEN: ${{ secrets.HUBSPOT_TOKEN }}
+        run: python3 scripts/fetch_hs_data.py

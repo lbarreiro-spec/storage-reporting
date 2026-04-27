@@ -205,3 +205,11 @@ create table if not exists clearpass_invoices (
 create index if not exists clearpass_invoices_month_idx    on clearpass_invoices (month);
 create index if not exists clearpass_invoices_supplier_idx on clearpass_invoices (supplier);
 alter table clearpass_invoices disable row level security;
+
+-- Weekly HubSpot stats (UK Storage pipeline)
+create table if not exists hs_weekly_stats (
+  week_commencing  date primary key,  -- Monday of each week, e.g. 2026-04-20
+  leads_created    integer,
+  updated_at       timestamptz default now()
+);
+alter table hs_weekly_stats disable row level security;

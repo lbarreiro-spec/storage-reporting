@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HubSpot Data — AnyVan Storage</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --mono:'SF Mono','Menlo','Monaco',monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
+}
+html,body{height:100%;font-family:var(--sans);background:#f6f7ed;overflow:hidden}
+body{display:flex}
+
+.sidebar{
+  width:220px;min-width:220px;background:#1f1f1f;
+  display:flex;flex-direction:column;
+  padding:24px 0;flex-shrink:0;height:100vh;z-index:100;overflow-y:auto;
+}
+.sidebar-brand{padding:0 24px 28px}
+.sidebar-label{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.5);margin-bottom:4px}
+.sidebar-title{font-size:16px;font-weight:600;color:#fff}
+.nav-link{
+  display:block;padding:10px 24px;font-size:13px;color:rgba(255,255,255,0.65);
+  text-decoration:none;transition:color .12s,background .12s;border-left:3px solid transparent;
+}
+.nav-link:hover{color:rgba(255,255,255,0.85)}
+.nav-link.active{color:#fff;border-left-color:#fff;background:rgba(255,255,255,0.06)}
+.sidebar-bottom{margin-top:auto;padding:16px 24px;border-top:1px solid rgba(255,255,255,0.08)}
+.sidebar-home{font-size:13px;color:rgba(255,255,255,0.65);text-decoration:none;transition:color .12s}
+.sidebar-home:hover{color:#fff}
+
+.main-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#f6f7ed}
+
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 24px;border-bottom:1px solid #e2e2e2;background:#fff;flex-shrink:0;z-index:30;
+}
+.topbar-title{font-size:15px;font-weight:600;color:#111827;letter-spacing:-.01em}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.topbar-meta{font-size:13px;color:#6b7280;font-family:var(--mono)}
+
+.week-sel{
+  background:#fff;border:1px solid #e2e2e2;border-radius:8px;padding:6px 12px;
+  font-family:var(--mono);font-size:13px;color:#111827;outline:none;cursor:pointer;
+}
+.refresh-btn{
+  background:#fff;border:1px solid #e2e2e2;border-radius:8px;padding:6px 14px;
+  font-family:var(--sans);font-size:14px;color:#6b7280;cursor:pointer;transition:all .12s;
+}
+.refresh-btn:hover:not(:disabled){border-color:#1f1f1f;color:#1f1f1f}
+.refresh-btn:disabled{opacity:0.5;cursor:default}
+.spin{display:inline-block;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.content{flex:1;overflow-y:auto;padding:28px 32px;position:relative}
+
+.section-hdr{
+  font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#6b7280;
+  border-bottom:1px solid #e2e2e2;padding-bottom:8px;margin-bottom:16px;
+}
+
+.stat-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:28px}
+.stat{background:#f4f4f4;border:1px solid #e2e2e2;border-radius:12px;padding:18px 20px}
+.stat-lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#6b7280;margin-bottom:8px}
+.stat-val{font-family:var(--mono);font-size:28px;font-weight:500;line-height:1;letter-spacing:-.02em;color:#111827}
+.stat-sub{font-size:13px;color:#6b7280;margin-top:5px}
+
+.state{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#6b7280}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#e2e2e2;border-radius:2px}
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-label">AnyVan Storage</div>
+    <div class="sidebar-title">Reporting</div>
+  </div>
+  <a class="nav-link" href="mtd.html">MTD Revenue</a>
+  <a class="nav-link" href="monthly.html">Monthly Trends</a>
+  <a class="nav-link" href="weekly.html">Weekly Revenue</a>
+  <a class="nav-link" href="daily.html">Daily Activity</a>
+  <a class="nav-link" href="voice.html">Voice Activity</a>
+  <a class="nav-link" href="whatsapp.html">WhatsApp</a>
+  <a class="nav-link" href="freshdesk.html">Freshdesk</a>
+  <a class="nav-link" href="csat.html">CSAT &amp; NPS</a>
+  <a class="nav-link" href="debt.html">Debt Intelligence</a>
+  <a class="nav-link" href="clearpass.html">Supplier Invoice Automation</a>
+  <a class="nav-link" href="rcs.html">RCS Driver Messaging</a>
+  <a class="nav-link active" href="hs_data.html">HubSpot Data</a>
+  <div class="sidebar-bottom">
+    <a class="sidebar-home" href="../index.html">← Home</a>
+  </div>
+</nav>
+
+<div class="main-wrap">
+<div class="topbar">
+  <span class="topbar-title">HubSpot Data</span>
+  <div class="topbar-right">
+    <select class="week-sel" id="week-sel" onchange="switchWeek(this.value)"></select>
+    <button class="refresh-btn" id="refresh-btn" onclick="triggerRefresh()">↻ Refresh</button>
+    <span class="topbar-meta" id="meta"></span>
+  </div>
+</div>
+
+<div class="content" id="content">
+  <div class="state" id="state">Loading…</div>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+const SUPABASE_URL     = '[SUPABASE_URL_REMOVED]'
+const SUPABASE_ANON    = '[SUPABASE_ANON_KEY_REMOVED]'
+const db               = supabase.createClient(SUPABASE_URL, SUPABASE_ANON)
+const GITHUB_REPO      = 'Robbosd/storage-reporting'
+const WORKFLOW_ID      = 'fetch_hs_data.yml'
+
+const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+
+let ALL_DATA = []
+let SELECTED_WEEK = null
+
+function weekLabel(isoMonday) {
+  const mon = new Date(isoMonday + 'T00:00:00')
+  const sun = new Date(mon); sun.setDate(sun.getDate() + 6)
+  const fmt = d => `${d.getDate()} ${MO[d.getMonth()]}`
+  return `${fmt(mon)} – ${fmt(sun)} ${sun.getFullYear()}`
+}
+
+function fmtN(n) { return n != null ? Number(n).toLocaleString('en-GB') : '—' }
+
+function render() {
+  const row = ALL_DATA.find(r => r.week_commencing === SELECTED_WEEK)
+  const content = document.getElementById('content')
+
+  content.innerHTML = `
+    <div class="section-hdr">Team Overview · ${weekLabel(SELECTED_WEEK)}</div>
+    <div class="stat-row" id="stat-row">
+      <div class="stat">
+        <div class="stat-lbl">Leads Created</div>
+        <div class="stat-val">${fmtN(row?.leads_created)}</div>
+        <div class="stat-sub">UK Storage pipeline</div>
+      </div>
+    </div>
+  `
+
+  document.getElementById('meta').textContent = row
+    ? `Updated ${new Date(row.updated_at).toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'})}`
+    : 'No data for this week'
+}
+
+function switchWeek(val) {
+  SELECTED_WEEK = val
+  render()
+}
+
+async function loadData() {
+  const { data, error } = await db
+    .from('hs_weekly_stats')
+    .select('week_commencing,leads_created,updated_at')
+    .order('week_commencing', { ascending: false })
+  if (error) throw error
+  ALL_DATA = data || []
+}
+
+async function init() {
+  try { await loadData() } catch(e) {
+    document.getElementById('state').textContent = 'Failed to load data'
+    return
+  }
+  if (!ALL_DATA.length) {
+    document.getElementById('state').textContent = 'No data yet — click Refresh to populate'
+    return
+  }
+  document.getElementById('state').remove()
+
+  const sel = document.getElementById('week-sel')
+  ALL_DATA.forEach(r => {
+    const opt = document.createElement('option')
+    opt.value = r.week_commencing
+    opt.textContent = weekLabel(r.week_commencing)
+    sel.appendChild(opt)
+  })
+  SELECTED_WEEK = ALL_DATA[0].week_commencing
+  sel.value = SELECTED_WEEK
+  render()
+}
+
+async function triggerRefresh() {
+  const btn = document.getElementById('refresh-btn')
+  btn.disabled = true
+  btn.innerHTML = '<span class="spin">↻</span> Refreshing…'
+  try {
+    const dispatch = await fetch(
+      `https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/dispatches`,
+      { method:'POST', headers:{'Authorization':'Bearer worker-handles-auth','Accept':'application/vnd.github.v3+json','Content-Type':'application/json'}, body:JSON.stringify({ref:'main'}) }
+    )
+    if (!dispatch.ok) throw new Error(`Dispatch failed: ${dispatch.status}`)
+    await new Promise(r => setTimeout(r, 5000))
+    let runId = null
+    for (let i = 0; i < 12; i++) {
+      const runs = await fetch(
+        `https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/runs?per_page=1`,
+        { headers:{'Authorization':'Bearer worker-handles-auth','Accept':'application/vnd.github.v3+json'} }
+      )
+      const d = await runs.json()
+      if (d.workflow_runs?.[0]) { runId = d.workflow_runs[0].id; break }
+      await new Promise(r => setTimeout(r, 3000))
+    }
+    if (!runId) throw new Error('Could not find workflow run')
+    for (let i = 0; i < 50; i++) {
+      await new Promise(r => setTimeout(r, 6000))
+      const check = await fetch(
+        `https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/runs/${runId}`,
+        { headers:{'Authorization':'Bearer worker-handles-auth','Accept':'application/vnd.github.v3+json'} }
+      )
+      const run = await check.json()
+      if (run.status === 'completed') {
+        if (run.conclusion !== 'success') throw new Error(`Workflow ${run.conclusion}`)
+        break
+      }
+    }
+    await loadData()
+    const existingState = document.getElementById('state')
+    if (existingState) existingState.remove()
+    const sel = document.getElementById('week-sel')
+    sel.innerHTML = ''
+    ALL_DATA.forEach(r => {
+      const opt = document.createElement('option')
+      opt.value = r.week_commencing
+      opt.textContent = weekLabel(r.week_commencing)
+      sel.appendChild(opt)
+    })
+    SELECTED_WEEK = ALL_DATA[0].week_commencing
+    sel.value = SELECTED_WEEK
+    render()
+  } catch(e) {
+    alert('Refresh failed: ' + e.message)
+    console.error(e)
+  } finally {
+    btn.disabled = false
+    btn.innerHTML = '↻ Refresh'
+  }
+}
+
+init()
+</script>
+</body>
+</html>
