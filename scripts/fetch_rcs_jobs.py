@@ -160,15 +160,17 @@ def fmt_timeslot(start, end):
 
 
 def build_message(job_type, facility_type, driver_name, customer_name,
-                  facility_name, unit_number, padlock, access_code, timeslot, listing_id):
+                  facility_name, unit_number, padlock, access_code,
+                  pickup_slot, delivery_slot, listing_id):
     parts = driver_name.split() if driver_name else []
-    first_name   = next((p for p in parts if len(p) > 1), parts[0] if parts else 'there')
-    unit_str     = unit_number   or '[See special instructions]'
-    padlock_str  = padlock       or '[See special instructions]'
-    access_str   = access_code   or '[See special instructions]'
-    facility_str = facility_name or '[Facility]'
-    slot_line    = f"⏰ Customer pickup window: {timeslot}\n" if timeslot and job_type == 'Collection' else \
-                   f"⏰ Customer delivery window: {timeslot}\n" if timeslot else ""
+    first_name    = next((p for p in parts if len(p) > 1), parts[0] if parts else 'there')
+    unit_str      = unit_number   or '[See special instructions]'
+    padlock_str   = padlock       or '[See special instructions]'
+    access_str    = access_code   or '[See special instructions]'
+    facility_str  = facility_name or '[Facility]'
+    pickup_line   = f"⏰ Customer pickup: {pickup_slot}\n"   if pickup_slot   else ""
+    delivery_line = f"⏰ Delivery to facility: {delivery_slot}\n" if delivery_slot and job_type == 'Collection' else \
+                    f"⏰ Customer delivery: {delivery_slot}\n"     if delivery_slot else ""
 
     if job_type == 'Collection' and facility_type == 'Access':
         return (
@@ -180,7 +182,8 @@ def build_message(job_type, facility_type, driver_name, customer_name,
             f"🔢 Unit: {unit_str}\n"
             f"🔑 Access code: {access_str}\n"
             f"🔒 Padlock: {padlock_str}\n\n"
-            f"{slot_line}"
+            f"{pickup_line}"
+            f"{delivery_line}"
             f"ℹ️ No unit number? Reception will allocate one on arrival — all items must go into your allocated unit.\n"
             f"⏰ Be at the facility before 4pm.\n"
             f"🚛 Load the unit carefully — you're responsible for any damage caused by poor loading.\n"
@@ -195,7 +198,8 @@ def build_message(job_type, facility_type, driver_name, customer_name,
             f"👤 Customer: {customer_name}\n"
             f"🏢 Facility: {facility_str}\n"
             f"🔢 Unit: {unit_str}\n\n"
-            f"{slot_line}"
+            f"{pickup_line}"
+            f"{delivery_line}"
             f"🦺 PPE required on site — high-vis vest and safety shoes must be worn before entering the facility. No exceptions.\n"
             f"⏰ Be at the facility before 4pm.\n"
             f"🚛 Load the unit carefully — you're responsible for any damage caused by poor loading.\n"
@@ -212,7 +216,8 @@ def build_message(job_type, facility_type, driver_name, customer_name,
             f"🔢 Unit: {unit_str}\n"
             f"🔑 Access code: {access_str}\n"
             f"🔒 Padlock: {padlock_str}\n\n"
-            f"{slot_line}"
+            f"{pickup_line}"
+            f"{delivery_line}"
             f"📸 Before you start loading — photograph everything in the unit. This is how we check against the original collection.\n"
             f"📸 Also photograph anything not on the inventory list and any damage before loading into your vehicle.\n"
             f"🏁 Before you leave: photo of the empty unit, then leave it unlocked with keys inside or hand the padlock to reception.\n\n"
@@ -226,7 +231,8 @@ def build_message(job_type, facility_type, driver_name, customer_name,
             f"👤 Customer: {customer_name}\n"
             f"🏢 Facility: {facility_str}\n"
             f"🔢 Unit: {unit_str}\n\n"
-            f"{slot_line}"
+            f"{pickup_line}"
+            f"{delivery_line}"
             f"🦺 PPE required on site — high-vis vest and safety shoes must be worn before entering the facility. No exceptions.\n"
             f"✅ Check in with reception on arrival and again when you're done.\n"
             f"📸 Before you start loading — photograph everything in the unit, anything not on the inventory list, and any damage before loading into your vehicle.\n\n"
@@ -289,21 +295,13 @@ def main():
         padlock       = zoho.get('padlock', '')
         facility_name = facility_name or zoho.get('warehouse_name', '')
 
-        # Timeslot: pickup window for Collection, delivery window for Redelivery/Disposal
-        if job_type == 'Collection':
-            timeslot = fmt_timeslot(
-                r.get('BOOKED_PICKUP_TIME_START_NTZ'),
-                r.get('BOOKED_PICKUP_TIME_END_NTZ'),
-            )
-        else:
-            timeslot = fmt_timeslot(
-                r.get('BOOKED_DELIVERY_TIME_START_NTZ'),
-                r.get('BOOKED_DELIVERY_TIME_END_NTZ'),
-            )
+        pickup_slot   = fmt_timeslot(r.get('BOOKED_PICKUP_TIME_START_NTZ'),  r.get('BOOKED_PICKUP_TIME_END_NTZ'))
+        delivery_slot = fmt_timeslot(r.get('BOOKED_DELIVERY_TIME_START_NTZ'), r.get('BOOKED_DELIVERY_TIME_END_NTZ'))
 
         message = build_message(
             job_type, facility_type, driver_name, customer_name,
-            facility_name, unit_number, padlock, access_code, timeslot, listing_id
+            facility_name, unit_number, padlock, access_code,
+            pickup_slot, delivery_slot, listing_id
         )
 
         jobs.append({
@@ -319,7 +317,8 @@ def main():
             'unit_number':   unit_number,
             'padlock':       padlock,
             'access_code':   access_code,
-            'timeslot':      timeslot,
+            'pickup_slot':   pickup_slot,
+            'delivery_slot': delivery_slot,
             'message':       message,
         })
 

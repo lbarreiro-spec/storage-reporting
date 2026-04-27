@@ -554,7 +554,7 @@ function renderTable() {
       <td style="font-size:12px;color:#6b7280">${esc(j.facility_name || '—')}</td>
       <td style="font-family:var(--mono);font-size:12px;color:#6b7280">${esc(j.unit_number || '—')}</td>
       <td style="font-family:var(--mono);font-size:12px;${!j.padlock && j.facility_type==='Access' ? 'color:#b45309;font-weight:600' : 'color:#6b7280'}">${esc(j.padlock || '—')}</td>
-      <td style="font-size:12px;color:#6b7280;white-space:nowrap">${esc(j.timeslot || '—')}</td>
+      <td style="font-size:12px;color:#6b7280;white-space:nowrap">${j.pickup_slot ? '↑ '+esc(j.pickup_slot) : '—'}${j.delivery_slot ? '<br>↓ '+esc(j.delivery_slot) : ''}</td>
       <td>${statusHtml}</td>
       <td>${actHtml}</td>
     </tr>`;
@@ -661,9 +661,9 @@ Hi [Driver first name], here are your key reminders for today's job:
 🔑 Access code: [Access code]
 🔒 Padlock: [Padlock]
 
-⏰ Customer pickup window: [Timeslot]
+⏰ Customer pickup: [Pickup slot]
+⏰ Delivery to facility: [Delivery slot]
 ℹ️ No unit number? Reception will allocate one on arrival — all items must go into your allocated unit.
-⏰ Be at the facility before 4pm.
 🚛 Load the unit carefully — you're responsible for any damage caused by poor loading.
 📸 Take photos of everything loaded into the unit, anything not on the inventory list, and any pre-existing damage at the collection address.
 
@@ -679,7 +679,8 @@ Hi [Driver first name], here are your key reminders for today's job:
 🏢 Facility: [Facility]
 🔢 Unit: [Unit]
 
-⏰ Customer pickup window: [Timeslot]
+⏰ Customer pickup: [Pickup slot]
+⏰ Delivery to facility: [Delivery slot]
 🦺 PPE required on site — high-vis vest and safety shoes must be worn before entering the facility. No exceptions.
 ⏰ Be at the facility before 4pm.
 🚛 Load the unit carefully — you're responsible for any damage caused by poor loading.
@@ -699,7 +700,8 @@ Hi [Driver first name], here are your key reminders for today's job:
 🔑 Access code: [Access code]
 🔒 Padlock: [Padlock]
 
-⏰ Customer delivery window: [Timeslot]
+⏰ Pickup from facility: [Pickup slot]
+⏰ Customer delivery: [Delivery slot]
 📸 Before you start loading — photograph everything in the unit. This is how we check against the original collection.
 📸 Also photograph anything not on the inventory list and any damage before loading into your vehicle.
 🏁 Before you leave: photo of the empty unit, then leave it unlocked with keys inside or hand the padlock to reception.
@@ -716,7 +718,8 @@ Hi [Driver first name], here are your key reminders for today's job:
 🏢 Facility: [Facility]
 🔢 Unit: [Unit]
 
-⏰ Customer delivery window: [Timeslot]
+⏰ Pickup from facility: [Pickup slot]
+⏰ Customer delivery: [Delivery slot]
 🦺 PPE required on site — high-vis vest and safety shoes must be worn before entering the facility. No exceptions.
 ✅ Check in with reception on arrival and again when you're done.
 📸 Before you start loading — photograph everything in the unit, anything not on the inventory list, and any damage before loading into your vehicle.
