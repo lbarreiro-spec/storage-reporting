@@ -149,6 +149,15 @@ tbody tr.sent td{opacity:.55}
 }
 .toast.show{opacity:1;transform:translateY(0)}
 
+/* TEMPLATE TABS */
+.tpl-tab{
+  background:none;border:none;border-bottom:2px solid transparent;
+  padding:10px 16px;font-family:var(--sans);font-size:12px;font-weight:500;
+  color:#6b7280;cursor:pointer;white-space:nowrap;transition:all .12s;
+}
+.tpl-tab:hover{color:#374151}
+.tpl-tab.active{color:#111827;border-bottom-color:#111827;font-weight:600}
+
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:#e2e2e2;border-radius:2px}
@@ -209,6 +218,41 @@ tbody tr.sent td{opacity:.55}
     <div class="stat-pill">Ready: <strong id="stat-ready">0</strong></div>
     <div class="stat-pill">Sent: <strong id="stat-sent">0</strong></div>
     <div class="stat-pill">Excluded: <strong id="stat-excl">0</strong></div>
+  </div>
+
+  <!-- Templates -->
+  <div class="sec" style="margin-bottom:16px">
+    <div class="sec-head" style="cursor:pointer;user-select:none" onclick="toggleTemplates()">
+      <span class="sec-lbl">Message Templates</span>
+      <span id="tpl-toggle" style="font-size:12px;color:#6b7280">Show ▾</span>
+    </div>
+    <div id="tpl-body" style="display:none">
+      <div style="display:flex;gap:0;border-bottom:1px solid #e2e2e2;overflow-x:auto">
+        <button class="tpl-tab active" onclick="showTpl(0)">📦 Collection (Access)</button>
+        <button class="tpl-tab" onclick="showTpl(1)">📦 Collection (Non-Access)</button>
+        <button class="tpl-tab" onclick="showTpl(2)">🚚 Redelivery (Access)</button>
+        <button class="tpl-tab" onclick="showTpl(3)">🚚 Redelivery (Non-Access)</button>
+        <button class="tpl-tab" onclick="showTpl(4)">🗑️ Disposal</button>
+      </div>
+      <div style="padding:20px 24px;display:flex;gap:20px;align-items:flex-start">
+        <div style="flex:1;min-width:0">
+          <div id="tpl-preview" style="background:#f3f4f6;border-radius:12px;padding:16px 18px;font-size:13px;line-height:1.75;white-space:pre-wrap;font-family:var(--sans);color:#111827"></div>
+          <div style="margin-top:10px;display:flex;gap:8px">
+            <div style="background:#e5e7eb;border-radius:20px;padding:5px 13px;font-size:12px;font-weight:600;color:#374151">✅ Got it</div>
+            <div style="background:#e5e7eb;border-radius:20px;padding:5px 13px;font-size:12px;font-weight:600;color:#374151">⏰ Running late</div>
+          </div>
+        </div>
+        <div style="flex-shrink:0;width:220px;font-size:12px;color:#6b7280;line-height:1.8;background:#f9fafb;border:1px solid #e2e2e2;border-radius:10px;padding:14px 16px">
+          <div style="font-weight:600;color:#374151;margin-bottom:8px;font-size:11px;text-transform:uppercase;letter-spacing:.08em">Placeholders</div>
+          <div><code style="background:#e5e7eb;padding:1px 5px;border-radius:3px;font-size:11px">[Driver first name]</code> — from Snowflake</div>
+          <div style="margin-top:6px"><code style="background:#e5e7eb;padding:1px 5px;border-radius:3px;font-size:11px">[Customer name]</code> — from Snowflake</div>
+          <div style="margin-top:6px"><code style="background:#e5e7eb;padding:1px 5px;border-radius:3px;font-size:11px">[Facility]</code> — DIM_STORAGE_WAREHOUSE / Zoho</div>
+          <div style="margin-top:6px"><code style="background:#e5e7eb;padding:1px 5px;border-radius:3px;font-size:11px">[Unit]</code> — Zoho CRM deal</div>
+          <div style="margin-top:6px"><code style="background:#e5e7eb;padding:1px 5px;border-radius:3px;font-size:11px">[Access code]</code> — Zoho CRM deal</div>
+          <div style="margin-top:6px"><code style="background:#e5e7eb;padding:1px 5px;border-radius:3px;font-size:11px">[Padlock]</code> — Zoho CRM deal</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Table -->
@@ -599,6 +643,114 @@ function esc(s) {
     setMeta(`Fetched at ${new Date(data.fetched_at).toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'})}`);
   }
 })();
+
+// ─── TEMPLATES ───────────────────────────────────────────────────────────────
+
+const TEMPLATE_BODIES = [
+  // 0: Collection (Access)
+`📦 AnyVan Storage — Customer Collection → Storage
+Ref: [Listing ID]
+
+Hi [Driver first name], here are your key reminders for today's job:
+
+👤 Customer: [Customer name]
+🏢 Facility: [Facility]
+🔢 Unit: [Unit]
+🔑 Access code: [Access code]
+🔒 Padlock: [Padlock]
+
+ℹ️ No unit number? Reception will allocate one on arrival — all items must go into your allocated unit.
+⏰ Be at the facility before 4pm.
+🚛 Load the unit carefully — you're responsible for any damage caused by poor loading.
+📸 Take photos of everything loaded into the unit, anything not on the inventory list, and any pre-existing damage at the collection address.
+
+If you need to contact the team about this Storage job, just reply to this message.`,
+
+  // 1: Collection (Non-Access)
+`📦 AnyVan Storage — Customer Collection → Storage
+Ref: [Listing ID]
+
+Hi [Driver first name], here are your key reminders for today's job:
+
+👤 Customer: [Customer name]
+🏢 Facility: [Facility]
+🔢 Unit: [Unit]
+
+🦺 PPE required on site — high-vis vest and safety shoes must be worn before entering the facility. No exceptions.
+⏰ Be at the facility before 4pm.
+🚛 Load the unit carefully — you're responsible for any damage caused by poor loading.
+📸 Take photos of everything loaded into the unit, anything not on the inventory list, and any pre-existing damage at the collection address.
+
+If you need to contact the team about this Storage job, just reply to this message.`,
+
+  // 2: Redelivery (Access)
+`🚚 AnyVan Storage — Storage → Customer Delivery
+Ref: [Listing ID]
+
+Hi [Driver first name], here are your key reminders for today's job:
+
+👤 Customer: [Customer name]
+🏢 Facility: [Facility]
+🔢 Unit: [Unit]
+🔑 Access code: [Access code]
+🔒 Padlock: [Padlock]
+
+📸 Before you start loading — photograph everything in the unit. This is how we check against the original collection.
+📸 Also photograph anything not on the inventory list and any damage before loading into your vehicle.
+🏁 Before you leave: photo of the empty unit, then leave it unlocked with keys inside or hand the padlock to reception.
+
+If you need to contact the team about this Storage job, just reply to this message.`,
+
+  // 3: Redelivery (Non-Access)
+`🚚 AnyVan Storage — Storage → Customer Delivery
+Ref: [Listing ID]
+
+Hi [Driver first name], here are your key reminders for today's job:
+
+👤 Customer: [Customer name]
+🏢 Facility: [Facility]
+🔢 Unit: [Unit]
+
+🦺 PPE required on site — high-vis vest and safety shoes must be worn before entering the facility. No exceptions.
+✅ Check in with reception on arrival and again when you're done.
+⏰ You must arrive within your pre-arranged timeslot.
+📸 Before you start loading — photograph everything in the unit, anything not on the inventory list, and any damage before loading into your vehicle.
+
+If you need to contact the team about this Storage job, just reply to this message.`,
+
+  // 4: Disposal
+`🗑️ AnyVan Storage — Collect & Dispose
+Ref: [Listing ID]
+
+Hi [Driver first name], here are your key reminders for today's job:
+
+👤 Customer: [Customer name]
+🏢 Facility: [Facility]
+🔢 Unit: [Unit]
+
+✅ All items must be removed — nothing left behind.
+📸 Photograph everything in the unit before you start, and any pre-existing damage.
+🏁 Before you leave: photo of the empty unit, then leave it unlocked or hand the padlock to reception.
+
+If you need to contact the team about this Storage job, just reply to this message.`,
+];
+
+let activeTpl = 0;
+
+function toggleTemplates() {
+  const body   = document.getElementById('tpl-body');
+  const toggle = document.getElementById('tpl-toggle');
+  const open   = body.style.display === 'none';
+  body.style.display  = open ? 'block' : 'none';
+  toggle.textContent  = open ? 'Hide ▴' : 'Show ▾';
+  if (open) showTpl(activeTpl);
+}
+
+function showTpl(idx) {
+  activeTpl = idx;
+  document.getElementById('tpl-preview').textContent = TEMPLATE_BODIES[idx];
+  document.querySelectorAll('.tpl-tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+}
 
 function openPreview(listingId) {
   const j = jobs.find(j => j.listing_id === listingId);
