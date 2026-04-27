@@ -91,23 +91,26 @@ def _parse_zoho_deal(d: dict) -> dict:
     }
 
 
-def fetch_zoho_deal(listing_id: str, customer_name: str, token: str) -> dict:
-    """Looks up Zoho deal by Listing_ID, falls back to customer name search."""
+def fetch_zoho_deal(listing_id: str, job_type: str, customer_name: str, token: str) -> dict:
+    """Looks up Zoho deal by the correct listing ID field, falls back to customer name search."""
     headers = {"Authorization": f"Zoho-oauthtoken {token}"}
 
-    # Primary: search by Listing_ID
+    # Collection jobs use Listing_ID; Redelivery/Disposal use AV_Redelivery_Listing_ID
+    id_field = "Listing_ID" if job_type == "Collection" else "AV_Redelivery_Listing_ID"
+
+    # Primary: search by listing ID field
     try:
         resp = requests.get(
             f"{ZOHO_API_BASE}/Deals/search",
             headers=headers,
-            params={"criteria": f"(Listing_ID:equals:{listing_id})", "fields": ZOHO_DEAL_FIELDS},
+            params={"criteria": f"({id_field}:equals:{listing_id})", "fields": ZOHO_DEAL_FIELDS},
         )
         resp.raise_for_status()
         deals = resp.json().get("data", [])
         if deals:
             return _parse_zoho_deal(deals[0])
     except Exception as e:
-        print(f"  WARN Zoho Listing_ID lookup failed for {listing_id}: {e}")
+        print(f"  WARN Zoho {id_field} lookup failed for {listing_id}: {e}")
 
     # Fallback: search by customer name
     if customer_name:
@@ -257,7 +260,7 @@ def main():
         customer_name = r.get('CUSTOMER_FULL_NAME') or ''
         listing_id   = str(r['LISTING_ID'])
 
-        zoho = fetch_zoho_deal(listing_id, customer_name, zoho_token)
+        zoho = fetch_zoho_deal(listing_id, job_type, customer_name, zoho_token)
         unit_number  = zoho.get('unit_number', '')
         access_code  = zoho.get('access_code', '')
         padlock      = zoho.get('padlock', '')
