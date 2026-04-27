@@ -50,34 +50,52 @@ body{display:flex}
 .spin{display:inline-block;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-.matrix-wrap{flex:1;overflow:auto;position:relative}
+.content{flex:1;overflow-y:auto;padding:28px 32px;position:relative}
 
-table{border-collapse:collapse;white-space:nowrap;font-size:13px;width:100%}
+.section-hdr{
+  font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#6b7280;
+  border-bottom:1px solid #e2e2e2;padding-bottom:8px;margin-bottom:16px;
+}
+.section-gap{height:36px}
 
+/* shared table base */
+table{border-collapse:collapse;white-space:nowrap;font-size:13px}
 thead th{
-  position:sticky;top:0;z-index:20;
   background:#f4f4f4;border-bottom:2px solid #e2e2e2;
-  padding:10px 20px;font-size:11px;font-weight:600;
-  color:#6b7280;letter-spacing:.08em;text-transform:uppercase;
-  text-align:left;
+  padding:10px 16px;font-size:11px;font-weight:600;
+  color:#6b7280;letter-spacing:.08em;text-transform:uppercase;text-align:left;
 }
 thead th.r{text-align:right}
-
 tbody tr{border-bottom:1px solid #f0f0f0}
-tbody tr:hover td{background:#fafafa}
+tbody tr:hover td{background:#fafafa !important}
 tbody tr.latest td{background:#fffbeb}
-tbody tr.latest:hover td{background:#fef3c7}
+tbody tr.latest:hover td{background:#fef3c7 !important}
 
-td{padding:12px 20px;color:#374151;background:#fff;vertical-align:middle}
-td.week-cell{font-size:13px;color:#111827;font-weight:500;min-width:160px}
-td.num{font-family:var(--mono);font-size:14px;font-weight:500;color:#111827;text-align:right}
-td.pct{font-family:var(--mono);font-size:13px;text-align:right}
-td.pct.good{color:#16a34a}
-td.pct.warn{color:#d97706}
-td.pct.bad{color:#dc2626}
+/* overview table */
+.ov-table{width:100%;margin-bottom:0}
+.ov-table td{padding:12px 16px;color:#374151;background:#fff;vertical-align:middle}
+.ov-table td.week-cell{font-size:13px;color:#111827;font-weight:500;min-width:160px}
+.ov-table td.num{font-family:var(--mono);font-size:14px;font-weight:500;color:#111827;text-align:right}
+.ov-table td.pct{font-family:var(--mono);font-size:13px;text-align:right}
 
-.week-lbl{font-size:13px;color:#111827}
+/* agent table */
+.ag-table{margin-bottom:0}
+.ag-table thead th{min-width:110px}
+.ag-table thead th.wk-h{min-width:150px}
+.ag-table td{padding:10px 16px;background:#fff;vertical-align:top}
+.ag-table td.week-cell{min-width:150px;vertical-align:middle}
+.ac-lc{font-family:var(--mono);font-size:15px;font-weight:500;color:#111827}
+.ac-lns{font-size:11px;margin-top:3px;color:#9ca3af}
+.ac-lns.good{color:#16a34a}
+.ac-lns.warn{color:#d97706}
+.ac-lns.bad{color:#dc2626}
+
+/* shared */
+.week-lbl{font-size:13px;color:#111827;font-weight:500}
 .week-sub{font-size:11px;color:#9ca3af;margin-top:2px}
+.pct.good{color:#16a34a}
+.pct.warn{color:#d97706}
+.pct.bad{color:#dc2626}
 
 .state{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#6b7280}
 
@@ -119,7 +137,7 @@ td.pct.bad{color:#dc2626}
   </div>
 </div>
 
-<div class="matrix-wrap" id="wrap">
+<div class="content" id="content">
   <div class="state" id="state">Loading…</div>
 </div>
 </div>
@@ -131,8 +149,11 @@ const SUPABASE_ANON = '[SUPABASE_ANON_KEY_REMOVED]'
 const db            = supabase.createClient(SUPABASE_URL, SUPABASE_ANON)
 const GITHUB_REPO   = 'Robbosd/storage-reporting'
 const WORKFLOW_ID   = 'fetch_hs_data.yml'
+const AGENTS        = ['Dylan','Andy','Prosper','Carla','Michelle','Other']
+const MO            = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
-const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+let TEAM_DATA  = []
+let AGENT_DATA = {}  // { 'YYYY-MM-DD': { Dylan: {lc,lns}, ... } }
 
 function weekLabel(isoSat) {
   const sat = new Date(isoSat + 'T00:00:00')
@@ -146,62 +167,106 @@ function fmtN(n) { return n != null ? Number(n).toLocaleString('en-GB') : '—' 
 
 function pctClass(pct) {
   if (pct == null) return ''
-  if (pct < 5)  return 'good'
-  if (pct < 15) return 'warn'
+  if (pct < 5)    return 'good'
+  if (pct < 15)   return 'warn'
   return 'bad'
 }
 
-let ALL_DATA = []
+function weekCell(isoSat, isLatest) {
+  return `<td class="week-cell">
+    <div class="week-lbl">${weekLabel(isoSat)}</div>
+    ${isLatest ? '<div class="week-sub">Most recent</div>' : ''}
+  </td>`
+}
 
 function render() {
-  const wrap = document.getElementById('wrap')
-  if (!ALL_DATA.length) {
-    wrap.innerHTML = '<div class="state">No data yet — click Refresh to populate</div>'
+  const content = document.getElementById('content')
+  if (!TEAM_DATA.length) {
+    content.innerHTML = '<div class="state">No data yet — click Refresh to populate</div>'
     return
   }
 
-  const rows = ALL_DATA.map((r, i) => {
-    const pct = r.leads_created ? (r.leads_in_new_stage / r.leads_created * 100) : null
-    const pctFmt = pct != null ? pct.toFixed(1) + '%' : '—'
-    const isLatest = i === 0
-    return `
-      <tr${isLatest ? ' class="latest"' : ''}>
-        <td class="week-cell">
-          <div class="week-lbl">${weekLabel(r.week_commencing)}</div>
-          ${isLatest ? '<div class="week-sub">Most recent</div>' : ''}
-        </td>
-        <td class="num">${fmtN(r.leads_created)}</td>
-        <td class="num">${fmtN(r.leads_in_new_stage)}</td>
-        <td class="pct ${pctClass(pct)}">${pctFmt}</td>
-      </tr>`
+  // ── Team overview ──────────────────────────────────────────────
+  const teamRows = TEAM_DATA.map((r, i) => {
+    const pct = r.leads_created ? r.leads_in_new_stage / r.leads_created * 100 : null
+    return `<tr${i===0?' class="latest"':''}>
+      ${weekCell(r.week_commencing, i===0)}
+      <td class="num">${fmtN(r.leads_created)}</td>
+      <td class="num">${fmtN(r.leads_in_new_stage)}</td>
+      <td class="pct ${pctClass(pct)}">${pct!=null ? pct.toFixed(1)+'%' : '—'}</td>
+    </tr>`
   }).join('')
 
-  wrap.innerHTML = `
-    <table>
-      <thead>
-        <tr>
-          <th>Week (Sat – Fri)</th>
-          <th class="r">Leads Created</th>
-          <th class="r">Still in New Stage</th>
-          <th class="r">% Untouched</th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>`
+  // ── Agent breakdown ─────────────────────────────────────────────
+  const agentRows = TEAM_DATA.map((r, i) => {
+    const wkData = AGENT_DATA[r.week_commencing] || {}
+    const cells = AGENTS.map(a => {
+      const d   = wkData[a] || {}
+      const lc  = d.lc  ?? null
+      const lns = d.lns ?? null
+      const pct = (lc && lns != null) ? lns / lc * 100 : null
+      return `<td class="ac">
+        <div class="ac-lc">${lc != null ? fmtN(lc) : '—'}</div>
+        <div class="ac-lns ${pctClass(pct)}">${lns != null ? fmtN(lns) + ' new' : '—'}</div>
+      </td>`
+    }).join('')
+    return `<tr${i===0?' class="latest"':''}>
+      ${weekCell(r.week_commencing, i===0)}
+      ${cells}
+    </tr>`
+  }).join('')
 
-  const updated = ALL_DATA[0]?.updated_at
+  const agentHeaders = AGENTS.map(a => `<th>${a}</th>`).join('')
+
+  content.innerHTML = `
+    <div class="section-hdr">Team Overview</div>
+    <table class="ov-table">
+      <thead><tr>
+        <th>Week (Sat – Fri)</th>
+        <th class="r">Leads Created</th>
+        <th class="r">Still in New Stage</th>
+        <th class="r">% Untouched</th>
+      </tr></thead>
+      <tbody>${teamRows}</tbody>
+    </table>
+
+    <div class="section-gap"></div>
+
+    <div class="section-hdr">Agent Breakdown</div>
+    <table class="ag-table">
+      <thead><tr>
+        <th class="wk-h">Week</th>
+        ${agentHeaders}
+      </tr></thead>
+      <tbody>${agentRows}</tbody>
+    </table>
+
+    <div style="height:32px"></div>
+  `
+
+  const updated = TEAM_DATA[0]?.updated_at
   document.getElementById('meta').textContent = updated
     ? `Updated ${new Date(updated).toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'})}`
     : ''
 }
 
 async function loadData() {
-  const { data, error } = await db
-    .from('hs_weekly_stats')
-    .select('week_commencing,leads_created,leads_in_new_stage,updated_at')
-    .order('week_commencing', { ascending: false })
-  if (error) throw error
-  ALL_DATA = data || []
+  const [teamRes, agentRes] = await Promise.all([
+    db.from('hs_weekly_stats')
+      .select('week_commencing,leads_created,leads_in_new_stage,updated_at')
+      .order('week_commencing', { ascending: false }),
+    db.from('hs_agent_weekly_stats')
+      .select('week_commencing,agent,leads_created,leads_in_new_stage')
+      .order('week_commencing', { ascending: false })
+  ])
+  if (teamRes.error) throw teamRes.error
+  TEAM_DATA = teamRes.data || []
+
+  AGENT_DATA = {}
+  for (const row of (agentRes.data || [])) {
+    if (!AGENT_DATA[row.week_commencing]) AGENT_DATA[row.week_commencing] = {}
+    AGENT_DATA[row.week_commencing][row.agent] = { lc: row.leads_created, lns: row.leads_in_new_stage }
+  }
 }
 
 async function init() {
@@ -209,7 +274,8 @@ async function init() {
     document.getElementById('state').textContent = 'Failed to load data'
     return
   }
-  document.getElementById('state').remove()
+  const st = document.getElementById('state')
+  if (st) st.remove()
   render()
 }
 

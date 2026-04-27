@@ -214,3 +214,14 @@ create table if not exists hs_weekly_stats (
   updated_at         timestamptz default now()
 );
 alter table hs_weekly_stats disable row level security;
+
+-- Per-agent weekly HubSpot stats
+create table if not exists hs_agent_weekly_stats (
+  week_commencing    date not null,
+  agent              text not null,  -- 'Dylan','Andy','Prosper','Carla','Michelle','Other'
+  leads_created      integer,
+  leads_in_new_stage integer,
+  updated_at         timestamptz default now(),
+  primary key (week_commencing, agent)
+);
+alter table hs_agent_weekly_stats disable row level security;

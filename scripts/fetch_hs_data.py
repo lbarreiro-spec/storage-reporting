@@ -2,7 +2,7 @@
 """
 AnyVan Storage — HubSpot Data Fetcher
 Source: HubSpot CRM API (AVC - UK - STORAGE pipeline, ID: 694358880)
-Writes to Supabase: hs_weekly_stats
+Writes to Supabase: hs_weekly_stats, hs_agent_weekly_stats
 
 Week definition: Saturday 00:00 Europe/London → Friday 23:59 Europe/London
 
@@ -31,6 +31,14 @@ SUPABASE_HEADERS  = {
 HUBSPOT_TOKEN  = os.environ["HUBSPOT_TOKEN"]
 HS_PIPELINE_ID = "694358880"  # AVC - UK - STORAGE
 HS_NEW_STAGE   = "1015548829"  # New Storage Lead
+
+AGENTS = {
+    "Dylan":    "641005848",
+    "Andy":     "77534533",
+    "Prosper":  "77841901",
+    "Carla":    "425207042",
+    "Michelle": "77344590",
+}
 
 
 # ─── DATE HELPERS ──────────────────────────────────────────────────────────────
@@ -74,9 +82,19 @@ def hs_count(filters: list) -> int:
 
 # ─── SUPABASE ──────────────────────────────────────────────────────────────────
 
-def upsert(rows: list):
+def upsert_team(rows: list):
     r = requests.post(
         f"{SUPABASE_URL}/rest/v1/hs_weekly_stats",
+        headers=SUPABASE_HEADERS,
+        json=rows,
+        timeout=30,
+    )
+    r.raise_for_status()
+
+
+def upsert_agents(rows: list):
+    r = requests.post(
+        f"{SUPABASE_URL}/rest/v1/hs_agent_weekly_stats",
         headers=SUPABASE_HEADERS,
         json=rows,
         timeout=30,
@@ -97,16 +115,49 @@ base_filters = [
     {"propertyName": "createdate", "operator": "LT",  "value": str(end_ms)},
 ]
 
+# Team totals
 leads_created      = hs_count(base_filters)
 leads_in_new_stage = hs_count(base_filters + [{"propertyName": "dealstage", "operator": "EQ", "value": HS_NEW_STAGE}])
 
 print(f"  leads_created      : {leads_created}")
 print(f"  leads_in_new_stage : {leads_in_new_stage}")
 
-upsert([{
+upsert_team([{
     "week_commencing":    saturday.isoformat(),
     "leads_created":      leads_created,
     "leads_in_new_stage": leads_in_new_stage,
 }])
+
+# Per-agent breakdown
+agent_rows = []
+named_lc_total = 0
+named_lns_total = 0
+
+for name, owner_id in AGENTS.items():
+    agent_filters = base_filters + [{"propertyName": "hubspot_owner_id", "operator": "EQ", "value": owner_id}]
+    lc  = hs_count(agent_filters)
+    lns = hs_count(agent_filters + [{"propertyName": "dealstage", "operator": "EQ", "value": HS_NEW_STAGE}])
+    named_lc_total  += lc
+    named_lns_total += lns
+    agent_rows.append({
+        "week_commencing":    saturday.isoformat(),
+        "agent":              name,
+        "leads_created":      lc,
+        "leads_in_new_stage": lns,
+    })
+    print(f"  {name:<12}: lc={lc}, lns={lns}")
+
+# Other = team total minus named agents
+other_lc  = leads_created      - named_lc_total
+other_lns = leads_in_new_stage - named_lns_total
+agent_rows.append({
+    "week_commencing":    saturday.isoformat(),
+    "agent":              "Other",
+    "leads_created":      other_lc,
+    "leads_in_new_stage": other_lns,
+})
+print(f"  {'Other':<12}: lc={other_lc}, lns={other_lns}")
+
+upsert_agents(agent_rows)
 
 print("Done.")
