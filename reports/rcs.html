@@ -508,6 +508,7 @@ function renderTable() {
       <td style="font-size:12px;color:#6b7280">${esc(j.customer_email || '—')}</td>
       <td style="font-size:12px;color:#6b7280">${esc(j.facility_name || '—')}</td>
       <td style="font-family:var(--mono);font-size:12px;color:#6b7280">${esc(j.unit_number || '—')}</td>
+      <td style="font-family:var(--mono);font-size:12px;${!j.padlock && j.facility_type==='Access' ? 'color:#b45309;font-weight:600' : 'color:#6b7280'}">${esc(j.padlock || '—')}</td>
       <td>${statusHtml}</td>
       <td>${actHtml}</td>
     </tr>`;
@@ -517,7 +518,7 @@ function renderTable() {
     <table>
       <thead><tr>
         <th>Driver</th><th>Phone</th><th>Job Type</th><th>Listing ID</th>
-        <th>Customer</th><th>Email</th><th>Facility</th><th>Unit #</th>
+        <th>Customer</th><th>Email</th><th>Facility</th><th>Unit #</th><th>Padlock</th>
         <th>Status</th><th style="text-align:right">Actions</th>
       </tr></thead>
       <tbody>${rows}</tbody>

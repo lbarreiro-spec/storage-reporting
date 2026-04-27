@@ -283,6 +283,8 @@ def main():
             'facility_type': facility_type,
             'facility_name': facility_name,
             'unit_number':   unit_number,
+            'padlock':       padlock,
+            'access_code':   access_code,
             'message':       message,
         })
 
