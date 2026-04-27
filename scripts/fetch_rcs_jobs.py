@@ -83,30 +83,54 @@ def get_zoho_token():
     return token
 
 
-def fetch_zoho_deal(listing_id: str, token: str) -> dict:
-    """Returns unit_number, access_code, padlock for a listing, or empty strings on miss/error."""
+def _parse_zoho_deal(d: dict) -> dict:
+    return {
+        "unit_number": str(d["Unit_Numbers"]).strip() if d.get("Unit_Numbers") else "",
+        "access_code": str(int(d["Access_Code_For_Facility"])) if d.get("Access_Code_For_Facility") is not None else "",
+        "padlock":     str(int(d["Padlock_combination"]))       if d.get("Padlock_combination")       is not None else "",
+    }
+
+
+def fetch_zoho_deal(listing_id: str, customer_name: str, token: str) -> dict:
+    """Looks up Zoho deal by Listing_ID, falls back to customer name search."""
+    headers = {"Authorization": f"Zoho-oauthtoken {token}"}
+
+    # Primary: search by Listing_ID
     try:
         resp = requests.get(
             f"{ZOHO_API_BASE}/Deals/search",
-            headers={"Authorization": f"Zoho-oauthtoken {token}"},
-            params={
-                "criteria": f"(Listing_ID:equals:{listing_id})",
-                "fields": ZOHO_DEAL_FIELDS,
-            },
+            headers=headers,
+            params={"criteria": f"(Listing_ID:equals:{listing_id})", "fields": ZOHO_DEAL_FIELDS},
         )
         resp.raise_for_status()
         deals = resp.json().get("data", [])
-        if not deals:
-            return {}
-        d = deals[0]
-        return {
-            "unit_number":  str(d["Unit_Numbers"])            if d.get("Unit_Numbers")            is not None else "",
-            "access_code":  str(int(d["Access_Code_For_Facility"])) if d.get("Access_Code_For_Facility") is not None else "",
-            "padlock":      str(int(d["Padlock_combination"]))       if d.get("Padlock_combination")       is not None else "",
-        }
+        if deals:
+            return _parse_zoho_deal(deals[0])
     except Exception as e:
-        print(f"  WARN Zoho lookup failed for {listing_id}: {e}")
-        return {}
+        print(f"  WARN Zoho Listing_ID lookup failed for {listing_id}: {e}")
+
+    # Fallback: search by customer name
+    if customer_name:
+        try:
+            # Use surname (last word) — more distinctive than first name
+            parts = customer_name.strip().split()
+            word = parts[-1] if parts else ""
+            if len(word) >= 3:
+                resp = requests.get(
+                    f"{ZOHO_API_BASE}/Deals/search",
+                    headers=headers,
+                    params={"word": word, "fields": ZOHO_DEAL_FIELDS},
+                )
+                resp.raise_for_status()
+                deals = resp.json().get("data", [])
+                if deals:
+                    print(f"  INFO Zoho name fallback matched '{word}' for listing {listing_id}")
+                    return _parse_zoho_deal(deals[0])
+        except Exception as e:
+            print(f"  WARN Zoho name fallback failed for {listing_id} ('{customer_name}'): {e}")
+
+    print(f"  WARN No Zoho deal found for listing {listing_id} ('{customer_name}')")
+    return {}
 
 
 def get_snowflake_token():
@@ -233,7 +257,7 @@ def main():
         customer_name = r.get('CUSTOMER_FULL_NAME') or ''
         listing_id   = str(r['LISTING_ID'])
 
-        zoho = fetch_zoho_deal(listing_id, zoho_token)
+        zoho = fetch_zoho_deal(listing_id, customer_name, zoho_token)
         unit_number  = zoho.get('unit_number', '')
         access_code  = zoho.get('access_code', '')
         padlock      = zoho.get('padlock', '')
