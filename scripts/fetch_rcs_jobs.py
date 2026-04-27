@@ -10,7 +10,10 @@ import json
 import os
 import requests
 from datetime import date, datetime, timezone
+from zoneinfo import ZoneInfo
 import snowflake.connector
+
+UK_TZ = ZoneInfo("Europe/London")
 
 SNOWFLAKE_ACCOUNT = "[SNOWFLAKE_ACCOUNT_REMOVED]"
 SNOWFLAKE_USER    = "[SNOWFLAKE_USER_REMOVED]"
@@ -31,6 +34,10 @@ SELECT
     EL.CUSTOMER_EMAIL_ADDRESS,
     EL.LISTING_SPECIAL_INSTRUCTIONS,
     TP.PHONE_NUMBER,
+    EL.TP_PRESCRIBED_PICK_UP_TIMESLOT_START_NTZ,
+    EL.TP_PRESCRIBED_PICK_UP_TIMESLOT_END_NTZ,
+    EL.TP_PRESCRIBED_DELIVERY_TIMESLOT_START_NTZ,
+    EL.TP_PRESCRIBED_DELIVERY_TIMESLOT_END_NTZ,
     CASE
         WHEN EL.STORAGE_COLLECTION_DEAL_ID IS NOT NULL
             THEN 'Collection'
@@ -142,14 +149,26 @@ def get_snowflake_token():
     return open(path).read().split('token = "')[1].split('"')[0]
 
 
+def fmt_timeslot(start, end):
+    """Format a UTC NTZ timestamp pair as UK-local time range e.g. '8am – 10am'."""
+    if not start or not end:
+        return ''
+    def _fmt(dt):
+        uk = dt.replace(tzinfo=timezone.utc).astimezone(UK_TZ)
+        return uk.strftime('%-I:%M%p').replace(':00', '').lower()  # '8am' or '10:30am'
+    return f"{_fmt(start)} – {_fmt(end)}"
+
+
 def build_message(job_type, facility_type, driver_name, customer_name,
-                  facility_name, unit_number, padlock, access_code, listing_id):
+                  facility_name, unit_number, padlock, access_code, timeslot, listing_id):
     parts = driver_name.split() if driver_name else []
-    first_name = next((p for p in parts if len(p) > 1), parts[0] if parts else 'there')
-    unit_str   = unit_number  or '[See special instructions]'
-    padlock_str = padlock     or '[See special instructions]'
-    access_str  = access_code or '[See special instructions]'
+    first_name   = next((p for p in parts if len(p) > 1), parts[0] if parts else 'there')
+    unit_str     = unit_number   or '[See special instructions]'
+    padlock_str  = padlock       or '[See special instructions]'
+    access_str   = access_code   or '[See special instructions]'
     facility_str = facility_name or '[Facility]'
+    slot_line    = f"⏰ Customer pickup window: {timeslot}\n" if timeslot and job_type == 'Collection' else \
+                   f"⏰ Customer delivery window: {timeslot}\n" if timeslot else ""
 
     if job_type == 'Collection' and facility_type == 'Access':
         return (
@@ -161,6 +180,7 @@ def build_message(job_type, facility_type, driver_name, customer_name,
             f"🔢 Unit: {unit_str}\n"
             f"🔑 Access code: {access_str}\n"
             f"🔒 Padlock: {padlock_str}\n\n"
+            f"{slot_line}"
             f"ℹ️ No unit number? Reception will allocate one on arrival — all items must go into your allocated unit.\n"
             f"⏰ Be at the facility before 4pm.\n"
             f"🚛 Load the unit carefully — you're responsible for any damage caused by poor loading.\n"
@@ -175,6 +195,7 @@ def build_message(job_type, facility_type, driver_name, customer_name,
             f"👤 Customer: {customer_name}\n"
             f"🏢 Facility: {facility_str}\n"
             f"🔢 Unit: {unit_str}\n\n"
+            f"{slot_line}"
             f"🦺 PPE required on site — high-vis vest and safety shoes must be worn before entering the facility. No exceptions.\n"
             f"⏰ Be at the facility before 4pm.\n"
             f"🚛 Load the unit carefully — you're responsible for any damage caused by poor loading.\n"
@@ -191,6 +212,7 @@ def build_message(job_type, facility_type, driver_name, customer_name,
             f"🔢 Unit: {unit_str}\n"
             f"🔑 Access code: {access_str}\n"
             f"🔒 Padlock: {padlock_str}\n\n"
+            f"{slot_line}"
             f"📸 Before you start loading — photograph everything in the unit. This is how we check against the original collection.\n"
             f"📸 Also photograph anything not on the inventory list and any damage before loading into your vehicle.\n"
             f"🏁 Before you leave: photo of the empty unit, then leave it unlocked with keys inside or hand the padlock to reception.\n\n"
@@ -204,9 +226,9 @@ def build_message(job_type, facility_type, driver_name, customer_name,
             f"👤 Customer: {customer_name}\n"
             f"🏢 Facility: {facility_str}\n"
             f"🔢 Unit: {unit_str}\n\n"
+            f"{slot_line}"
             f"🦺 PPE required on site — high-vis vest and safety shoes must be worn before entering the facility. No exceptions.\n"
             f"✅ Check in with reception on arrival and again when you're done.\n"
-            f"⏰ You must arrive within your pre-arranged timeslot.\n"
             f"📸 Before you start loading — photograph everything in the unit, anything not on the inventory list, and any damage before loading into your vehicle.\n\n"
             f"If you need to contact the team about this Storage job, just reply to this message."
         )
@@ -262,14 +284,26 @@ def main():
         listing_id   = str(r['LISTING_ID'])
 
         zoho = fetch_zoho_deal(listing_id, job_type, customer_name, zoho_token)
-        unit_number  = zoho.get('unit_number', '')
-        access_code  = zoho.get('access_code', '')
-        padlock      = zoho.get('padlock', '')
+        unit_number   = zoho.get('unit_number', '')
+        access_code   = zoho.get('access_code', '')
+        padlock       = zoho.get('padlock', '')
         facility_name = facility_name or zoho.get('warehouse_name', '')
+
+        # Timeslot: pickup window for Collection, delivery window for Redelivery/Disposal
+        if job_type == 'Collection':
+            timeslot = fmt_timeslot(
+                r.get('TP_PRESCRIBED_PICK_UP_TIMESLOT_START_NTZ'),
+                r.get('TP_PRESCRIBED_PICK_UP_TIMESLOT_END_NTZ'),
+            )
+        else:
+            timeslot = fmt_timeslot(
+                r.get('TP_PRESCRIBED_DELIVERY_TIMESLOT_START_NTZ'),
+                r.get('TP_PRESCRIBED_DELIVERY_TIMESLOT_END_NTZ'),
+            )
 
         message = build_message(
             job_type, facility_type, driver_name, customer_name,
-            facility_name, unit_number, padlock, access_code, listing_id
+            facility_name, unit_number, padlock, access_code, timeslot, listing_id
         )
 
         jobs.append({
@@ -285,6 +319,7 @@ def main():
             'unit_number':   unit_number,
             'padlock':       padlock,
             'access_code':   access_code,
+            'timeslot':      timeslot,
             'message':       message,
         })
 
