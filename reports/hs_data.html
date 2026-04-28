@@ -121,10 +121,24 @@ thead th.wk-col.latest{background:#fffbeb;border-bottom-color:#f59e0b}
 .ac-lns.bad{color:#dc2626}
 .ac-lns-lbl{font-size:10px;letter-spacing:.05em;text-transform:uppercase;margin-top:1px;color:inherit}
 
+/* dial cells — same shape, different metric labels */
+.dc-top{font-family:var(--mono);font-size:16px;font-weight:600;color:#111827}
+.dc-top-lbl{font-size:10px;color:#9ca3af;letter-spacing:.05em;text-transform:uppercase;margin-top:1px}
+.dc-div{height:8px}
+.dc-bot{font-family:var(--mono);font-size:14px;font-weight:500;color:#9ca3af}
+.dc-bot.good{color:#16a34a}
+.dc-bot.warn{color:#d97706}
+.dc-bot.bad{color:#dc2626}
+.dc-bot-lbl{font-size:10px;letter-spacing:.05em;text-transform:uppercase;margin-top:1px;color:inherit}
+
 /* shared */
 .pct.good{color:#16a34a}
 .pct.warn{color:#d97706}
 .pct.bad{color:#dc2626}
+
+.section-note{
+  font-size:11px;color:#9ca3af;margin-top:8px;font-style:italic;line-height:1.5
+}
 
 .state{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#6b7280}
 
@@ -177,12 +191,15 @@ const SUPABASE_URL  = '[SUPABASE_URL_REMOVED]'
 const SUPABASE_ANON = '[SUPABASE_ANON_KEY_REMOVED]'
 const db            = supabase.createClient(SUPABASE_URL, SUPABASE_ANON)
 const GITHUB_REPO   = 'Robbosd/storage-reporting'
-const WORKFLOW_ID   = 'fetch_hs_data.yml'
+const WORKFLOWS     = ['fetch_hs_data.yml', 'fetch_hs_dials.yml']
 const AGENTS        = ['Dylan','Andy','Prosper','Carla','Michelle','Other']
+const DIAL_AGENTS   = ['Dylan','Andy','Prosper','Carla','Michelle']
 const MO            = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
-let TEAM_DATA  = []
-let AGENT_DATA = {}  // { 'YYYY-MM-DD': { Dylan: {lc,lns}, ... } }
+let TEAM_DATA   = []
+let AGENT_DATA  = {}
+let DIAL_TEAM   = []   // [{month_start, deals, total_dials, avg_dials_per_lead, deals_with_call, avg_hours_to_first_dial}, ...]  newest first
+let DIAL_AGENT  = {}   // { 'YYYY-MM-01': { Dylan: {...}, Andy: {...} } }
 
 function weekLabel(isoSat) {
   const sat = new Date(isoSat + 'T00:00:00')
@@ -192,7 +209,15 @@ function weekLabel(isoSat) {
   return `${fmt(sat)} – ${fmt(fri)}${yearSuffix}`
 }
 
-function fmtN(n) { return n != null ? Number(n).toLocaleString('en-GB') : '—' }
+function monthLabel(iso) {
+  const d = new Date(iso + 'T00:00:00')
+  const yearSuffix = d.getFullYear() !== new Date().getFullYear() ? ` ${String(d.getFullYear()).slice(2)}` : ''
+  return `${MO[d.getMonth()]}${yearSuffix}`
+}
+
+function fmtN(n)     { return n != null ? Number(n).toLocaleString('en-GB') : '—' }
+function fmtNum2(n)  { return n != null ? Number(n).toFixed(2) : '—' }
+function fmtHrs(n)   { return n != null ? Number(n).toFixed(1) + 'h' : '—' }
 
 function pctClass(pct) {
   if (pct == null) return ''
@@ -201,110 +226,233 @@ function pctClass(pct) {
   return 'bad'
 }
 
+// Speed thresholds (business hours)
+function speedClass(hrs) {
+  if (hrs == null) return ''
+  if (hrs <= 2)   return 'good'
+  if (hrs <= 8)   return 'warn'
+  return 'bad'
+}
+
+// Dials/lead thresholds (industry sweet spot is 6+; we set softer floor)
+function dplClass(dpl) {
+  if (dpl == null) return ''
+  if (dpl >= 3)   return 'good'
+  if (dpl >= 1.5) return 'warn'
+  return 'bad'
+}
 
 function render() {
   const content = document.getElementById('content')
-  if (!TEAM_DATA.length) {
+  if (!TEAM_DATA.length && !DIAL_TEAM.length) {
     content.innerHTML = '<div class="state">No data yet — click Refresh to populate</div>'
     return
   }
 
-  // Week column headers (most recent = index 0 = leftmost)
-  const weekHeaders = TEAM_DATA.map((r, i) =>
-    `<th class="wk-col${i===0?' latest':''}">${weekLabel(r.week_commencing)}</th>`
-  ).join('')
+  let html = ''
 
-  // ── Team overview (transposed: rows = metrics, cols = weeks) ────
-  const lcCells  = TEAM_DATA.map((r, i) =>
-    `<td class="num${i===0?' latest-col':''}">${fmtN(r.leads_created)}</td>`
-  ).join('')
-  const lnsCells = TEAM_DATA.map((r, i) =>
-    `<td class="num${i===0?' latest-col':''}">${fmtN(r.leads_in_new_stage)}</td>`
-  ).join('')
-  const pctCells = TEAM_DATA.map((r, i) => {
-    const pct = r.leads_created ? r.leads_in_new_stage / r.leads_created * 100 : null
-    return `<td class="pct ${pctClass(pct)}${i===0?' latest-col':''}">${pct!=null ? pct.toFixed(1)+'%' : '—'}</td>`
-  }).join('')
+  // ════════════════════════════════════════════════════════════════════════
+  // EXISTING — Weekly leads-created stats
+  // ════════════════════════════════════════════════════════════════════════
+  if (TEAM_DATA.length) {
+    const weekHeaders = TEAM_DATA.map((r, i) =>
+      `<th class="wk-col${i===0?' latest':''}">${weekLabel(r.week_commencing)}</th>`
+    ).join('')
 
-  // ── Agent breakdown (transposed: rows = agents, cols = weeks) ───
-  const agentRows = AGENTS.map(a => {
-    const cells = TEAM_DATA.map((r, i) => {
-      const d   = (AGENT_DATA[r.week_commencing] || {})[a] || {}
-      const lc  = d.lc  ?? null
-      const lns = d.lns ?? null
-      const pct = (lc && lns != null) ? lns / lc * 100 : null
-      const cls = pctClass(pct)
-      return `<td class="${i===0?'latest-col':''}">
-        <div class="ac-lc">${lc != null ? fmtN(lc) : '—'}</div>
-        <div class="ac-lc-lbl">created</div>
-        <div class="ac-div"></div>
-        <div class="ac-lns ${cls}">${lns != null ? fmtN(lns) : '—'}</div>
-        <div class="ac-lns-lbl ${cls}">${pct != null ? 'untouched · '+pct.toFixed(0)+'%' : 'untouched'}</div>
-      </td>`
+    const lcCells  = TEAM_DATA.map((r, i) =>
+      `<td class="num${i===0?' latest-col':''}">${fmtN(r.leads_created)}</td>`
+    ).join('')
+    const lnsCells = TEAM_DATA.map((r, i) =>
+      `<td class="num${i===0?' latest-col':''}">${fmtN(r.leads_in_new_stage)}</td>`
+    ).join('')
+    const pctCells = TEAM_DATA.map((r, i) => {
+      const pct = r.leads_created ? r.leads_in_new_stage / r.leads_created * 100 : null
+      return `<td class="pct ${pctClass(pct)}${i===0?' latest-col':''}">${pct!=null ? pct.toFixed(1)+'%' : '—'}</td>`
     }).join('')
-    return `<tr><td class="metric-lbl agent-lbl">${a}</td>${cells}</tr>`
-  }).join('')
 
-  content.innerHTML = `
-    <div class="section-hdr">Team Overview</div>
-    <div class="tbl-scroll">
-    <table class="ov-table">
-      <thead><tr>
-        <th class="metric-h"></th>
-        ${weekHeaders}
-      </tr></thead>
-      <tbody>
-        <tr><td class="metric-lbl">Leads Created</td>${lcCells}</tr>
-        <tr><td class="metric-lbl">Still in New Stage</td>${lnsCells}</tr>
-        <tr><td class="metric-lbl">% Untouched</td>${pctCells}</tr>
-      </tbody>
-    </table>
-    </div>
+    const agentRows = AGENTS.map(a => {
+      const cells = TEAM_DATA.map((r, i) => {
+        const d   = (AGENT_DATA[r.week_commencing] || {})[a] || {}
+        const lc  = d.lc  ?? null
+        const lns = d.lns ?? null
+        const pct = (lc && lns != null) ? lns / lc * 100 : null
+        const cls = pctClass(pct)
+        return `<td class="${i===0?'latest-col':''}">
+          <div class="ac-lc">${lc != null ? fmtN(lc) : '—'}</div>
+          <div class="ac-lc-lbl">created</div>
+          <div class="ac-div"></div>
+          <div class="ac-lns ${cls}">${lns != null ? fmtN(lns) : '—'}</div>
+          <div class="ac-lns-lbl ${cls}">${pct != null ? 'untouched · '+pct.toFixed(0)+'%' : 'untouched'}</div>
+        </td>`
+      }).join('')
+      return `<tr><td class="metric-lbl agent-lbl">${a}</td>${cells}</tr>`
+    }).join('')
 
-    <div class="section-gap"></div>
+    html += `
+      <div class="section-hdr">Team Overview · Weekly Leads</div>
+      <div class="tbl-scroll">
+      <table class="ov-table">
+        <thead><tr>
+          <th class="metric-h"></th>
+          ${weekHeaders}
+        </tr></thead>
+        <tbody>
+          <tr><td class="metric-lbl">Leads Created</td>${lcCells}</tr>
+          <tr><td class="metric-lbl">Still in New Stage</td>${lnsCells}</tr>
+          <tr><td class="metric-lbl">% Untouched</td>${pctCells}</tr>
+        </tbody>
+      </table>
+      </div>
 
-    <div class="section-hdr">Agent Breakdown</div>
-    <div class="tbl-scroll">
-    <table class="ag-table">
-      <thead><tr>
-        <th class="metric-h"></th>
-        ${weekHeaders}
-      </tr></thead>
-      <tbody>${agentRows}</tbody>
-    </table>
-    </div>
+      <div class="section-gap"></div>
 
-    <div style="height:32px"></div>
-  `
+      <div class="section-hdr">Agent Breakdown · Weekly Leads</div>
+      <div class="tbl-scroll">
+      <table class="ag-table">
+        <thead><tr>
+          <th class="metric-h"></th>
+          ${weekHeaders}
+        </tr></thead>
+        <tbody>${agentRows}</tbody>
+      </table>
+      </div>
 
-  const updated = TEAM_DATA[0]?.updated_at
+      <div class="section-gap"></div>
+    `
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // NEW — Monthly outbound dial performance
+  // ════════════════════════════════════════════════════════════════════════
+  if (DIAL_TEAM.length) {
+    const monthHeaders = DIAL_TEAM.map((r, i) =>
+      `<th class="wk-col${i===0?' latest':''}">${monthLabel(r.month_start)}</th>`
+    ).join('')
+
+    // Team rollup table (rows = metrics, cols = months)
+    const dealsRow  = DIAL_TEAM.map((r, i) =>
+      `<td class="num${i===0?' latest-col':''}">${fmtN(r.deals)}</td>`
+    ).join('')
+    const dplRow    = DIAL_TEAM.map((r, i) => {
+      const cls = dplClass(r.avg_dials_per_lead)
+      return `<td class="pct ${cls}${i===0?' latest-col':''}">${fmtNum2(r.avg_dials_per_lead)}</td>`
+    }).join('')
+    const reachRow  = DIAL_TEAM.map((r, i) => {
+      const pct = r.deals ? r.deals_with_call / r.deals * 100 : null
+      // contact rate: higher is better, invert pctClass logic (good >= 80, warn >= 50)
+      let cls = ''
+      if (pct != null) cls = pct >= 80 ? 'good' : pct >= 50 ? 'warn' : 'bad'
+      return `<td class="pct ${cls}${i===0?' latest-col':''}">${pct!=null ? pct.toFixed(0)+'%' : '—'}</td>`
+    }).join('')
+    const speedRow  = DIAL_TEAM.map((r, i) => {
+      const cls = speedClass(r.avg_hours_to_first_dial)
+      return `<td class="pct ${cls}${i===0?' latest-col':''}">${fmtHrs(r.avg_hours_to_first_dial)}</td>`
+    }).join('')
+
+    // Agent rollup table — 2-line cells: dials/lead (top) + speed (bottom)
+    const dialAgentRows = DIAL_AGENTS.map(a => {
+      const cells = DIAL_TEAM.map((tr, i) => {
+        const d = (DIAL_AGENT[tr.month_start] || {})[a] || {}
+        const dpl   = d.avg_dials_per_lead ?? null
+        const speed = d.avg_hours_to_first_dial ?? null
+        const dplCls   = dplClass(dpl)
+        const speedCls = speedClass(speed)
+        return `<td class="${i===0?'latest-col':''}">
+          <div class="dc-top ${dplCls}">${fmtNum2(dpl)}</div>
+          <div class="dc-top-lbl ${dplCls}">dials / lead</div>
+          <div class="dc-div"></div>
+          <div class="dc-bot ${speedCls}">${fmtHrs(speed)}</div>
+          <div class="dc-bot-lbl ${speedCls}">to 1st dial</div>
+        </td>`
+      }).join('')
+      return `<tr><td class="metric-lbl agent-lbl">${a}</td>${cells}</tr>`
+    }).join('')
+
+    html += `
+      <div class="section-hdr">Outbound Dial Performance · Team (Monthly)</div>
+      <div class="tbl-scroll">
+      <table class="ov-table">
+        <thead><tr>
+          <th class="metric-h"></th>
+          ${monthHeaders}
+        </tr></thead>
+        <tbody>
+          <tr><td class="metric-lbl">Deals Created</td>${dealsRow}</tr>
+          <tr><td class="metric-lbl">Avg Dials per Lead</td>${dplRow}</tr>
+          <tr><td class="metric-lbl">% Leads Reached</td>${reachRow}</tr>
+          <tr><td class="metric-lbl">Avg Hrs to 1st Dial</td>${speedRow}</tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="section-note">Speed uses UK business hours (Mon–Fri 08:00–18:00). Out-of-hours leads start the clock at 08:00 next business day. UK public holidays are not excluded.</div>
+
+      <div class="section-gap"></div>
+
+      <div class="section-hdr">Outbound Dial Performance · By Agent</div>
+      <div class="tbl-scroll">
+      <table class="ag-table">
+        <thead><tr>
+          <th class="metric-h"></th>
+          ${monthHeaders}
+        </tr></thead>
+        <tbody>${dialAgentRows}</tbody>
+      </table>
+      </div>
+      <div class="section-note">Top number is dials per lead (industry best practice ≥ 6). Bottom number is avg business hours to first dial (industry best practice &lt; 1h).</div>
+
+      <div style="height:32px"></div>
+    `
+  }
+
+  content.innerHTML = html
+
+  // Updated meta — use most recent of weekly TEAM_DATA or monthly DIAL_TEAM
+  const weeklyUpdated = TEAM_DATA[0]?.updated_at
+  const dialsUpdated  = DIAL_TEAM[0]?.updated_at
+  const updated = [weeklyUpdated, dialsUpdated].filter(Boolean).sort().reverse()[0]
   document.getElementById('meta').textContent = updated
     ? `Updated ${new Date(updated).toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'})}`
     : ''
 }
 
 async function loadData() {
-  const [teamRes, agentRes] = await Promise.all([
+  const [teamRes, agentRes, dialTeamRes, dialAgentRes] = await Promise.all([
     db.from('hs_weekly_stats')
       .select('week_commencing,leads_created,leads_in_new_stage,updated_at')
       .order('week_commencing', { ascending: false }),
     db.from('hs_agent_weekly_stats')
       .select('week_commencing,agent,leads_created,leads_in_new_stage')
-      .order('week_commencing', { ascending: false })
+      .order('week_commencing', { ascending: false }),
+    db.from('hs_dials_monthly_team')
+      .select('month_start,deals,total_dials,avg_dials_per_lead,deals_with_call,avg_hours_to_first_dial,updated_at')
+      .order('month_start', { ascending: false })
+      .limit(6),
+    db.from('hs_dials_monthly_agent')
+      .select('month_start,agent,deals,total_dials,avg_dials_per_lead,deals_with_call,avg_hours_to_first_dial')
+      .order('month_start', { ascending: false })
   ])
-  if (teamRes.error) throw teamRes.error
+  if (teamRes.error)      throw teamRes.error
+  if (dialTeamRes.error)  throw dialTeamRes.error
   TEAM_DATA = teamRes.data || []
+  DIAL_TEAM = dialTeamRes.data || []
 
   AGENT_DATA = {}
   for (const row of (agentRes.data || [])) {
     if (!AGENT_DATA[row.week_commencing]) AGENT_DATA[row.week_commencing] = {}
     AGENT_DATA[row.week_commencing][row.agent] = { lc: row.leads_created, lns: row.leads_in_new_stage }
   }
+
+  DIAL_AGENT = {}
+  for (const row of (dialAgentRes.data || [])) {
+    if (!DIAL_AGENT[row.month_start]) DIAL_AGENT[row.month_start] = {}
+    DIAL_AGENT[row.month_start][row.agent] = row
+  }
 }
 
 async function init() {
   try { await loadData() } catch(e) {
     document.getElementById('state').textContent = 'Failed to load data'
+    console.error(e)
     return
   }
   const st = document.getElementById('state')
@@ -312,40 +460,46 @@ async function init() {
   render()
 }
 
+async function dispatchAndWait(workflowId) {
+  const dispatch = await fetch(
+    `https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/workflows/${workflowId}/dispatches`,
+    { method:'POST', headers:{'Authorization':'Bearer worker-handles-auth','Accept':'application/vnd.github.v3+json','Content-Type':'application/json'}, body:JSON.stringify({ref:'main'}) }
+  )
+  if (!dispatch.ok) throw new Error(`${workflowId} dispatch failed: ${dispatch.status}`)
+  await new Promise(r => setTimeout(r, 5000))
+  let runId = null
+  for (let i = 0; i < 12; i++) {
+    const runs = await fetch(
+      `https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/workflows/${workflowId}/runs?per_page=1`,
+      { headers:{'Authorization':'Bearer worker-handles-auth','Accept':'application/vnd.github.v3+json'} }
+    )
+    const d = await runs.json()
+    if (d.workflow_runs?.[0]) { runId = d.workflow_runs[0].id; break }
+    await new Promise(r => setTimeout(r, 3000))
+  }
+  if (!runId) throw new Error(`${workflowId}: could not find workflow run`)
+  for (let i = 0; i < 50; i++) {
+    await new Promise(r => setTimeout(r, 6000))
+    const check = await fetch(
+      `https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/runs/${runId}`,
+      { headers:{'Authorization':'Bearer worker-handles-auth','Accept':'application/vnd.github.v3+json'} }
+    )
+    const run = await check.json()
+    if (run.status === 'completed') {
+      if (run.conclusion !== 'success') throw new Error(`${workflowId}: ${run.conclusion}`)
+      return
+    }
+  }
+  throw new Error(`${workflowId}: timed out waiting for completion`)
+}
+
 async function triggerRefresh() {
   const btn = document.getElementById('refresh-btn')
   btn.disabled = true
   btn.innerHTML = '<span class="spin">↻</span> Refreshing…'
   try {
-    const dispatch = await fetch(
-      `https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/dispatches`,
-      { method:'POST', headers:{'Authorization':'Bearer worker-handles-auth','Accept':'application/vnd.github.v3+json','Content-Type':'application/json'}, body:JSON.stringify({ref:'main'}) }
-    )
-    if (!dispatch.ok) throw new Error(`Dispatch failed: ${dispatch.status}`)
-    await new Promise(r => setTimeout(r, 5000))
-    let runId = null
-    for (let i = 0; i < 12; i++) {
-      const runs = await fetch(
-        `https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/runs?per_page=1`,
-        { headers:{'Authorization':'Bearer worker-handles-auth','Accept':'application/vnd.github.v3+json'} }
-      )
-      const d = await runs.json()
-      if (d.workflow_runs?.[0]) { runId = d.workflow_runs[0].id; break }
-      await new Promise(r => setTimeout(r, 3000))
-    }
-    if (!runId) throw new Error('Could not find workflow run')
-    for (let i = 0; i < 50; i++) {
-      await new Promise(r => setTimeout(r, 6000))
-      const check = await fetch(
-        `https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/runs/${runId}`,
-        { headers:{'Authorization':'Bearer worker-handles-auth','Accept':'application/vnd.github.v3+json'} }
-      )
-      const run = await check.json()
-      if (run.status === 'completed') {
-        if (run.conclusion !== 'success') throw new Error(`Workflow ${run.conclusion}`)
-        break
-      }
-    }
+    // Run both workflows in parallel — weekly leads + monthly dials
+    await Promise.all(WORKFLOWS.map(dispatchAndWait))
     await loadData()
     render()
   } catch(e) {

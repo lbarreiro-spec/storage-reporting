@@ -225,3 +225,29 @@ create table if not exists hs_agent_weekly_stats (
   primary key (week_commencing, agent)
 );
 alter table hs_agent_weekly_stats disable row level security;
+
+-- Storage outbound dial performance — team rollup, one row per month
+create table if not exists hs_dials_monthly_team (
+  month_start              date primary key,
+  deals                    integer,
+  total_dials              integer,
+  avg_dials_per_lead       numeric,
+  deals_with_call          integer,
+  avg_hours_to_first_dial  numeric,
+  updated_at               timestamptz default now()
+);
+alter table hs_dials_monthly_team disable row level security;
+
+-- Storage outbound dial performance — per agent per month
+create table if not exists hs_dials_monthly_agent (
+  month_start              date not null,
+  agent                    text not null,  -- 'Dylan','Andy','Prosper','Carla','Michelle'
+  deals                    integer,
+  total_dials              integer,
+  avg_dials_per_lead       numeric,
+  deals_with_call          integer,
+  avg_hours_to_first_dial  numeric,
+  updated_at               timestamptz default now(),
+  primary key (month_start, agent)
+);
+alter table hs_dials_monthly_agent disable row level security;
