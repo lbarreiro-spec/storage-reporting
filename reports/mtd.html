@@ -717,6 +717,9 @@ function netFmt(val){ return (val > 0 ? '+' : '') + fmtN(val) }
 function renderSqftFees(m, f){
   const netSqft  = Math.round((m.sqft_entering||0) - (m.sqft_exiting||0))
   const netCust  = (m.customers_entering||0) - (m.customers_exiting||0)
+  const appRow   = ALL_APP.find(x => x.label === SELECTED_MONTH)
+  const appRev   = appRow?.books_revenue ?? null
+  const feeTotal = (f.overdue_admin_total||0) + (f.early_release_total||0) + (appRev||0)
   document.getElementById('sqft-fees-section').innerHTML = `
     <div class="info-card">
       <div class="info-title">Sq ft</div>
@@ -741,6 +744,14 @@ function renderSqftFees(m, f){
       <div class="info-row">
         <span class="info-lbl">Early release fee</span>
         <span class="info-val">${fmt(f.early_release_total)} <span style="color:#6b7280;font-size:12px">(${fmtN(f.early_release_count)||0})</span></span>
+      </div>
+      <div class="info-row">
+        <span class="info-lbl">AnyVan Protection Plus</span>
+        <span class="info-val">${appRev != null ? fmt(appRev) : '—'}</span>
+      </div>
+      <div class="info-row" style="margin-top:8px;padding-top:8px;border-top:1px solid #e5e7eb">
+        <span class="info-lbl" style="font-weight:600">Total fees</span>
+        <span class="info-val" style="font-weight:600">${fmt(feeTotal)}</span>
       </div>
     </div>`
 }
@@ -953,15 +964,10 @@ async function loadApp(){
     const cr = totalBookings > 0 ? (curCount / totalBookings * 100).toFixed(1) : null
 
     document.getElementById('app-stats').innerHTML = `
-      <div class="stat" style="grid-column:span 2">
+      <div class="stat" style="grid-column:span 5">
         <div class="stat-lbl">APP booked in month (CRM)</div>
         <div class="stat-val">${curCount}</div>
         <div class="stat-sub">${MO_S[+cur.slice(5)-1]} ${cur.slice(0,4)} MTD${cr != null ? ` · <strong>${cr}% CR</strong> of bookings` : ''}</div>
-      </div>
-      <div class="stat" style="grid-column:span 3">
-        <div class="stat-lbl">APP revenue (Books, ex-VAT)</div>
-        <div class="stat-val">${fmtRev(curRev)}</div>
-        <div class="stat-sub">${MO_S[+cur.slice(5)-1]} ${cur.slice(0,4)} MTD</div>
       </div>`
 
     // Bar chart — only show when 2+ months of data, single bar looks broken
