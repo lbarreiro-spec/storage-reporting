@@ -268,14 +268,6 @@ tr.current-month td:first-child{color:#1f1f1f;font-weight:700}
   <canvas id="bookings-agent-chart" height="85"></canvas>
 </div>
 
-<!-- APP: STATS + CHART -->
-<div class="sec" id="app-sec" style="display:none">
-  <div class="sec-lbl">AnyVan Protection Plus (APP)</div>
-  <div class="stat-row" id="app-stats" style="margin-bottom:14px"></div>
-  <canvas id="app-chart" height="85" id="app-chart-canvas"></canvas>
-  <div class="chart-caption" id="app-caption"></div>
-</div>
-
 <!-- ── HISTORY ─────────────────────────────────────────────────────────── -->
 <div class="group-hdr">History</div>
 
@@ -319,6 +311,7 @@ let ALL_MONTHLY = []
 let ALL_TRANSPORT = []
 let ALL_FEES = []
 let ALL_APP = []
+let ALL_BOOKINGS = []
 let YOY = null
 let DAILY = []
 let dailyChart = null
@@ -338,19 +331,21 @@ function yoyBadge(pct){
 
 async function loadAll(){
   const curLabel = new Date().toISOString().slice(0, 7)
-  const [mRes, tRes, fRes, yRes, dRes, aRes] = await Promise.all([
+  const [mRes, tRes, fRes, yRes, dRes, aRes, bRes] = await Promise.all([
     db.from('mtd_monthly').select('*').order('label', { ascending: false }),
     db.from('mtd_transport_monthly').select('*').order('label', { ascending: false }),
     db.from('mtd_fees_monthly').select('*').order('label', { ascending: false }),
     db.from('mtd_yoy').select('*').eq('id', 1).single(),
     db.from('mtd_daily_revenue').select('*').eq('label', curLabel).order('day'),
     db.from('app_monthly').select('label,crm_count,books_revenue').order('label', { ascending: false }),
+    db.from('bookings_monthly').select('label,total').order('label', { ascending: false }),
   ])
 
   ALL_MONTHLY   = mRes.data || []
   ALL_TRANSPORT = tRes.data || []
   ALL_FEES      = fRes.data || []
   ALL_APP       = aRes.data || []
+  ALL_BOOKINGS  = bRes.data || []
   YOY           = yRes.data || null
   DAILY         = dRes.data || []
 
@@ -717,9 +712,13 @@ function netFmt(val){ return (val > 0 ? '+' : '') + fmtN(val) }
 function renderSqftFees(m, f){
   const netSqft  = Math.round((m.sqft_entering||0) - (m.sqft_exiting||0))
   const netCust  = (m.customers_entering||0) - (m.customers_exiting||0)
-  const appRow   = ALL_APP.find(x => x.label === SELECTED_MONTH)
-  const appRev   = appRow?.books_revenue ?? null
-  const feeTotal = (f.overdue_admin_total||0) + (f.early_release_total||0) + (appRev||0)
+  const appRow      = ALL_APP.find(x => x.label === SELECTED_MONTH)
+  const appRev      = appRow?.books_revenue ?? null
+  const appCount    = appRow?.crm_count ?? null
+  const booksRow    = ALL_BOOKINGS.find(x => x.label === SELECTED_MONTH)
+  const totalBooks  = booksRow?.total || 0
+  const appCR       = (appCount != null && totalBooks > 0) ? (appCount / totalBooks * 100).toFixed(1) : null
+  const feeTotal    = (f.overdue_admin_total||0) + (f.early_release_total||0) + (appRev||0)
   document.getElementById('sqft-fees-section').innerHTML = `
     <div class="info-card">
       <div class="info-title">Sq ft</div>
@@ -747,7 +746,7 @@ function renderSqftFees(m, f){
       </div>
       <div class="info-row">
         <span class="info-lbl">AnyVan Protection Plus</span>
-        <span class="info-val">${appRev != null ? fmt(appRev) : '—'}</span>
+        <span class="info-val">${appRev != null ? fmt(appRev) : '—'} <span style="color:#6b7280;font-size:12px">${appCount != null ? `(${appCount} booked${appCR != null ? ` · ${appCR}% CR` : ''})` : ''}</span></span>
       </div>
       <div class="info-row" style="margin-top:8px;padding-top:8px;border-top:1px solid #e5e7eb">
         <span class="info-lbl" style="font-weight:600">Total fees</span>
@@ -940,50 +939,7 @@ async function loadEntering(){
 }
 
 async function loadApp(){
-  try{
-    const { data: rows, error } = await db
-      .from('app_monthly')
-      .select('label,crm_count,books_revenue,updated_at')
-      .order('label', { ascending: true })
-    if(error || !rows || !rows.length) return
-
-    const months   = rows.map(r => r.label)
-    const counts   = Object.fromEntries(rows.map(r => [r.label, r.crm_count || 0]))
-    const revenues = Object.fromEntries(rows.map(r => [r.label, r.books_revenue]))
-    const updated  = rows[rows.length-1]?.updated_at?.slice(0,10) || ''
-
-    // Stat cards for current month
-    const cur = months[months.length-1]
-    const curCount = counts[cur] || 0
-    const curRev   = revenues[cur]
-    const fmtRev   = v => v != null ? '£'+Number(v).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—'
-
-    // Fetch current month bookings total for CR%
-    const { data: bRows } = await db.from('bookings_monthly').select('total').eq('label', cur).limit(1)
-    const totalBookings = bRows?.[0]?.total || 0
-    const cr = totalBookings > 0 ? (curCount / totalBookings * 100).toFixed(1) : null
-
-    document.getElementById('app-stats').innerHTML = `
-      <div class="stat" style="grid-column:span 5">
-        <div class="stat-lbl">APP booked in month (CRM)</div>
-        <div class="stat-val">${curCount}</div>
-        <div class="stat-sub">${MO_S[+cur.slice(5)-1]} ${cur.slice(0,4)} MTD${cr != null ? ` · <strong>${cr}% CR</strong> of bookings` : ''}</div>
-      </div>`
-
-    // Bar chart — only show when 2+ months of data, single bar looks broken
-    const appChartEl = document.getElementById('app-chart')
-    const appCapEl   = document.getElementById('app-caption')
-    if(months.length >= 2){
-      appChartEl.style.display = ''
-      appCapEl.style.display   = ''
-      const chartData = { months, total: counts, by_owner: {}, updated }
-      renderTeamChart(chartData, 'app-chart', 'app-caption', 'APP taken', appChart, c => { appChart = c })
-    } else {
-      appChartEl.style.display = 'none'
-      appCapEl.style.display   = 'none'
-    }
-    document.getElementById('app-sec').style.display = ''
-  }catch(e){ console.warn('APP data unavailable:', e) }
+  // APP data now displayed in the Fees card via renderSqftFees — nothing to do here
 }
 
 function renderTeamChart(data, canvasId, captionId, unit, existingChart, setChart){
