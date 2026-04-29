@@ -236,6 +236,7 @@ def build_message(job_type, facility_type, driver_name, customer_name,
             f"{delivery_line}"
             f"🦺 PPE required on site — high-vis vest and safety shoes must be worn before entering the facility. No exceptions.\n"
             f"✅ Check in with reception on arrival and again when you're done.\n"
+            f"⏰ You must arrive no later than 2pm.\n"
             f"📸 Before you start loading — photograph everything in the unit, anything not on the inventory list, and any damage before loading into your vehicle.\n"
             f"📋 Any items not on the inventory list must be added through the app before loading.\n\n"
             f"If you need to contact the team about this Storage job, just reply to this message."
