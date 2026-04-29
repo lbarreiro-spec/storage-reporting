@@ -20,13 +20,22 @@ from dateutil.relativedelta import relativedelta
 
 # ─── CONFIG ────────────────────────────────────────────────────────────────────
 
-SNOWFLAKE_ACCOUNT = "[SNOWFLAKE_ACCOUNT_REMOVED]"
-SNOWFLAKE_USER    = "[SNOWFLAKE_USER_REMOVED]"
+_env_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.env')
+if os.path.exists(_env_file):
+    with open(_env_file) as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith('#') and '=' in _line:
+                _k, _, _v = _line.partition('=')
+                os.environ.setdefault(_k.strip(), _v.strip())
+
+SNOWFLAKE_ACCOUNT = os.environ["SNOWFLAKE_ACCOUNT"]
+SNOWFLAKE_USER    = os.environ["SNOWFLAKE_USER"]
 SNOWFLAKE_WH      = "MART_SALES_OPS_WH"
 SNOWFLAKE_ROLE    = "MART_SALES_OPS_GROUP"
 
-SUPABASE_URL      = "[SUPABASE_URL_REMOVED]"
-SUPABASE_ANON_KEY = "[SUPABASE_ANON_KEY_REMOVED]"
+SUPABASE_URL      = os.environ["SUPABASE_URL"]
+SUPABASE_ANON_KEY = os.environ["SUPABASE_ANON_KEY"]
 SUPABASE_HEADERS  = {
     "apikey":        SUPABASE_ANON_KEY,
     "Authorization": f"Bearer {SUPABASE_ANON_KEY}",
@@ -35,16 +44,6 @@ SUPABASE_HEADERS  = {
 }
 
 PIPELINE_ID = 694358880
-
-# Snowflake doesn't expose HubSpot owner_id → email cleanly enough to filter at owner_id level
-# without an extra join, so we hard-list the five active Storage agents by email and ID.
-OWNERS = [
-    (641005848, "Dylan",    "[AGENT_EMAIL_REMOVED]"),
-    (77534533,  "Andy",     "[AGENT_EMAIL_REMOVED]"),
-    (77841901,  "Prosper",  "[AGENT_EMAIL_REMOVED]"),
-    (425207042, "Carla",    "[AGENT_EMAIL_REMOVED]"),
-    (77344590,  "Michelle", "[AGENT_EMAIL_REMOVED]"),
-]
 
 TODAY = date.today()
 
@@ -122,10 +121,7 @@ outbound_calls AS (
   FROM CONFORMED.PRODUCTION.FCT_VOICE_INTERACTIONS c
   CROSS JOIN window_bounds w
   WHERE c.CALL_DIRECTION = 'outbound'
-    AND c.WORKER_EMAIL IN (
-      '[AGENT_EMAIL_REMOVED]','[AGENT_EMAIL_REMOVED]',
-      '[AGENT_EMAIL_REMOVED]','[AGENT_EMAIL_REMOVED]','[AGENT_EMAIL_REMOVED]'
-    )
+    AND c.WORKER_EMAIL IN (SELECT OWNER_EMAIL FROM owners)
     AND c.CALL_DATE_TIME >= w.WIN_START
     AND c.CALL_DATE_TIME <  DATEADD(day, 21, w.WIN_END)
     AND c.TO_NUMBER IS NOT NULL

@@ -33,6 +33,8 @@ jobs:
           ZOHO_CLIENT_ID:     ${{ secrets.ZOHO_CLIENT_ID }}
           ZOHO_CLIENT_SECRET: ${{ secrets.ZOHO_CLIENT_SECRET }}
           ZOHO_REFRESH_TOKEN: ${{ secrets.ZOHO_REFRESH_TOKEN }}
+          SNOWFLAKE_ACCOUNT:  ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER:     ${{ secrets.SNOWFLAKE_USER }}
 
       - name: Commit and push
         run: |

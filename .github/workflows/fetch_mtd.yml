@@ -40,7 +40,12 @@ jobs:
           ZOHO_REFRESH_TOKEN=${{ secrets.ZOHO_REFRESH_TOKEN }}
           ZOHO_BOOKS_REFRESH_TOKEN=${{ secrets.ZOHO_BOOKS_REFRESH_TOKEN }}
           ZOHO_BOOKS_ORG_ID=${{ secrets.ZOHO_BOOKS_ORG_ID }}
+          ZOHO_ORG_ID=${{ secrets.ZOHO_BOOKS_ORG_ID }}
           ZOHO_REGION=eu
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+          SNOWFLAKE_ACCOUNT=${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER=${{ secrets.SNOWFLAKE_USER }}
           EOF
 
       - name: Run fetch

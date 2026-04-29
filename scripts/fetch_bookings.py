@@ -33,9 +33,6 @@ EXCLUDE_STAGES = {"Cancel", "Prospect", "Enquiry", "Estimate sent", "Quoted by S
 AUTH_URL       = "https://accounts.zoho.eu/oauth/v2/token"
 CRM_BASE       = "https://www.zohoapis.eu/crm/v3"
 BOOKS_BASE     = "https://www.zohoapis.eu/books/v3"
-BOOKS_ORG_ID   = "[ZOHO_ORG_ID_REMOVED]"
-SUPA_URL       = "[SUPABASE_URL_REMOVED]"
-SUPA_KEY       = "[SUPABASE_ANON_KEY_REMOVED]"
 FULL_MODE      = "--full" in sys.argv
 
 
@@ -52,6 +49,10 @@ def _load_kvfile(path):
 
 _load_kvfile(Path(__file__).parent.parent / ".env")
 _load_kvfile(Path.home() / ".anyvan" / "config.txt")
+
+BOOKS_ORG_ID   = os.environ.get("ZOHO_ORG_ID") or os.environ["ZOHO_BOOKS_ORG_ID"]
+SUPA_URL       = os.environ["SUPABASE_URL"]
+SUPA_KEY       = os.environ["SUPABASE_ANON_KEY"]
 
 CLIENT_ID          = os.environ["ZOHO_CLIENT_ID"]
 CLIENT_SECRET      = os.environ["ZOHO_CLIENT_SECRET"]

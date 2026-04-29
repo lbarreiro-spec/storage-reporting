@@ -20,13 +20,22 @@ from datetime import date, timedelta
 
 # ─── CONFIG ────────────────────────────────────────────────────────────────────
 
-SNOWFLAKE_ACCOUNT = "[SNOWFLAKE_ACCOUNT_REMOVED]"
-SNOWFLAKE_USER    = "[SNOWFLAKE_USER_REMOVED]"
+_env_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.env')
+if os.path.exists(_env_file):
+    with open(_env_file) as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith('#') and '=' in _line:
+                _k, _, _v = _line.partition('=')
+                os.environ.setdefault(_k.strip(), _v.strip())
+
+SNOWFLAKE_ACCOUNT = os.environ["SNOWFLAKE_ACCOUNT"]
+SNOWFLAKE_USER    = os.environ["SNOWFLAKE_USER"]
 SNOWFLAKE_WH      = "MART_SALES_OPS_WH"
 SNOWFLAKE_ROLE    = "MART_SALES_OPS_GROUP"
 
-SUPABASE_URL      = "[SUPABASE_URL_REMOVED]"
-SUPABASE_ANON_KEY = "[SUPABASE_ANON_KEY_REMOVED]"
+SUPABASE_URL      = os.environ["SUPABASE_URL"]
+SUPABASE_ANON_KEY = os.environ["SUPABASE_ANON_KEY"]
 SUPABASE_HEADERS  = {
     "apikey":        SUPABASE_ANON_KEY,
     "Authorization": f"Bearer {SUPABASE_ANON_KEY}",

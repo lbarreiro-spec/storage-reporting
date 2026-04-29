@@ -27,10 +27,19 @@ from datetime import date, datetime, timedelta
 from collections import defaultdict
 import requests
 
+_env_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.env')
+if os.path.exists(_env_file):
+    with open(_env_file) as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith('#') and '=' in _line:
+                _k, _, _v = _line.partition('=')
+                os.environ.setdefault(_k.strip(), _v.strip())
+
 # ── Constants ─────────────────────────────────────────────────────────────────
 
 ZOHO_REGION = "eu"
-ZOHO_ORG_ID = "[ZOHO_ORG_ID_REMOVED]"
+ZOHO_ORG_ID = os.environ.get("ZOHO_ORG_ID") or os.environ.get("ZOHO_BOOKS_ORG_ID")
 TOKEN_URL   = f"https://accounts.zoho.{ZOHO_REGION}/oauth/v2/token"
 BOOKS_BASE  = f"https://www.zohoapis.{ZOHO_REGION}/books/v3"
 

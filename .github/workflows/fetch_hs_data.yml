@@ -22,4 +22,6 @@ jobs:
       - name: Run fetch
         env:
           HUBSPOT_TOKEN: ${{ secrets.HUBSPOT_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: python3 scripts/fetch_hs_data.py

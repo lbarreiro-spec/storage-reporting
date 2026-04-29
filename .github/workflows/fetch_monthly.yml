@@ -22,6 +22,9 @@ jobs:
 
       - name: Run fetch
         run: python3 scripts/fetch_monthly.py
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
 
       - name: Commit and push if data changed
         run: |
