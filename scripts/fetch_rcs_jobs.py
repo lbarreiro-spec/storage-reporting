@@ -220,6 +220,7 @@ def build_message(job_type, facility_type, driver_name, customer_name,
             f"{delivery_line}"
             f"📸 Before you start loading — photograph everything in the unit. This is how we check against the original collection.\n"
             f"📸 Also photograph anything not on the inventory list and any damage before loading into your vehicle.\n"
+            f"📋 Any items not on the inventory list must be added through the app before loading.\n"
             f"🏁 Before you leave: photo of the empty unit, then leave it unlocked with keys inside or hand the padlock to reception.\n\n"
             f"If you need to contact the team about this Storage job, just reply to this message."
         )
@@ -235,7 +236,8 @@ def build_message(job_type, facility_type, driver_name, customer_name,
             f"{delivery_line}"
             f"🦺 PPE required on site — high-vis vest and safety shoes must be worn before entering the facility. No exceptions.\n"
             f"✅ Check in with reception on arrival and again when you're done.\n"
-            f"📸 Before you start loading — photograph everything in the unit, anything not on the inventory list, and any damage before loading into your vehicle.\n\n"
+            f"📸 Before you start loading — photograph everything in the unit, anything not on the inventory list, and any damage before loading into your vehicle.\n"
+            f"📋 Any items not on the inventory list must be added through the app before loading.\n\n"
             f"If you need to contact the team about this Storage job, just reply to this message."
         )
     else:  # Disposal
@@ -248,7 +250,8 @@ def build_message(job_type, facility_type, driver_name, customer_name,
             f"🔢 Unit: {unit_str}\n\n"
             f"✅ All items must be removed — nothing left behind.\n"
             f"📸 Photograph everything in the unit before you start, and any pre-existing damage.\n"
-            f"🏁 Before you leave: photo of the empty unit, then leave it unlocked or hand the padlock to reception.\n\n"
+            f"📸 Before you leave — take a photo of the completely empty unit to confirm all items have been removed.\n"
+            f"🏁 Leave the unit unlocked or hand the padlock to reception.\n\n"
             f"If you need to contact the team about this Storage job, just reply to this message."
         )
 
