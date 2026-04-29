@@ -28,6 +28,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 
 START          = (2025, 1)
+FUTURE_MONTHS  = 3          # how many months ahead to show in the entering chart
 EXCLUDE_STAGES = {"Cancel", "Prospect", "Enquiry", "Estimate sent", "Quoted by Sales"}
 AUTH_URL       = "https://accounts.zoho.eu/oauth/v2/token"
 CRM_BASE       = "https://www.zohoapis.eu/crm/v3"
@@ -311,10 +312,17 @@ def main():
     now_iso     = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
     all_months  = list(month_range(*START, today.year, today.month))
 
+    # Future months: extend entering FUTURE_MONTHS ahead (customers with upcoming Moving_Dates)
+    ey, em = today.year, today.month + FUTURE_MONTHS
+    ey    += (em - 1) // 12
+    em     = ((em - 1) % 12) + 1
+    future_entering = [(y, m) for y, m in month_range(today.year, today.month, ey, em)
+                       if f"{y}-{m:02d}" > current_key]
+
     if FULL_MODE:
-        print("Full mode — fetching all months Jan 2025 → present")
+        print(f"Full mode — fetching all months Jan 2025 → present + {FUTURE_MONTHS} future months for entering")
         booked_months   = all_months
-        entering_months = all_months
+        entering_months = list(month_range(*START, ey, em))
     else:
         since = today - timedelta(days=2)
         print(f"Incremental mode — checking modifications since {since}...")
@@ -328,7 +336,8 @@ def main():
             print("  No historical modifications detected")
 
         booked_months   = _to_month_list(affected_b, start_key, current_key)
-        entering_months = _to_month_list(affected_e, start_key, current_key)
+        # Always refresh future months — new bookings arrive daily with future Moving_Dates
+        entering_months = sorted(set(_to_month_list(affected_e, start_key, current_key)) | set(future_entering))
 
     # ── Bookings ────────────────────────────────────────────────────────────
     print("\nBookings (by Created_Time)...")
