@@ -311,7 +311,6 @@ function saveToken() {
   if (!val) return;
   localStorage.setItem('rcs_gh_pat', val);
   closeSettings();
-  document.getElementById('token-prompt').style.display = 'none';
   toast('GitHub token saved');
 }
 
@@ -634,11 +633,7 @@ function esc(s) {
 // ─── INIT ────────────────────────────────────────────────────────────────────
 
 (async () => {
-  // Show token prompt if not configured
-  if (!getToken()) {
-    document.getElementById('token-prompt').style.display = 'flex';
-  }
-  // Load any existing today's data
+  // Load any existing today's data — no token needed for read
   const data = await loadJson();
   if (data && data.job_date === todayStr() && data.jobs?.length) {
     applyData(data);
