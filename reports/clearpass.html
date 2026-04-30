@@ -227,10 +227,21 @@ const SUPPLIER_NAMES = {
 let allRows = [];
 
 async function loadData() {
-  const headers = { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` };
-  // Fetch all rows (no limit needed — one row per invoice)
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/clearpass_invoices?select=month,supplier,outcome&order=processed_at.desc&limit=10000`, { headers });
-  allRows = await res.json();
+  const headers = { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, Prefer: 'count=exact' };
+  const PAGE = 1000;
+  allRows = [];
+  let offset = 0;
+  while (true) {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/clearpass_invoices?select=month,supplier,outcome&order=processed_at.desc&limit=${PAGE}&offset=${offset}`,
+      { headers }
+    );
+    const page = await res.json();
+    if (!page.length) break;
+    allRows = allRows.concat(page);
+    if (page.length < PAGE) break;
+    offset += PAGE;
+  }
   return allRows;
 }
 
