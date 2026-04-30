@@ -548,15 +548,15 @@ def aggregate_monthly(invoices, deals):
 # ─── YOY COMPUTATION (MTD only) ────────────────────────────────────────────────
 
 def compute_yoy(token, current_months, transport_monthly):
-    cur_month_label = month_label(YESTERDAY)
+    cur_month_label = month_label(TODAY)
     cur_month = next((m for m in current_months if m["label"] == cur_month_label), {})
 
-    days_elapsed  = (YESTERDAY - date(YESTERDAY.year, YESTERDAY.month, 1)).days + 1
-    days_in_month = (date(YESTERDAY.year, YESTERDAY.month % 12 + 1, 1) -
-                     date(YESTERDAY.year, YESTERDAY.month, 1)).days if YESTERDAY.month < 12 else 31
+    days_elapsed  = (TODAY - date(TODAY.year, TODAY.month, 1)).days + 1
+    days_in_month = (date(TODAY.year, TODAY.month % 12 + 1, 1) -
+                     date(TODAY.year, TODAY.month, 1)).days if TODAY.month < 12 else 31
 
-    py_month_start = date(YESTERDAY.year - 1, YESTERDAY.month, 1)
-    py_same_day    = date(YESTERDAY.year - 1, YESTERDAY.month, YESTERDAY.day)
+    py_month_start = date(TODAY.year - 1, TODAY.month, 1)
+    py_same_day    = date(TODAY.year - 1, TODAY.month, TODAY.day)
     py_month_end_  = month_end(py_month_start)
 
     py_inv_month = fetch_invoices(token, py_month_start, py_same_day,
@@ -610,7 +610,7 @@ def compute_yoy(token, current_months, transport_monthly):
     return {
         "id":                            1,
         "period":                        cur_month_label,
-        "as_of":                         YESTERDAY.isoformat(),
+        "as_of":                         TODAY.isoformat(),
         "days_elapsed":                  days_elapsed,
         "days_in_month":                 days_in_month,
         "cy_invoiced":                   cy_act_inv,
@@ -665,7 +665,7 @@ def build_daily_revenue(invoices, token):
                 totals[d.day] = totals.get(d.day, 0.0) + float(inv.get("total") or 0)
         return totals
 
-    cy_totals = {d: v for d, v in daily_totals(invoices, YESTERDAY.year, YESTERDAY.month).items() if d <= YESTERDAY.day}
+    cy_totals = {d: v for d, v in daily_totals(invoices, TODAY.year, TODAY.month).items() if d <= TODAY.day}
     py_totals = daily_totals(py_invoices, TODAY.year - 1, TODAY.month)
 
     days_in_month = (py_month_end_ - py_month_start).days + 1
@@ -703,7 +703,7 @@ def main():
 
     token = get_zoho_token()
 
-    invoices  = fetch_invoices(token, START_DATE, end=YESTERDAY, label=f"{START_DATE} → {YESTERDAY}")
+    invoices  = fetch_invoices(token, START_DATE, end=TODAY, label=f"{START_DATE} → {TODAY}")
     deals     = fetch_crm_deals(token)
     fee_data  = fetch_line_item_fees(invoices, token)
     transport = fetch_transport()
