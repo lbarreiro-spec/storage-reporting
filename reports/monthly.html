@@ -147,6 +147,15 @@ td.cur{color:#1f1f1f;font-weight:600}
 <div class="tab-bar" id="tabs"></div>
 
 <div class="main">
+  <!-- REVENUE OVERVIEW -->
+  <div class="chart-wrap" id="rev-overview-wrap" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <span style="font-size:15px;font-weight:700;color:#111827;letter-spacing:-.01em">Revenue Overview</span>
+      <div class="legend" id="rev-legend"></div>
+    </div>
+    <canvas id="rev-chart" style="max-height:260px"></canvas>
+  </div>
+
   <div class="chart-header">
     <div class="chart-title" id="chart-title">—</div>
   </div>
@@ -304,6 +313,98 @@ function renderMetric(idx){
   }).join('')
 }
 
+function renderRevenueChart(data){
+  const invM   = data.metrics.find(m => m.key === 'invoice_revenue')
+  const paidM  = data.metrics.find(m => m.key === 'paid_cash')
+  const transM = data.metrics.find(m => m.key === 'transport_fee')
+  const invTM  = data.metrics.find(m => m.key === 'invoiced_plus_transport')
+  const paidTM = data.metrics.find(m => m.key === 'paid_plus_transport')
+  if(!invM && !paidM && !transM) return
+
+  const startYear = 2024
+  const now = new Date()
+  const curYear = now.getFullYear()
+  const curMonth = now.getMonth()
+
+  const labels = []
+  const series = { inv:[], paid:[], trans:[], invT:[], paidT:[] }
+
+  for(let y = startYear; y <= curYear; y++){
+    const ys = String(y)
+    const maxMo = (y === curYear) ? curMonth : 12
+    for(let m = 0; m < maxMo; m++){
+      labels.push(MONTHS[m] + " '" + ys.slice(2))
+      series.inv.push(invM?.series[ys]?.[m] ?? null)
+      series.paid.push(paidM?.series[ys]?.[m] ?? null)
+      series.trans.push(transM?.series[ys]?.[m] ?? null)
+      series.invT.push(invTM?.series[ys]?.[m] ?? null)
+      series.paidT.push(paidTM?.series[ys]?.[m] ?? null)
+    }
+  }
+
+  const datasets = [
+    { label:'Invoiced',          data:series.inv,   borderColor:'#1f1f1f', borderWidth:2,   borderDash:undefined },
+    { label:'Paid',              data:series.paid,  borderColor:'#3b82f6', borderWidth:2,   borderDash:undefined },
+    { label:'Transport',         data:series.trans, borderColor:'#f59e0b', borderWidth:2,   borderDash:undefined },
+    { label:'Inv + Transport',   data:series.invT,  borderColor:'#6b7280', borderWidth:1.5, borderDash:[4,3] },
+    { label:'Paid + Transport',  data:series.paidT, borderColor:'#9ca3af', borderWidth:1.5, borderDash:[4,3] },
+  ].map(d => ({
+    ...d,
+    backgroundColor: 'transparent',
+    pointRadius: 2,
+    pointHoverRadius: 4,
+    pointBackgroundColor: d.borderColor,
+    tension: 0.3,
+    spanGaps: false,
+    segment: d.borderDash ? { borderDash: () => d.borderDash } : undefined,
+  }))
+
+  document.getElementById('rev-overview-wrap').style.display = ''
+
+  const legendEl = document.getElementById('rev-legend')
+  datasets.forEach(ds => {
+    const el = document.createElement('div')
+    el.className = 'legend-item'
+    el.innerHTML = `<div class="legend-dot" style="background:${ds.borderColor}"></div><span>${ds.label}</span>`
+    legendEl.appendChild(el)
+  })
+
+  const ctx = document.getElementById('rev-chart').getContext('2d')
+  new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options:{
+      responsive: true,
+      interaction:{ mode:'index', intersect:false },
+      plugins:{
+        legend:{ display:false },
+        tooltip:{
+          backgroundColor:'#fff', borderColor:'#e2e2e2', borderWidth:1,
+          titleColor:'#111827', bodyColor:'#6b7280',
+          titleFont:{ family:'-apple-system,sans-serif', size:13, weight:'600' },
+          bodyFont:{ family:"'SF Mono',monospace", size:12 },
+          padding:12,
+          callbacks:{
+            label: ctx => ctx.raw == null ? null :
+              ` ${ctx.dataset.label}: £${Math.round(ctx.raw).toLocaleString('en-GB')}`
+          }
+        }
+      },
+      scales:{
+        x:{ grid:{ color:'#f0f0f0' }, ticks:{ font:{ size:11 }, color:'#6b7280', maxRotation:45 }, border:{ color:'#e2e2e2' } },
+        y:{
+          grid:{ color:'#f0f0f0' },
+          ticks:{
+            font:{ size:11 }, color:'#6b7280',
+            callback: v => '£'+Number(v/1000).toFixed(0)+'k'
+          },
+          border:{ color:'#e2e2e2' }
+        }
+      }
+    }
+  })
+}
+
 async function load(){
   let data
   try {
@@ -316,6 +417,8 @@ async function load(){
   }
   _data = data
   document.getElementById('meta').textContent = 'updated ' + data.updated
+
+  renderRevenueChart(data)
 
   // Build tabs
   const tabBar = document.getElementById('tabs')
