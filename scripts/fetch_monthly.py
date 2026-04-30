@@ -144,7 +144,7 @@ def main():
 
     supabase_data = fetch_supabase_monthly()
 
-    # Never show in-month data — monthly report is historical/completed months only
+    # future months are blanked; current in-progress month uses Supabase MTD fallback
     current_month = date.today().strftime("%Y-%m")
 
     output_metrics = []
@@ -157,7 +157,7 @@ def main():
         for col, year in zip([14, 15, 16], gp_years):
             month_key = f"{year}-{str(m + 1).zfill(2)}"
             val = parse_val(data_row[col], "money") if col < len(data_row) else None
-            if month_key >= current_month:
+            if month_key > current_month:
                 val = None
             gp_series[year].append(val)
     output_metrics.append({
@@ -172,7 +172,7 @@ def main():
             data_row = rows[row_idx + 2 + m]
             for col, year in enumerate(years, start=1):
                 month_key = f"{year}-{str(m + 1).zfill(2)}"
-                if month_key >= current_month:
+                if month_key > current_month:
                     series[year].append(None)
                     continue
 
