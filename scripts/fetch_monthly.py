@@ -106,9 +106,9 @@ def fetch_supabase_monthly():
         inv  = round(row["invoiced_revenue"] / 1.2, 2) if row.get("invoiced_revenue") is not None else None
         paid = round(row["paid_revenue"]     / 1.2, 2) if row.get("paid_revenue")     is not None else None
         t    = transport_by.get(lbl, {})
-        tr   = None
-        if t.get("coll_av_fee") is not None and t.get("redel_av_fee") is not None:
-            tr = round((t["coll_av_fee"] + t["redel_av_fee"]) / 1.2, 2)
+        coll_ex  = round(t["coll_av_fee"]  / 1.2, 2) if t.get("coll_av_fee")  is not None else None
+        redel_ex = round(t["redel_av_fee"] / 1.2, 2) if t.get("redel_av_fee") is not None else None
+        tr = round(coll_ex + redel_ex, 2) if coll_ex is not None and redel_ex is not None else None
 
         sqft_in  = row.get("sqft_entering")
         sqft_out = row.get("sqft_exiting")
@@ -118,6 +118,8 @@ def fetch_supabase_monthly():
             "invoice_revenue":         inv,
             "paid_cash":               paid,
             "transport_fee":           tr,
+            "transport_collection":    coll_ex,
+            "transport_redelivery":    redel_ex,
             "invoiced_plus_transport": round(inv + tr, 2) if inv is not None and tr is not None else None,
             "paid_plus_transport":     round(paid + tr, 2) if paid is not None and tr is not None else None,
             "customers_booked":        row.get("customers_booked"),
@@ -187,6 +189,27 @@ def main():
 
         output_metrics.append({
             "key": key, "label": label, "format": fmt,
+            "years": years, "series": series,
+        })
+        print(f"  {label}: {years}")
+
+    # Transport breakdown: collection + redelivery (Supabase only — sheet doesn't split these)
+    for key, label in [
+        ("transport_collection", "Transport — Collection"),
+        ("transport_redelivery", "Transport — Redelivery"),
+    ]:
+        years = ["2024", "2025", "2026"]
+        series = {y: [] for y in years}
+        for m in range(12):
+            for year in years:
+                month_key = f"{year}-{str(m + 1).zfill(2)}"
+                if month_key > current_month:
+                    series[year].append(None)
+                else:
+                    raw = supabase_data.get(month_key, {}).get(key)
+                    series[year].append(cast_val(raw, "money"))
+        output_metrics.append({
+            "key": key, "label": label, "format": "money",
             "years": years, "series": series,
         })
         print(f"  {label}: {years}")
