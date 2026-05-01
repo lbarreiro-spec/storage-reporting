@@ -88,7 +88,8 @@ def cast_val(raw, fmt):
 def fetch_supabase_monthly():
     """
     Returns a dict keyed by 'YYYY-MM' → metric values from Supabase.
-    Revenue values are ex-VAT (divided by 1.2).
+    Revenue values (Books invoiced/paid) are ex-VAT (divided by 1.2).
+    Transport values (Snowflake) are already ex-VAT — not divided.
     """
     print("Fetching Supabase fallback data...")
     monthly_resp   = requests.get(f"{SUPABASE_URL}/rest/v1/mtd_monthly?select=*",
@@ -106,8 +107,8 @@ def fetch_supabase_monthly():
         inv  = round(row["invoiced_revenue"] / 1.2, 2) if row.get("invoiced_revenue") is not None else None
         paid = round(row["paid_revenue"]     / 1.2, 2) if row.get("paid_revenue")     is not None else None
         t    = transport_by.get(lbl, {})
-        coll_ex  = round(t["coll_av_fee"]  / 1.2, 2) if t.get("coll_av_fee")  is not None else None
-        redel_ex = round(t["redel_av_fee"] / 1.2, 2) if t.get("redel_av_fee") is not None else None
+        coll_ex  = round(t["coll_av_fee"],  2) if t.get("coll_av_fee")  is not None else None
+        redel_ex = round(t["redel_av_fee"], 2) if t.get("redel_av_fee") is not None else None
         tr = round(coll_ex + redel_ex, 2) if coll_ex is not None and redel_ex is not None else None
 
         sqft_in  = row.get("sqft_entering")
