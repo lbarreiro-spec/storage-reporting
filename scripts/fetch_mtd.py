@@ -672,10 +672,14 @@ def build_daily_revenue(invoices, token):
     rows = []
     for day in range(1, days_in_month + 1):
         d_py = date(TODAY.year - 1, TODAY.month, day)
+        try:
+            d_cy = date(TODAY.year, TODAY.month, day)
+        except ValueError:
+            d_cy = d_py  # fallback if current year month is shorter
         rows.append({
             "label":      cur_label,
             "day":        day,
-            "day_name":   d_py.strftime("%a"),
+            "day_name":   d_cy.strftime("%a"),
             "cy_revenue": round(cy_totals.get(day, 0.0), 2),
             "py_revenue": round(py_totals.get(day, 0.0), 2),
         })
