@@ -210,6 +210,22 @@ function fmt(v, format){
   return v
 }
 
+function yoyPct(cy, py){
+  if(cy == null || py == null || py === 0) return null
+  return ((cy - py) / Math.abs(py)) * 100
+}
+
+function fmtYoy(pct){
+  if(pct == null) return '—'
+  const sign = pct >= 0 ? '+' : ''
+  return sign + pct.toFixed(1) + '%'
+}
+
+function yoyColor(pct){
+  if(pct == null) return '#9ca3af'
+  return pct >= 0 ? '#16a34a' : '#dc2626'
+}
+
 function renderTransportBreakdown(data){
   const collM  = data.metrics.find(m => m.key === 'transport_collection')
   const redelM = data.metrics.find(m => m.key === 'transport_redelivery')
@@ -331,9 +347,20 @@ function renderMetric(idx){
     }
   })
 
+  const tooltipLabel = (ctx) => {
+    if(ctx.raw == null) return null
+    const year = ctx.dataset.label
+    const mi = ctx.dataIndex
+    const priorYear = String(parseInt(year) - 1)
+    const priorVal = m.series[priorYear] ? m.series[priorYear][mi] : null
+    const pct = yoyPct(ctx.raw, priorVal)
+    const yoy = pct != null ? `  ${fmtYoy(pct)} YoY` : ''
+    return ` ${year}: ${fmt(ctx.raw, m.format)}${yoy}`
+  }
+
   if(_chart){
     _chart.data.datasets = datasets
-    _chart.options.plugins.tooltip.callbacks.label = (ctx) => ` ${ctx.dataset.label}: ${fmt(ctx.raw, m.format)}`
+    _chart.options.plugins.tooltip.callbacks.label = tooltipLabel
     _chart.options.scales.y.ticks.callback = (v) => fmt(v, m.format)
     _chart.update()
   } else {
@@ -356,9 +383,7 @@ function renderMetric(idx){
             titleFont: { family: "-apple-system, sans-serif", size: 13, weight: '600' },
             bodyFont: { family: "'SF Mono', monospace", size: 13 },
             padding: 12,
-            callbacks: {
-              label: (ctx) => ` ${ctx.dataset.label}: ${fmt(ctx.raw, m.format)}`
-            }
+            callbacks: { label: tooltipLabel }
           }
         },
         scales: {
@@ -393,9 +418,13 @@ function renderMetric(idx){
   const head = document.getElementById('tbl-head')
   const body = document.getElementById('tbl-body')
 
+  // Find the two most recent years for YoY column
+  const latestYear  = m.years[m.years.length - 1]
+  const priorYear   = m.years[m.years.length - 2] || null
+
   head.innerHTML = '<th>Month</th>' + m.years.map(y =>
     `<th style="color:${y === curYear ? '#1f1f1f' : ''};font-weight:${y === curYear ? '700' : ''}">${y}</th>`
-  ).join('')
+  ).join('') + (priorYear ? `<th style="color:#1f1f1f;font-weight:700">${latestYear} vs ${priorYear}</th>` : '')
 
   // For the current year, blank out months beyond the last one with data
   const curYearSeries = m.series[curYear] || []
@@ -405,11 +434,24 @@ function renderMetric(idx){
     const cells = m.years.map(y => {
       const v = m.series[y][mi]
       const isCur = y === curYear
-      // Hide current year cells for months beyond last data point
       if(isCur && mi > lastDataMi) return '<td></td>'
       return `<td class="${isCur && v != null ? 'cur' : ''}">${fmt(v, m.format)}</td>`
     }).join('')
-    return `<tr><td>${mo}</td>${cells}</tr>`
+
+    // YoY column
+    let yoyCell = ''
+    if(priorYear){
+      const cy  = m.series[latestYear]?.[mi]
+      const py  = m.series[priorYear]?.[mi]
+      const pct = yoyPct(cy, py)
+      const latestIdx = m.years.indexOf(latestYear)
+      const tooFar = m.series[latestYear] && mi > m.series[latestYear].reduce((l,v,i)=>v!=null?i:l,-1)
+      yoyCell = tooFar
+        ? '<td></td>'
+        : `<td style="font-family:var(--mono);font-size:13px;text-align:right;font-weight:600;color:${yoyColor(pct)}">${fmtYoy(pct)}</td>`
+    }
+
+    return `<tr><td>${mo}</td>${cells}${yoyCell}</tr>`
   }).join('')
 }
 
