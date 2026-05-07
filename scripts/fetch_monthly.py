@@ -148,8 +148,11 @@ def main():
 
     supabase_data = fetch_supabase_monthly()
 
-    # future months are blanked; current in-progress month uses Supabase MTD fallback
-    current_month = date.today().strftime("%Y-%m")
+    # Only show complete months — current in-progress month is excluded
+    today = date.today()
+    first_of_month = today.replace(day=1)
+    last_complete = (first_of_month - __import__('datetime').timedelta(days=1)).strftime("%Y-%m")
+    current_month = last_complete
 
     output_metrics = []
 
@@ -164,7 +167,7 @@ def main():
             if month_key > current_month:
                 val = None
             # Sheet has no value — try Supabase fallback (gross_profit column)
-            if val is None and month_key <= current_month:
+            if val is None and month_key <= last_complete:
                 raw = supabase_data.get(month_key, {}).get("gross_profit")
                 val = cast_val(raw, "money")
             gp_series[year].append(val)
