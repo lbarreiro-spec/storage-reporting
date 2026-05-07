@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Call Mention Rate — AnyVan Storage</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--mono:'SF Mono','Menlo','Monaco',monospace;--sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif}
+html,body{height:100%;overflow:hidden}
+body{display:flex;height:100%;font-family:var(--sans);background:#f6f7ed}
+.sidebar{width:220px;min-width:220px;background:#1f1f1f;display:flex;flex-direction:column;padding:24px 0;flex-shrink:0;height:100%;overflow-y:auto}
+.sidebar-brand{padding:0 24px 28px}
+.sidebar-label{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.5);margin-bottom:4px}
+.sidebar-title{font-size:16px;font-weight:600;color:#fff}
+.nav-link{display:block;padding:10px 24px;font-size:13px;color:rgba(255,255,255,0.65);text-decoration:none;transition:color .12s,background .12s;border-left:3px solid transparent}
+.nav-link:hover{color:rgba(255,255,255,0.85)}
+.nav-link.active{color:#fff;border-left-color:#fff;background:rgba(255,255,255,0.06)}
+.sidebar-bottom{margin-top:auto;padding:16px 24px;border-top:1px solid rgba(255,255,255,0.08)}
+.sidebar-home{font-size:13px;color:rgba(255,255,255,0.65);text-decoration:none;transition:color .12s}
+.sidebar-home:hover{color:#fff}
+.main{padding:32px 40px;flex:1;overflow-y:auto}
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;gap:16px;flex-wrap:wrap}
+.ph-lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#6b7280;margin-bottom:6px}
+.ph-title{font-size:24px;font-weight:700;color:#111827}
+.ph-sub{font-size:13px;color:#6b7280;margin-top:4px;font-family:var(--mono)}
+.toggle-group{display:flex;gap:6px}
+.toggle-btn{background:#fff;border:1px solid #e2e2e2;border-radius:7px;padding:6px 16px;font-family:var(--sans);font-size:13px;color:#6b7280;cursor:pointer;transition:all .12s}
+.toggle-btn:hover{border-color:#1f1f1f;color:#1f1f1f}
+.toggle-btn.active{background:#1f1f1f;border-color:#1f1f1f;color:#fff;font-weight:600}
+.legend{display:flex;gap:14px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:12px;color:#6b7280}
+.legend-swatch{width:14px;height:14px;border-radius:3px;border:1px solid rgba(0,0,0,0.06)}
+.sec{background:#fff;border:1px solid #e2e2e2;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);margin-bottom:20px;overflow:hidden}
+.sec-hdr{padding:14px 20px;border-bottom:1px solid #e2e2e2;font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#6b7280;font-weight:600}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse}
+thead th{background:#f9fafb;color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:8px 8px;border-bottom:1px solid #e2e2e2;font-weight:600;white-space:nowrap;text-align:center;font-family:var(--mono)}
+thead th.name-col{text-align:left;padding-left:20px;position:sticky;left:0;z-index:2;background:#f9fafb;min-width:160px}
+tbody td{font-family:var(--mono);font-size:12px;padding:7px 8px;border-bottom:1px solid #f0f0f0;color:#374151;text-align:center;white-space:nowrap;min-width:58px}
+tbody td.name-col{font-family:var(--sans);font-size:13px;font-weight:500;color:#111827;text-align:left;padding-left:20px;position:sticky;left:0;z-index:1;background:#fff;border-right:1px solid #e2e2e2}
+tbody tr:last-child td{border-bottom:none}
+.r0{background:#fca5a5;color:#7f1d1d}
+.r1{background:#fde68a;color:#78350f}
+.r2{background:#fef9c3;color:#713f12}
+.r3{background:#bbf7d0;color:#14532d}
+.r4{background:#6ee7b7;color:#065f46}
+.r5{background:#34d399;color:#064e3b;font-weight:700}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#e2e2e2;border-radius:2px}
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-label">AnyVan Storage</div>
+    <div class="sidebar-title">Reporting</div>
+  </div>
+  <a class="nav-link" href="../index.html">Home</a>
+  <a class="nav-link" href="mtd.html">MTD Revenue</a>
+  <a class="nav-link" href="monthly.html">Monthly Trends</a>
+  <a class="nav-link" href="weekly.html">Weekly Revenue</a>
+  <a class="nav-link" href="daily.html">Daily Activity</a>
+  <a class="nav-link" href="voice.html">Voice Activity</a>
+  <a class="nav-link" href="whatsapp.html">WhatsApp</a>
+  <a class="nav-link" href="freshdesk.html">Freshdesk</a>
+  <a class="nav-link" href="csat.html">CSAT &amp; NPS</a>
+  <a class="nav-link" href="debt.html">Debt Intelligence</a>
+  <a class="nav-link" href="clearpass.html">Supplier Invoice Automation</a>
+  <a class="nav-link" href="rcs.html">RCS Driver Messaging</a>
+  <a class="nav-link" href="hs_data.html">HubSpot Data</a>
+  <a class="nav-link active" href="call-grading.html">Call Grading</a>
+  <div class="sidebar-bottom">
+    <a class="sidebar-home" href="../index.html">← Home</a>
+  </div>
+</nav>
+
+<div class="main">
+  <div class="topbar">
+    <div>
+      <div class="ph-lbl">Storage</div>
+      <div class="ph-title">Call Mention Rate</div>
+      <div class="ph-sub">% of Jiminny calls where agent mentioned storage — vehicle/piano calls excluded</div>
+    </div>
+    <div class="toggle-group">
+      <button class="toggle-btn active" onclick="setGroup('all',this)">All</button>
+      <button class="toggle-btn" onclick="setGroup('inbound',this)">Inbound</button>
+      <button class="toggle-btn" onclick="setGroup('outbound',this)">Outbound</button>
+      <button class="toggle-btn" onclick="setGroup('leadgen',this)">Lead Gen</button>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-swatch r0"></div>0%</div>
+    <div class="legend-item"><div class="legend-swatch r1"></div>1–9%</div>
+    <div class="legend-item"><div class="legend-swatch r2"></div>10–19%</div>
+    <div class="legend-item"><div class="legend-swatch r3"></div>20–34%</div>
+    <div class="legend-item"><div class="legend-swatch r4"></div>35–49%</div>
+    <div class="legend-item"><div class="legend-swatch r5"></div>50%+</div>
+  </div>
+
+  <div id="sections"></div>
+</div>
+
+<script>
+const N=null;
+const WEEKS=['29 Dec','5 Jan','12 Jan','19 Jan','26 Jan','2 Feb','9 Feb','16 Feb','23 Feb','2 Mar','9 Mar','16 Mar','23 Mar','30 Mar','6 Apr','13 Apr','20 Apr','27 Apr','4 May'];
+
+const SECTIONS=[
+  {id:'ib-liam',group:'inbound',label:'Inbound Sales — Cape Town (Liam)',agents:[
+    {n:'Alec Christian',     r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,7.7,16.1,15.8]},
+    {n:'Amy Loubscher',      r:[33.3,12.2,0.0,7.8,9.2,10.2,11.2,8.7,9.7,5.6,9.6,11.7,26.2,29.4,22.5,13.0,13.3,28.0,28.0]},
+    {n:'Andrea Henniker',    r:[12.5,10.6,N,N,13.8,N,N,N,N,N,N,N,N,N,N,N,N,N,N]},
+    {n:'Aneeqah Abdol',      r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,18.4,12.0,7.0]},
+    {n:'Brandon Carelse',    r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,17.8,13.3,20.9]},
+    {n:'Brent C',            r:[19.4,8.7,25.0,9.0,6.9,15.7,15.2,12.5,12.0,21.3,9.5,13.2,19.0,24.7,38.5,38.5,34.6,36.1,58.6]},
+    {n:'Cadey T',            r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,7.4,20.6,19.1]},
+    {n:'Chad P',             r:[28.2,12.9,26.3,16.9,11.9,11.4,14.3,8.0,10.1,8.5,10.5,4.9,15.5,18.4,3.2,2.3,4.5,1.8,0.0]},
+    {n:'Curtis',             r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,17.8,11.6,13.1]},
+    {n:'Daniel M',           r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,13.2,N,N]},
+    {n:'Dave D',             r:[3.2,11.9,0.0,7.1,16.7,18.4,7.5,18.8,3.8,15.6,16.5,27.1,24.8,15.3,12.6,7.1,10.5,7.0,12.7]},
+    {n:'Dean P',             r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,24.0]},
+    {n:'Hlumela Nodunyelwa', r:[N,5.2,13.0,4.5,2.3,8.0,4.5,N,N,N,N,N,N,N,N,N,N,N,N]},
+    {n:'Jason Sables',       r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,13.6,12.6,4.9]},
+    {n:'Kay D',              r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,12.5,25.9,28.9]},
+    {n:'Kevin M',            r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,15.9,5.4,27.4]},
+    {n:'Kyle Marquard',      r:[N,0.0,25.0,5.0,30.0,7.1,7.7,17.2,14.7,21.1,60.6,57.9,69.8,95.5,46.0,85.7,90.5,60.0,N]},
+    {n:'Leo M',              r:[13.3,8.5,N,19.0,11.9,9.3,13.3,13.0,15.9,15.3,12.6,20.8,21.3,20.3,19.3,18.8,17.8,13.3,5.9]},
+    {n:'Liam Jooste',        r:[19.4,N,7.1,16.0,10.5,16.0,13.4,10.8,11.8,10.5,10.3,10.0,14.7,10.8,11.9,14.8,13.2,18.9,16.7]},
+    {n:'M Shai',             r:[17.6,5.6,0.0,11.3,9.7,8.9,8.0,N,11.1,12.4,14.8,14.5,11.7,10.2,8.7,14.7,15.0,8.3,N]},
+    {n:'Mish S',             r:[17.6,17.0,N,12.0,14.1,17.2,7.1,15.8,11.7,12.0,14.8,11.4,6.0,11.3,11.4,18.5,21.3,26.6,32.4]},
+    {n:'Mo Isaacs',          r:[10.0,11.7,8.3,12.8,10.4,9.2,12.0,8.6,12.4,N,N,N,N,N,N,N,N,N,N]},
+    {n:'Mo Y',               r:[3.0,12.0,9.1,20.2,10.3,10.8,16.7,22.0,15.4,14.2,17.5,16.4,20.8,18.7,18.3,19.1,20.9,20.5,N]},
+    {n:'Molly AnyVan',       r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,9.5,7.6,N]},
+    {n:'Nathanial Jacobs',   r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,11.1,13.3,0.0]},
+    {n:'Nely Ribakare',      r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,37.5,21.4,15.6]},
+    {n:'Polly R',            r:[20.6,10.4,0.0,11.1,14.1,18.5,13.5,13.7,8.1,13.1,10.0,16.3,9.6,10.4,18.4,10.0,11.0,10.3,0.0]},
+    {n:'Richard Swanepoel',  r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,21.9,22.2,36.2]},
+    {n:'Sandra S',           r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,23.9,12.8,7.5]},
+    {n:'Shaun K',            r:[14.9,16.8,23.5,11.6,15.4,16.8,14.3,12.2,18.5,16.6,26.4,37.0,28.6,34.5,38.7,24.5,34.3,28.5,20.3]},
+    {n:'Storm V',            r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,19.0]},
+    {n:'Tammy Lee Mcnabb',   r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,21.1,19.7,25.4]},
+    {n:'Tashlyn Hass',       r:[20.7,18.0,20.0,30.0,19.9,15.2,20.0,21.7,14.0,14.6,10.6,16.2,31.8,34.2,32.8,39.1,27.1,36.7,33.3]},
+    {n:'Tashwille Hawkins',  r:[N,20.6,5.3,15.3,13.2,11.5,8.6,12.3,17.3,14.2,10.7,17.8,24.2,19.0,15.4,12.0,13.3,9.3,12.0]},
+    {n:'Wade S',             r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,29.2,28.7,23.7]},
+    {n:'Zante Petersen',     r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,20.7,20.5,8.0]},
+  ]},
+  {id:'ib-brian',group:'inbound',label:'Inbound Sales — London (Brian)',agents:[
+    {n:'Barney Lester',   r:[N,8.7,16.7,22.4,12.4,17.0,15.9,13.8,15.9,15.0,13.0,16.9,9.1,15.7,13.0,16.3,12.8,12.6,5.8]},
+    {n:'Habeeb K',        r:[N,N,22.2,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N]},
+    {n:'Joash Brown',     r:[N,N,N,N,N,14.8,12.7,13.7,8.6,8.2,13.3,10.2,12.1,6.5,N,16.3,20.0,14.5,12.0]},
+    {n:'Kamarl McDonald', r:[N,N,8.3,13.1,10.8,8.0,15.3,11.7,11.9,18.8,9.5,11.9,11.7,16.1,11.6,17.6,5.5,14.4,8.1]},
+    {n:'Luxshan DP',      r:[18.2,14.0,6.7,10.0,11.5,9.9,10.5,11.3,16.3,13.3,15.5,10.0,N,9.8,9.4,13.8,12.0,14.5,14.3]},
+    {n:'Matthew Kershaw', r:[N,N,6.3,5.4,4.1,10.8,7.8,N,N,N,N,N,N,N,N,N,N,N,N]},
+    {n:'Nafis M',         r:[N,10.5,4.3,8.9,12.3,26.2,3.0,N,N,N,N,N,N,N,N,N,N,N,N]},
+    {n:'Victor Lusuku',   r:[N,9.0,0.0,7.2,6.5,7.9,7.4,5.9,6.8,17.0,13.5,13.0,14.2,11.7,12.9,7.8,7.1,13.3,5.4]},
+  ]},
+  {id:'ob-kyle',group:'outbound',label:'Outbound Sales — Kyle',agents:[
+    {n:'Charlie B',       r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,48.9,50.0,35.3]},
+    {n:'Curtley Ngubane', r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,28.6,16.1,21.1]},
+    {n:'George S',        r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,53.9,60.0,62.1]},
+    {n:'Gwen K',          r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,66.7,59.0,44.4]},
+    {n:'James M',         r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,81.0,72.6,78.0]},
+    {n:'Lee Topley',      r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,44.6,54.3,50.6]},
+    {n:'Levi Sables',     r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,27.3,41.0,39.7]},
+    {n:'Lucas AnyVan',    r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,43.8,45.6,47.6]},
+    {n:'Marcus P',        r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,57.7,63.4,68.0]},
+    {n:'Mike A',          r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,52.5,53.3,42.0]},
+    {n:'Sasha David',     r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,20.5,6.7,6.3]},
+    {n:'Shane Cassim',    r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,31.7,20.7,18.8]},
+    {n:'Weslee S',        r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,69.7,72.6,74.1]},
+  ]},
+  {id:'ob-alex',group:'outbound',label:'Outbound Sales — Alex',agents:[
+    {n:'Alex York',       r:[N,20.9,40.0,22.9,23.8,21.1,26.7,21.1,18.5,N,23.9,18.4,22.2,18.3,24.7,37.5,12.3,30.9,16.7]},
+    {n:'Chloe Lock',      r:[13.3,11.6,14.3,16.4,10.9,19.6,14.4,15.9,13.0,12.5,10.3,12.1,14.4,14.3,14.1,10.8,3.8,13.0,15.2]},
+    {n:'Jordan Daniels',  r:[N,18.4,29.6,17.6,14.5,9.6,13.8,17.5,18.3,9.3,13.6,16.3,12.4,18.1,N,12.1,16.1,14.6,11.6]},
+    {n:'Karim El-Harrak', r:[N,7.0,15.8,0.0,13.3,6.1,13.3,7.4,7.4,7.4,7.4,12.5,9.5,7.3,5.0,8.1,13.0,4.5,10.6]},
+    {n:'Raphael A',       r:[22.2,11.2,23.5,16.5,19.8,18.6,15.7,16.4,11.7,7.0,9.9,10.4,12.3,40.0,6.8,3.4,3.6,9.3,9.6]},
+    {n:'Saif M',          r:[21.1,7.9,10.0,10.6,4.7,7.8,10.0,12.1,7.7,14.7,15.9,10.2,12.7,6.0,15.0,7.9,11.8,10.8,7.1]},
+  ]},
+  {id:'lg-damien',group:'leadgen',label:'Lead Generation — Damien',agents:[
+    {n:'Alan A',          r:[N,N,N,N,N,N,N,N,N,N,4.0,6.1,6.8,4.8,8.4,10.8,9.4,1.8,11.4]},
+    {n:'Cameron D',       r:[N,N,N,35.0,14.1,6.0,8.8,5.1,6.3,9.1,10.5,N,N,N,N,N,N,N,N]},
+    {n:'Chloe J',         r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,33.3,76.5]},
+    {n:'Connor N',        r:[13.9,10.5,6.3,20.0,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N]},
+    {n:'Dan H',           r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,0.0,14.3,18.0,49.5]},
+    {n:'Deon H',          r:[7.9,5.4,8.7,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N]},
+    {n:'Diego Jones',     r:[N,N,N,N,N,N,45.6,56.3,45.4,55.1,42.6,43.8,40.4,34.4,38.7,47.9,39.1,40.6,40.1]},
+    {n:'George S',        r:[2.6,5.8,0.0,5.4,8.1,5.1,4.1,4.2,7.4,3.5,6.3,40.4,64.6,66.7,76.0,62.8,58.6,N,N]},
+    {n:'Grayson H',       r:[54.2,73.3,65.0,77.5,58.4,58.7,63.5,57.8,65.9,70.2,79.0,69.7,74.8,76.5,76.8,74.7,67.6,67.9,45.5]},
+    {n:'Harry Valentine', r:[N,N,N,N,N,N,18.2,17.9,13.0,N,6.5,16.4,8.4,8.0,0.0,12.1,16.9,7.3,0.0]},
+    {n:'Jessica G',       r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,0.0,8.5]},
+    {n:'John N',          r:[0.0,8.7,6.3,7.8,10.1,11.0,5.2,3.2,7.3,7.2,7.2,11.8,8.4,11.3,11.1,12.0,8.9,9.1,0.0]},
+    {n:'Lee Topley',      r:[N,4.3,5.7,48.8,51.0,19.5,8.3,9.3,6.8,13.1,23.2,30.4,47.2,52.8,55.3,54.2,46.3,N,N]},
+    {n:'Levi Sables',     r:[N,2.3,0.0,8.2,12.9,38.3,17.3,9.6,6.1,13.7,7.6,38.6,43.4,42.6,45.3,22.9,40.4,N,N]},
+    {n:'Lilly F',         r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,50.0,37.0,67.9,77.2]},
+    {n:'Lindy P',         r:[N,N,N,21.9,12.1,6.7,8.5,7.0,7.6,8.6,4.3,4.4,10.2,9.3,20.4,13.4,21.1,18.5,10.9]},
+    {n:'Lucas AnyVan',    r:[11.8,9.0,5.9,14.5,5.5,6.2,11.5,5.6,4.5,13.3,13.5,17.3,7.3,51.3,65.4,57.5,64.9,N,N]},
+    {n:'Lucy D',          r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,14.8,56.5,54.5,52.2,64.5]},
+    {n:'Luke O',          r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,40.0,14.2,10.5,13.5]},
+    {n:'Lyle Booi',       r:[N,11.7,5.6,7.3,6.1,8.1,5.6,5.6,10.0,25.0,49.1,15.5,12.3,22.2,5.4,12.0,30.8,64.7,57.4]},
+    {n:'Max M',           r:[N,N,N,21.3,21.4,29.9,15.3,7.1,5.4,6.3,8.0,9.7,5.2,8.0,13.3,7.8,6.6,7.7,6.8]},
+    {n:'Mike K',          r:[3.0,9.3,4.0,8.6,21.1,13.5,11.9,5.7,6.1,2.8,8.3,6.9,7.9,6.3,8.8,7.0,6.7,8.5,6.9]},
+    {n:'Nick L',          r:[15.9,14.6,50.0,10.8,8.8,30.3,12.7,14.4,14.4,10.3,11.5,14.5,11.5,8.0,18.4,20.6,7.4,N,N]},
+    {n:'Noah M',          r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,3.6,64.7,62.7,52.5,51.9]},
+    {n:'Noel Hawes',      r:[0.0,7.2,9.5,6.2,5.7,1.5,4.1,6.9,7.2,7.5,6.3,6.6,4.2,13.4,4.1,6.1,3.6,7.6,10.3]},
+    {n:'Prosper Mubata',  r:[N,9.6,7.1,5.2,8.5,7.2,7.4,6.1,5.9,6.9,10.5,11.7,8.3,43.2,73.6,72.7,63.6,N,N]},
+    {n:'Richard Clark',   r:[N,8.7,17.6,6.0,12.9,8.5,10.5,7.3,10.9,7.9,5.9,6.3,6.0,5.6,8.0,10.0,8.7,2.4,6.9]},
+    {n:'Rocky M',         r:[N,8.2,7.1,19.9,14.4,11.1,13.1,8.5,9.7,5.0,6.8,10.9,9.5,11.6,12.2,13.3,14.6,11.6,57.1]},
+    {n:'Sabrina H',       r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,8.2,2.6]},
+    {n:'Siraaj J',        r:[N,N,0.0,7.7,7.4,19.5,17.3,5.7,10.9,9.5,7.3,5.5,8.0,6.6,11.1,14.7,10.9,9.0,11.7]},
+    {n:'Skye K',          r:[N,N,N,N,N,N,N,N,N,N,21.7,8.3,4.8,7.7,4.5,11.9,4.3,6.2,10.1]},
+    {n:'Tarryn Jephta',   r:[0.0,7.3,40.0,2.3,6.1,17.4,10.3,18.1,7.5,12.4,12.3,12.0,10.0,12.1,14.0,11.1,9.5,11.9,11.8]},
+    {n:'Timothy A',       r:[N,N,N,75.2,32.6,11.9,11.4,21.1,14.5,13.6,30.5,37.5,29.6,10.8,27.7,23.6,11.1,14.4,21.6]},
+    {n:'Vanessa M',       r:[N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,16.7,10.6,2.4,1.7]},
+    {n:'Vinny Pastor',    r:[13.0,55.4,72.7,52.5,45.2,N,N,N,N,N,N,N,N,N,N,N,N,N,N]},
+    {n:'Weslee S',        r:[100.0,N,0.0,5.1,7.6,8.0,2.5,4.7,3.3,2.5,9.6,40.9,73.5,77.8,73.5,83.8,72.3,N,N]},
+  ]},
+];
+
+function cls(v){
+  if(v===null)return'';
+  if(v===0)return'r0';
+  if(v<10)return'r1';
+  if(v<20)return'r2';
+  if(v<35)return'r3';
+  if(v<50)return'r4';
+  return'r5';
+}
+
+function render(group){
+  const container=document.getElementById('sections');
+  container.innerHTML='';
+  const visible=group==='all'?SECTIONS:SECTIONS.filter(s=>s.group===group);
+  visible.forEach(sec=>{
+    const wkHdrs=WEEKS.map(w=>`<th>${w}</th>`).join('');
+    const rows=sec.agents.map(a=>{
+      const cells=a.r.map(v=>v===null?'<td></td>':`<td class="${cls(v)}">${v.toFixed(1)}%</td>`).join('');
+      return`<tr><td class="name-col">${a.n}</td>${cells}</tr>`;
+    }).join('');
+    container.innerHTML+=`
+      <div class="sec">
+        <div class="sec-hdr">${sec.label}</div>
+        <div class="tbl-wrap">
+          <table><thead><tr><th class="name-col">Agent</th>${wkHdrs}</tr></thead>
+          <tbody>${rows}</tbody></table>
+        </div>
+      </div>`;
+  });
+}
+
+function setGroup(group,btn){
+  document.querySelectorAll('.toggle-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  render(group);
+}
+
+render('all');
+</script>
+</body>
+</html>
