@@ -132,6 +132,7 @@ def fetch_supabase_monthly():
             "sqft_entering":           sqft_in,
             "sqft_exiting":            sqft_out,
             "net_sqft":                net,
+            "gross_profit":            row.get("gross_profit"),
         }
 
     print(f"   Supabase: {len(result)} months available as fallback")
@@ -162,6 +163,10 @@ def main():
             val = parse_val(data_row[col], "money") if col < len(data_row) else None
             if month_key > current_month:
                 val = None
+            # Sheet has no value — try Supabase fallback (gross_profit column)
+            if val is None and month_key <= current_month:
+                raw = supabase_data.get(month_key, {}).get("gross_profit")
+                val = cast_val(raw, "money")
             gp_series[year].append(val)
     output_metrics.append({
         "key": "gross_profit", "label": "Gross Profit", "format": "money",
