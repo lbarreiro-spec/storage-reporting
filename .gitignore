@@ -1,3 +1,7 @@
 .env
 *.pyc
 __pycache__/
+data/batches/
+data/results/
+data/week_snippets.json
+data/call_grading_*.json
