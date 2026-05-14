@@ -77,6 +77,19 @@ TEAM_MAP = {
 
 SECTION_ORDER = ["ib-liam", "ib-brian", "ob-kyle", "ob-alex", "lg-damien"]
 
+# Agents excluded from the report (ex-employees, managers not on the bookings target, etc.).
+# Names must match ANYVAN_USER_NAME exactly as it comes from Jiminny.
+EXCLUDED_AGENTS = {
+    # IB – Liam (Cape Town)
+    "Andrea Henniker", "Aneeqah Abdol", "Chad P", "Daniel M", "Hlumela Nodunyelwa",
+    "Kyle Marquard", "M Shai", "Mo Isaacs", "Tashlyn Hass", "Tashwille Hawkins",
+    # IB – Brian
+    "Habeeb K", "Matthew Kershaw", "Nafis M",
+    # LG – Damien
+    "Cameron D", "Connor N", "Deon H", "Harry Valentine", "Luke O",
+    "Nick L", "Prosper Mubata", "Vinny Pastor", "William August",
+}
+
 # ─── PROMPT (long, deliberately, to clear the 4096-token caching threshold on Haiku) ───
 
 CLASSIFY_SYSTEM = """You are classifying snippets from sales call transcripts at AnyVan, a UK home-removals
@@ -668,6 +681,8 @@ def build_sections_json(cur, weeks):
     agent_section = {}
     unknown_teams = set()
     for (name, email), team_votes in agent_team_votes.items():
+        if name in EXCLUDED_AGENTS:
+            continue
         top_team = max(team_votes.items(), key=lambda kv: kv[1])[0]
         if top_team in TEAM_MAP:
             agent_section[(name, email)] = (top_team, TEAM_MAP[top_team])

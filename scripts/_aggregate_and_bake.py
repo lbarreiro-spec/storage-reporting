@@ -91,12 +91,18 @@ def update_agent_line(line):
     return new_line, name
 
 updated_names = set()
+dropped_names = set()
 new_lines = []
 for line in sections_text.split("\n"):
     nl, name = update_agent_line(line)
+    if name is not None and name in fcg.EXCLUDED_AGENTS:
+        dropped_names.add(name)
+        continue
     new_lines.append(nl)
     if name is not None:
         updated_names.add(name)
+if dropped_names:
+    print(f"  agents dropped (in EXCLUDED_AGENTS): {sorted(dropped_names)}")
 
 new_sections_text = "\n".join(new_lines)
 new_html = html.replace(m_sections.group(0), f"const SECTIONS=[\n{new_sections_text}\n];")
