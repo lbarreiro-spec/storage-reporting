@@ -351,9 +351,10 @@ def ensure_tables(cur):
 
 
 def fetch_candidate_lines(cur, week_start: date, week_end_exclusive: date):
-    """Pull every agent-spoken line containing 'storage' (case-insensitive)
-    in [week_start, week_end_exclusive), plus 1 line of context on either side
-    from the same call."""
+    """Pull every agent-spoken line containing 'storage', 'store' or 'warehous'
+    (case-insensitive) in [week_start, week_end_exclusive), plus 1 line of
+    context on either side from the same call. The LLM stage filters out
+    irrelevant matches like 'in store for you' or 'phone storage'."""
     sql = f"""
         WITH agent_calls AS (
             SELECT
@@ -396,7 +397,9 @@ def fetch_candidate_lines(cur, week_start: date, week_end_exclusive: date):
         FROM all_lines
         WHERE ISORGANIZER = TRUE
           AND PARTICIPANTNAME = agent_name
-          AND TRANSCRIPT ILIKE '%storage%'
+          AND (TRANSCRIPT ILIKE '%storage%'
+               OR TRANSCRIPT ILIKE '%store%'
+               OR TRANSCRIPT ILIKE '%warehous%')
         ORDER BY EVENT_ID, STARTSAT
     """
     cur.execute(sql)
