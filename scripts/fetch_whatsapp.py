@@ -141,7 +141,7 @@ def query_engagement(cur, date_str):
         WITH initiated AS (
             SELECT CONVERSATION_ID, AUTHOR
             FROM HARMONISED.PRODUCTION.TWILIO_CONVERSATION_MESSAGE
-            WHERE TRY_CAST("INDEX" AS INT) = 0
+            WHERE "INDEX" = 0
               AND AUTHOR IN ('{email_list}')
               AND CREATED_AT::DATE = '{date_str}'
         ),
@@ -150,7 +150,7 @@ def query_engagement(cur, date_str):
             FROM initiated i
             JOIN HARMONISED.PRODUCTION.TWILIO_CONVERSATION_MESSAGE m
                 ON m.CONVERSATION_ID = i.CONVERSATION_ID
-            WHERE TRY_CAST(m."INDEX" AS INT) > 0
+            WHERE m."INDEX" > 0
               AND m.AUTHOR NOT IN ('{email_list}')
         ),
         msgs_sent AS (
