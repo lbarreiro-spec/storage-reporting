@@ -1,10 +1,19 @@
 #!/usr/bin/env python3
 """
-AnyVan Storage — Call Grading (LLM-classified storage mentions)
+AnyVan Storage — Call Grading (storage mention rate per agent)
 
 Pulls Jiminny call transcripts from Snowflake (read-only), finds every agent
-line that contains "storage", and asks Claude Haiku 4.5 whether the agent was
-mentioning AnyVan's storage service as something the customer could use.
+line that contains "storage" (or "store"/"warehous"), and counts how often
+each agent mentioned storage on a pitch-eligible call.
+
+Eligibility filter (see _eligible_call_ids_cte) excludes voicemails, transfers,
+calls under 2 minutes, and foreign-market teams — so the denominator only
+counts calls that could plausibly contain a storage pitch.
+
+By default, classification is **keyword-only**: a call counts as "pitched" if
+the agent's transcript contains any storage/store/warehous mention. Pass
+--use-llm to ask Claude Haiku 4.5 to filter to genuine pitches (more accurate,
+needs ANTHROPIC_API_KEY).
 
 Snowflake is read-only — classifications are held in memory and the JSON output
 is the only persisted artifact. Every run re-classifies fresh.
@@ -14,12 +23,14 @@ Output:
     matching the SECTIONS shape in reports/call-grading.html
 
 Usage:
-  python3 fetch_call_grading.py                       # default: backfill 19 weeks (2025-12-29 .. 2026-05-10)
-  python3 fetch_call_grading.py --weeks 4             # most recent 4 weeks only
+  python3 fetch_call_grading.py                       # default: trailing 19 weeks, keyword-only
+  python3 fetch_call_grading.py --weeks 8             # most recent 8 weeks only
   python3 fetch_call_grading.py --start 2026-05-04    # one week starting 4 May
-  python3 fetch_call_grading.py --dry-run             # query + classify but don't write JSON
+  python3 fetch_call_grading.py --use-llm             # add Claude Haiku quality filter
+  python3 fetch_call_grading.py --dry-run             # query but don't write JSON
 
-Env vars required: SNOWFLAKE_ACCOUNT, SNOWFLAKE_USER, ANTHROPIC_API_KEY
+Env vars required: SNOWFLAKE_ACCOUNT, SNOWFLAKE_USER
+                   ANTHROPIC_API_KEY only needed with --use-llm
 """
 
 import argparse
@@ -66,14 +77,16 @@ CLAUDE_CONCURRENCY = 10
 
 # Jiminny ANYVAN_USER_TEAMNAME → (display label, group, section id used in HTML)
 TEAM_MAP = {
-    "Inbound Sales - Cape Town":      ("IB – Liam (Cape Town)", "inbound",  "ib-liam"),
-    "Inbound Sales - Liam":           ("IB – Liam (Cape Town)", "inbound",  "ib-liam"),
-    "Inbound Sales Cape Town - Liam": ("IB – Liam (Cape Town)", "inbound",  "ib-liam"),
-    "Inbound Sales - Brian":          ("IB – Brian",            "inbound",  "ib-brian"),
-    "Outbound Sales - Kyle":          ("OB – Kyle",             "outbound", "ob-kyle"),
-    "Outbound Sales - Alex":          ("OB – Alex",             "outbound", "ob-alex"),
-    "Lead Generation - Damien":       ("LG – Damien",           "lg",       "lg-damien"),
-    "Lead Gen - Damien":              ("LG – Damien",           "lg",       "lg-damien"),
+    "Inbound Sales - Cape Town":       ("IB – Liam (Cape Town)", "inbound",  "ib-liam"),
+    "Inbound Sales - Liam":            ("IB – Liam (Cape Town)", "inbound",  "ib-liam"),
+    "Inbound Sales Cape Town - Liam":  ("IB – Liam (Cape Town)", "inbound",  "ib-liam"),
+    "Inbound Sales Cape Town - Jordan":("IB – Liam (Cape Town)", "inbound",  "ib-liam"),
+    "Inbound Sales Cape Town - Kyle":  ("IB – Liam (Cape Town)", "inbound",  "ib-liam"),
+    "Inbound Sales - Brian":           ("IB – Brian",            "inbound",  "ib-brian"),
+    "Outbound Sales - Kyle":           ("OB – Kyle",             "outbound", "ob-kyle"),
+    "Outbound Sales - Alex":           ("OB – Alex",             "outbound", "ob-alex"),
+    "Lead Generation - Damien":        ("LG – Damien",           "lg",       "lg-damien"),
+    "Lead Gen - Damien":               ("LG – Damien",           "lg",       "lg-damien"),
 }
 
 SECTION_ORDER = ["ib-liam", "ib-brian", "ob-kyle", "ob-alex", "lg-damien"]
@@ -101,6 +114,8 @@ ELIGIBLE_TEAMS = (
     "Lead Generation - Damien",
     "Lead Gen - Damien",
     "Inbound Sales Cape Town - Liam",
+    "Inbound Sales Cape Town - Jordan",
+    "Inbound Sales Cape Town - Kyle",
     "Inbound Sales - Cape Town",
     "Inbound Sales - Liam",
     "Inbound Sales - Brian",
@@ -338,9 +353,10 @@ def resolve_weeks(args):
         start = monday_of(date.fromisoformat(args.start))
         return [start]
     n = args.weeks if args.weeks else 19
+    # Trailing N weeks ending at *this* week (Monday of today's week). Current
+    # week is partial but the board has always shown it, so we include it.
     today_mon = monday_of(date.today())
-    last_completed_mon = today_mon - timedelta(days=7)
-    return [last_completed_mon - timedelta(days=7 * i) for i in range(n - 1, -1, -1)]
+    return [today_mon - timedelta(days=7 * i) for i in range(n - 1, -1, -1)]
 
 
 # ─── SNOWFLAKE ─────────────────────────────────────────────────────────────────
@@ -759,10 +775,12 @@ def build_sections_json(cur, weeks, call_results):
     if unknown_teams:
         print(f"   ⚠ unmapped Jiminny teams (agents dropped): {sorted(unknown_teams)}")
 
-    # totals per (agent, week)
+    # totals per (agent, week) — SUM across sub-teams in case an agent appears
+    # under multiple team-leader sub-teams in the same week (e.g. Cape Town team
+    # leader changes). Bug fix: prior version overwrote, causing >100% rates.
     totals = defaultdict(int)
     for name, _email, _team, wk, calls in totals_rows:
-        totals[(name, wk)] = int(calls)
+        totals[(name, wk)] += int(calls)
 
     # Build SECTIONS
     section_buckets = {sid: {"label": None, "group": None, "agents": []} for sid in SECTION_ORDER}
@@ -817,10 +835,12 @@ def main():
     parser.add_argument("--weeks", type=int, help="Number of trailing weeks to process (default 19).")
     parser.add_argument("--start", type=str, help="ISO date — process the single week starting this Monday.")
     parser.add_argument("--dry-run", action="store_true", help="Classify only 5 lines per week, do not write the JSON output.")
-    parser.add_argument("--no-llm", action="store_true", help="Skip LLM classification — count every agent storage mention as a pitch (less accurate, no API key needed).")
+    parser.add_argument("--use-llm", action="store_true", help="Use Claude Haiku to classify each storage mention (more accurate; needs ANTHROPIC_API_KEY). Default is keyword-only.")
     args = parser.parse_args()
-    if not args.no_llm and not os.environ.get("ANTHROPIC_API_KEY"):
-        print("⚠  ANTHROPIC_API_KEY not set — falling back to --no-llm (keyword-only counting).")
+    # Default is keyword-only per project policy (see feedback memory).
+    args.no_llm = not args.use_llm
+    if args.use_llm and not os.environ.get("ANTHROPIC_API_KEY"):
+        print("⚠  --use-llm passed but ANTHROPIC_API_KEY not set — falling back to keyword-only.")
         args.no_llm = True
 
     weeks = resolve_weeks(args)

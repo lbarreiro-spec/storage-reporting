@@ -5,6 +5,8 @@ The report HTML has inline `const WEEKS=[...]` and `const SECTIONS=[...]`
 arrays. This script updates them from the JSON produced by
 fetch_call_grading.py without requiring a JS fetch.
 
+Keeps only the last MAX_WEEKS columns to stop the board sprawling.
+
 Usage:
   python3 scripts/bake_call_grading_html.py
 """
@@ -17,6 +19,9 @@ REPO = Path(__file__).resolve().parent.parent
 JSON_IN = REPO / "data" / "call_grading_sections.json"
 HTML = REPO / "reports" / "call-grading.html"
 
+# Trim the board to the most recent N weekly columns.
+MAX_WEEKS = 8
+
 payload = json.loads(JSON_IN.read_text())
 new_weeks = payload["WEEKS"]
 new_sections = payload["SECTIONS"]
@@ -28,11 +33,17 @@ html = HTML.read_text()
 m_weeks = re.search(r'(const WEEKS=)(\[[^\]]+\])', html)
 existing_weeks = json.loads(m_weeks.group(2))
 
-# Build merged WEEKS list (preserve order; append new weeks that aren't there)
+# Build merged WEEKS list (preserve order; append new weeks that aren't there),
+# then trim to the most recent MAX_WEEKS entries.
 merged_weeks = list(existing_weeks)
 for w in new_weeks:
     if w not in merged_weeks:
         merged_weeks.append(w)
+if len(merged_weeks) > MAX_WEEKS:
+    merged_weeks = merged_weeks[-MAX_WEEKS:]
+# Map each existing week label → its index in the old WEEKS array, so we can
+# slice each agent's historical r[] array to match merged_weeks.
+existing_week_to_old_idx = {w: i for i, w in enumerate(existing_weeks)}
 
 # Build map: agent_name -> existing r: array (so we keep historical values)
 m_sections = re.search(r'const SECTIONS=\[\n(.*?)\n\];', html, re.DOTALL)
@@ -55,14 +66,20 @@ def fmt_val(v):
 
 def merged_r_for_agent(name, new_r):
     existing = list(existing_agent_r.get(name, []))
-    # extend up to len(merged_weeks) with "N"
-    while len(existing) < len(merged_weeks):
-        existing.append("N")
-    # overwrite the position(s) of new_weeks
+    # Slice the existing r[] array to match merged_weeks. For each merged week
+    # we copy the existing value if that week was in the old WEEKS, otherwise N.
+    out = []
+    for wk in merged_weeks:
+        old_idx = existing_week_to_old_idx.get(wk)
+        if old_idx is not None and old_idx < len(existing):
+            out.append(existing[old_idx])
+        else:
+            out.append("N")
+    # Overwrite positions corresponding to weeks present in the new JSON.
     for i, wk in enumerate(new_weeks):
-        idx = merged_weeks.index(wk)
-        existing[idx] = fmt_val(new_r[i])
-    return existing
+        if wk in merged_weeks:
+            out[merged_weeks.index(wk)] = fmt_val(new_r[i])
+    return out
 
 # Map section.id -> section.label for header consistency
 new_section_lines = []
