@@ -2,13 +2,14 @@
 """
 AnyVan Storage — Call Grading (LLM-classified storage mentions)
 
-Pulls Jiminny call transcripts from Snowflake, finds every agent line that
-contains "storage", and asks Claude Haiku 4.5 whether the agent was mentioning
-AnyVan's storage service as something the customer could use.
+Pulls Jiminny call transcripts from Snowflake (read-only), finds every agent
+line that contains "storage", and asks Claude Haiku 4.5 whether the agent was
+mentioning AnyVan's storage service as something the customer could use.
 
-Outputs:
-  - Snowflake table CONFORMED.DEVELOPMENT.STORAGE_CALL_PITCHES_LLM (per-line audit)
-  - Snowflake table CONFORMED.DEVELOPMENT.STORAGE_CALL_PITCHES_LLM_CALLS (per-call rollup)
+Snowflake is read-only — classifications are held in memory and the JSON output
+is the only persisted artifact. Every run re-classifies fresh.
+
+Output:
   - JSON file ~/Documents/storage-reporting/data/call_grading_sections.json
     matching the SECTIONS shape in reports/call-grading.html
 
@@ -16,8 +17,7 @@ Usage:
   python3 fetch_call_grading.py                       # default: backfill 19 weeks (2025-12-29 .. 2026-05-10)
   python3 fetch_call_grading.py --weeks 4             # most recent 4 weeks only
   python3 fetch_call_grading.py --start 2026-05-04    # one week starting 4 May
-  python3 fetch_call_grading.py --dry-run             # query + classify but don't write to Snowflake
-  python3 fetch_call_grading.py --reclassify          # ignore the existing per-line table and re-classify everything
+  python3 fetch_call_grading.py --dry-run             # query + classify but don't write JSON
 
 Env vars required: SNOWFLAKE_ACCOUNT, SNOWFLAKE_USER, ANTHROPIC_API_KEY
 """
@@ -66,13 +66,14 @@ CLAUDE_CONCURRENCY = 10
 
 # Jiminny ANYVAN_USER_TEAMNAME → (display label, group, section id used in HTML)
 TEAM_MAP = {
-    "Inbound Sales - Cape Town":  ("IB – Liam (Cape Town)", "inbound",  "ib-liam"),
-    "Inbound Sales - Liam":       ("IB – Liam (Cape Town)", "inbound",  "ib-liam"),
-    "Inbound Sales - Brian":      ("IB – Brian",            "inbound",  "ib-brian"),
-    "Outbound Sales - Kyle":      ("OB – Kyle",             "outbound", "ob-kyle"),
-    "Outbound Sales - Alex":      ("OB – Alex",             "outbound", "ob-alex"),
-    "Lead Generation - Damien":   ("LG – Damien",           "lg",       "lg-damien"),
-    "Lead Gen - Damien":          ("LG – Damien",           "lg",       "lg-damien"),
+    "Inbound Sales - Cape Town":      ("IB – Liam (Cape Town)", "inbound",  "ib-liam"),
+    "Inbound Sales - Liam":           ("IB – Liam (Cape Town)", "inbound",  "ib-liam"),
+    "Inbound Sales Cape Town - Liam": ("IB – Liam (Cape Town)", "inbound",  "ib-liam"),
+    "Inbound Sales - Brian":          ("IB – Brian",            "inbound",  "ib-brian"),
+    "Outbound Sales - Kyle":          ("OB – Kyle",             "outbound", "ob-kyle"),
+    "Outbound Sales - Alex":          ("OB – Alex",             "outbound", "ob-alex"),
+    "Lead Generation - Damien":       ("LG – Damien",           "lg",       "lg-damien"),
+    "Lead Gen - Damien":              ("LG – Damien",           "lg",       "lg-damien"),
 }
 
 SECTION_ORDER = ["ib-liam", "ib-brian", "ob-kyle", "ob-alex", "lg-damien"]
@@ -89,6 +90,64 @@ EXCLUDED_AGENTS = {
     "Cameron D", "Connor N", "Deon H", "Harry Valentine", "Luke O",
     "Nick L", "Prosper Mubata", "Vinny Pastor", "William August",
 }
+
+# ─── ELIGIBILITY FILTER (for both numerator and denominator) ───────────────────
+# A call only counts toward the pitch-rate denominator if it represents a real
+# sales conversation. We exclude foreign-market teams, calls that never reached
+# voicemail-passthrough or transfer-passthrough conversations, and anything
+# under 2 minutes (analysis of the 60–120s band showed it is dominated by
+# quick declines, cancellations and callbacks — not pitchable conversations).
+ELIGIBLE_TEAMS = (
+    "Lead Generation - Damien",
+    "Lead Gen - Damien",
+    "Inbound Sales Cape Town - Liam",
+    "Inbound Sales - Cape Town",
+    "Inbound Sales - Liam",
+    "Inbound Sales - Brian",
+    "Outbound Sales - Kyle",
+    "Outbound Sales - Alex",
+)
+ELIGIBLE_MIN_DURATION_SECONDS = 120
+_VOICEMAIL_SQL = (
+    "LOWER(t.TRANSCRIPT) LIKE '%leave a message%' "
+    "OR LOWER(t.TRANSCRIPT) LIKE '%after the tone%' "
+    "OR LOWER(t.TRANSCRIPT) LIKE '%not available%' "
+    "OR LOWER(t.TRANSCRIPT) LIKE '%record your message%' "
+    "OR LOWER(t.TRANSCRIPT) LIKE '%on another line%'"
+)
+_TRANSFER_SQL = (
+    "LOWER(t.TRANSCRIPT) LIKE '%transfer you%' "
+    "OR LOWER(t.TRANSCRIPT) LIKE '%get you over to%' "
+    "OR LOWER(t.TRANSCRIPT) LIKE '%get you through to%' "
+    "OR LOWER(t.TRANSCRIPT) LIKE '%put you through%' "
+    "OR LOWER(t.TRANSCRIPT) LIKE '%let me check if he%' "
+    "OR LOWER(t.TRANSCRIPT) LIKE '%hold on the line%' "
+    "OR LOWER(t.TRANSCRIPT) LIKE '%stay on the line%'"
+)
+
+
+def _eligible_call_ids_cte(week_start: date, week_end_exclusive: date) -> str:
+    """Returns a SQL CTE producing EVENT_IDs that pass the eligibility filter
+    for a date window. Inject after the WITH keyword in any query that needs
+    to restrict to pitchable calls.
+    """
+    teams_in = ", ".join(f"'{t}'" for t in ELIGIBLE_TEAMS)
+    return f"""
+        eligible_events AS (
+            SELECT m.EVENT_ID
+            FROM HARMONISED.PRODUCTION.JIMINNY_CALL_METADATA m
+            JOIN HARMONISED.PRODUCTION.JIMINNY_CALL_TRANSCRIPT t USING (EVENT_ID)
+            WHERE TRY_TO_TIMESTAMP(m.ACTUAL_START_TIME) >= '{week_start.isoformat()}'::DATE
+              AND TRY_TO_TIMESTAMP(m.ACTUAL_START_TIME) <  '{week_end_exclusive.isoformat()}'::DATE
+              AND m.STATUS = 'completed'
+              AND m.DURATION_SECONDS >= {ELIGIBLE_MIN_DURATION_SECONDS}
+              AND m.ANYVAN_USER_NAME IS NOT NULL
+              AND m.ANYVAN_USER_TEAMNAME IN ({teams_in})
+            GROUP BY m.EVENT_ID
+            HAVING NOT BOOLOR_AGG({_VOICEMAIL_SQL})
+               AND NOT BOOLOR_AGG({_TRANSFER_SQL})
+        )
+    """
 
 # ─── PROMPT (long, deliberately, to clear the 4096-token caching threshold on Haiku) ───
 
@@ -356,7 +415,8 @@ def fetch_candidate_lines(cur, week_start: date, week_end_exclusive: date):
     context on either side from the same call. The LLM stage filters out
     irrelevant matches like 'in store for you' or 'phone storage'."""
     sql = f"""
-        WITH agent_calls AS (
+        WITH {_eligible_call_ids_cte(week_start, week_end_exclusive)},
+        agent_calls AS (
             SELECT
                 m.EVENT_ID,
                 m.ANYVAN_USER_NAME       AS agent_name,
@@ -364,9 +424,8 @@ def fetch_candidate_lines(cur, week_start: date, week_end_exclusive: date):
                 m.ANYVAN_USER_TEAMNAME   AS team_name,
                 TRY_TO_TIMESTAMP(m.ACTUAL_START_TIME)::DATE AS call_date
             FROM HARMONISED.PRODUCTION.JIMINNY_CALL_METADATA m
-            WHERE TRY_TO_TIMESTAMP(m.ACTUAL_START_TIME) >= '{week_start.isoformat()}'::DATE
-              AND TRY_TO_TIMESTAMP(m.ACTUAL_START_TIME) <  '{week_end_exclusive.isoformat()}'::DATE
-              AND m.ANYVAN_USER_NAME IS NOT NULL
+            JOIN eligible_events e USING (EVENT_ID)
+            WHERE m.ANYVAN_USER_NAME IS NOT NULL
         ),
         all_lines AS (
             SELECT
@@ -408,17 +467,19 @@ def fetch_candidate_lines(cur, week_start: date, week_end_exclusive: date):
 
 
 def fetch_total_calls_per_agent_week(cur, week_start: date, week_end_exclusive: date):
-    """Denominator: total Jiminny-recorded agent calls per (agent_email, week_start)."""
+    """Denominator: eligible (pitchable) Jiminny calls per agent for the week.
+    Eligible = UK sales/LG team, completed status, >=120s, no voicemail or
+    transfer markers in the transcript. See _eligible_call_ids_cte for the
+    canonical filter set."""
     sql = f"""
+        WITH {_eligible_call_ids_cte(week_start, week_end_exclusive)}
         SELECT
-            ANYVAN_USER_EMAIL,
-            ANYVAN_USER_NAME,
-            ANYVAN_USER_TEAMNAME,
+            m.ANYVAN_USER_EMAIL,
+            m.ANYVAN_USER_NAME,
+            m.ANYVAN_USER_TEAMNAME,
             COUNT(*) AS calls
-        FROM HARMONISED.PRODUCTION.JIMINNY_CALL_METADATA
-        WHERE TRY_TO_TIMESTAMP(ACTUAL_START_TIME) >= '{week_start.isoformat()}'::DATE
-          AND TRY_TO_TIMESTAMP(ACTUAL_START_TIME) <  '{week_end_exclusive.isoformat()}'::DATE
-          AND ANYVAN_USER_NAME IS NOT NULL
+        FROM HARMONISED.PRODUCTION.JIMINNY_CALL_METADATA m
+        JOIN eligible_events e USING (EVENT_ID)
         GROUP BY 1, 2, 3
     """
     cur.execute(sql)
@@ -642,36 +703,39 @@ def recompute_per_call(cur, week_start: date, week_end_exclusive: date):
 
 # ─── AGGREGATE → JSON ──────────────────────────────────────────────────────────
 
-def build_sections_json(cur, weeks):
-    """Returns a dict with WEEKS and SECTIONS arrays matching call-grading.html shape."""
+def build_sections_json(cur, weeks, call_results):
+    """Returns a dict with WEEKS and SECTIONS arrays matching call-grading.html shape.
+
+    call_results: in-memory dict of {event_id: {is_pitch, agent_name, agent_email,
+        team_name, call_date, week_start}} aggregated from this run's classifications.
+        Replaces the previous Snowflake-backed per-call rollup so the script no
+        longer needs write access to Snowflake.
+    """
     week_starts = weeks
     week_labels = [week_label(w) for w in week_starts]
     earliest = week_starts[0]
     latest_exc = week_starts[-1] + timedelta(days=7)
 
-    # Per-agent-week pitch counts from the per-call rollup
-    cur.execute(f"""
-        SELECT AGENT_NAME, AGENT_EMAIL, TEAM_NAME, WEEK_START,
-               SUM(CASE WHEN IS_PITCH THEN 1 ELSE 0 END) AS pitched_calls
-        FROM {PER_CALL_TABLE}
-        WHERE WEEK_START >= '{earliest.isoformat()}'::DATE
-          AND WEEK_START <  '{latest_exc.isoformat()}'::DATE
-        GROUP BY 1, 2, 3, 4
-    """)
-    pitched = {(r[0], r[3]): int(r[4] or 0) for r in cur.fetchall()}
+    # Per-agent-week pitch counts — derived in-memory from this run's classifications
+    pitched = defaultdict(int)
+    for info in call_results.values():
+        if info["is_pitch"]:
+            pitched[(info["agent_name"], info["week_start"])] += 1
+    pitched = dict(pitched)
 
-    # Per-agent-week denominator (total Jiminny calls)
+    # Per-agent-week denominator (eligible / pitchable Jiminny calls only).
+    # Eligibility filter matches the numerator in fetch_candidate_lines so the
+    # pitch-rate denominator is internally consistent.
     cur.execute(f"""
+        WITH {_eligible_call_ids_cte(earliest, latest_exc)}
         SELECT
-            ANYVAN_USER_NAME,
-            ANYVAN_USER_EMAIL,
-            ANYVAN_USER_TEAMNAME,
-            DATE_TRUNC('week', TRY_TO_TIMESTAMP(ACTUAL_START_TIME))::DATE AS week_start,
+            m.ANYVAN_USER_NAME,
+            m.ANYVAN_USER_EMAIL,
+            m.ANYVAN_USER_TEAMNAME,
+            DATE_TRUNC('week', TRY_TO_TIMESTAMP(m.ACTUAL_START_TIME))::DATE AS week_start,
             COUNT(*) AS total_calls
-        FROM HARMONISED.PRODUCTION.JIMINNY_CALL_METADATA
-        WHERE TRY_TO_TIMESTAMP(ACTUAL_START_TIME) >= '{earliest.isoformat()}'::DATE
-          AND TRY_TO_TIMESTAMP(ACTUAL_START_TIME) <  '{latest_exc.isoformat()}'::DATE
-          AND ANYVAN_USER_NAME IS NOT NULL
+        FROM HARMONISED.PRODUCTION.JIMINNY_CALL_METADATA m
+        JOIN eligible_events e USING (EVENT_ID)
         GROUP BY 1, 2, 3, 4
     """)
     totals_rows = cur.fetchall()
@@ -752,23 +816,30 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--weeks", type=int, help="Number of trailing weeks to process (default 19).")
     parser.add_argument("--start", type=str, help="ISO date — process the single week starting this Monday.")
-    parser.add_argument("--dry-run", action="store_true", help="Classify only 5 lines per week, do not write to Snowflake.")
-    parser.add_argument("--reclassify", action="store_true", help="Ignore the existing per-line table; re-classify every candidate line.")
+    parser.add_argument("--dry-run", action="store_true", help="Classify only 5 lines per week, do not write the JSON output.")
+    parser.add_argument("--no-llm", action="store_true", help="Skip LLM classification — count every agent storage mention as a pitch (less accurate, no API key needed).")
     args = parser.parse_args()
+    if not args.no_llm and not os.environ.get("ANTHROPIC_API_KEY"):
+        print("⚠  ANTHROPIC_API_KEY not set — falling back to --no-llm (keyword-only counting).")
+        args.no_llm = True
 
     weeks = resolve_weeks(args)
     print(f"\n🚀 fetch_call_grading.py — {len(weeks)} week(s): {weeks[0]} → {weeks[-1]}")
-    print(f"   model={CLAUDE_MODEL}  concurrency={CLAUDE_CONCURRENCY}  dry_run={args.dry_run}\n")
+    print(f"   model={CLAUDE_MODEL}  concurrency={CLAUDE_CONCURRENCY}  dry_run={args.dry_run}")
+    print(f"   Snowflake: READ-ONLY (writes disabled by policy)\n")
 
     if not args.dry_run:
         DATA_DIR.mkdir(exist_ok=True)
 
-    client = anthropic.Anthropic()
+    client = None if args.no_llm else anthropic.Anthropic()
     conn = sf_connect()
     cur = conn.cursor()
 
-    if not args.dry_run:
-        ensure_tables(cur)
+    # Per-call rollup accumulated in-memory across all weeks. Replaces the
+    # previous Snowflake-persisted per-line/per-call tables — see
+    # feedback_snowflake_writes.md memory: Snowflake is read-only for this
+    # script. Every run re-classifies fresh.
+    call_results = {}
 
     for wk in weeks:
         wk_end = wk + timedelta(days=7)
@@ -776,31 +847,43 @@ def main():
         rows = fetch_candidate_lines(cur, wk, wk_end)
         print(f"   {len(rows)} candidate lines found")
 
-        if args.reclassify or args.dry_run:
-            already = set()
+        if not rows:
+            continue
+
+        if args.no_llm:
+            # Keyword-only: every candidate line (agent said "storage"/"store"/"warehous")
+            # is treated as a pitch. Less accurate than the LLM grader but does not
+            # need an API key.
+            classifications = {(r["event_id"], float(r["startsat"])): (True, "") for r in rows}
+            print(f"   ✓ keyword-flagged {len(classifications)} lines (no LLM)")
         else:
-            already = fetch_existing_classifications(cur, wk, wk_end)
-            if already:
-                print(f"   {len(already)} already classified — will skip")
+            classifications = classify_lines(client, rows, dry_run=args.dry_run)
+            print(f"   ✓ classified {len(classifications)} lines")
 
-        to_classify = [r for r in rows if (r["event_id"], float(r["startsat"])) not in already]
-        print(f"   {len(to_classify)} need classifying")
-
-        if to_classify:
-            classifications = classify_lines(client, to_classify, dry_run=args.dry_run)
-            if not args.dry_run:
-                write_per_line(cur, to_classify, classifications)
-                conn.commit()
-                print(f"   ✓ wrote per-line classifications")
-
-        if not args.dry_run:
-            recompute_per_call(cur, wk, wk_end)
-            conn.commit()
-            print(f"   ✓ recomputed per-call rollup")
+        # Roll up per-call: a call is_pitch=True if any of its classified lines
+        # came back as a real pitch.
+        for r in rows:
+            key = (r["event_id"], float(r["startsat"]))
+            label_tuple = classifications.get(key)
+            if label_tuple is None:
+                continue
+            label = label_tuple[0] if isinstance(label_tuple, tuple) else bool(label_tuple)
+            eid = r["event_id"]
+            if eid not in call_results:
+                call_results[eid] = {
+                    "is_pitch":    False,
+                    "agent_name":  r["agent_name"],
+                    "agent_email": r["agent_email"],
+                    "team_name":   r.get("team_name") or "",
+                    "call_date":   r["call_date"],
+                    "week_start":  monday_of(r["call_date"]),
+                }
+            if label:
+                call_results[eid]["is_pitch"] = True
 
     if not args.dry_run:
-        print("\n📊 Building SECTIONS JSON...")
-        payload = build_sections_json(cur, weeks)
+        print(f"\n📊 Building SECTIONS JSON from {len(call_results)} classified calls...")
+        payload = build_sections_json(cur, weeks, call_results)
         OUTPUT_JSON.write_text(json.dumps(payload, indent=2))
         print(f"   wrote {OUTPUT_JSON}")
         print(f"   {len(payload['SECTIONS'])} sections, {sum(len(s['agents']) for s in payload['SECTIONS'])} agents")
