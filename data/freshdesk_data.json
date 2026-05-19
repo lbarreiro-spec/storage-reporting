@@ -9973,5 +9973,100 @@
         "fast": 0
       }
     ]
+  },
+  "2026-05-18": {
+    "inn": 128,
+    "resolved": 114,
+    "backlog": 159,
+    "fr_sla": 82.8,
+    "res_sla": 50.9,
+    "avg_r": "68.1h",
+    "p90": "145.4h",
+    "queues": [
+      {
+        "in": 76,
+        "res": 50,
+        "blg": 109,
+        "fr": 81.6
+      },
+      {
+        "in": 30,
+        "res": 49,
+        "blg": 39,
+        "fr": 90.0
+      },
+      {
+        "in": 14,
+        "res": 10,
+        "blg": 5,
+        "fr": 100.0
+      },
+      {
+        "in": 8,
+        "res": 5,
+        "blg": 6,
+        "fr": 37.5
+      },
+      {
+        "in": 0,
+        "res": 0,
+        "blg": 0,
+        "fr": 0
+      }
+    ],
+    "agents": [
+      {
+        "assigned": 0,
+        "resolved": 0,
+        "backlog": 0,
+        "fr": 0,
+        "avg": "\u2014",
+        "p90": "\u2014",
+        "replied": 0,
+        "note_only": 0,
+        "nothing": 0,
+        "reply_rate": "\u2014",
+        "fast": 0
+      },
+      {
+        "assigned": 1,
+        "resolved": 6,
+        "backlog": 1,
+        "fr": 100.0,
+        "avg": "88.9h",
+        "p90": "171.1h",
+        "replied": 2,
+        "note_only": 3,
+        "nothing": 1,
+        "reply_rate": "33%",
+        "fast": 0
+      },
+      {
+        "assigned": 34,
+        "resolved": 61,
+        "backlog": 1,
+        "fr": 91.2,
+        "avg": "53.0h",
+        "p90": "102.3h",
+        "replied": 20,
+        "note_only": 5,
+        "nothing": 36,
+        "reply_rate": "33%",
+        "fast": 0
+      },
+      {
+        "assigned": 13,
+        "resolved": 47,
+        "backlog": 3,
+        "fr": 100.0,
+        "avg": "84.9h",
+        "p90": "163.1h",
+        "replied": 10,
+        "note_only": 37,
+        "nothing": 0,
+        "reply_rate": "21%",
+        "fast": 8
+      }
+    ]
   }
 }
