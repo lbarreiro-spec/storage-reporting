@@ -28,58 +28,23 @@ new_sections = payload["SECTIONS"]
 
 html = HTML.read_text()
 
-# Parse existing WEEKS and SECTIONS so we can merge — the HTML may have
-# historical weeks we want to preserve, with new-week data appended.
+# Locate the inline WEEKS and SECTIONS arrays we're going to overwrite.
 m_weeks = re.search(r'(const WEEKS=)(\[[^\]]+\])', html)
 existing_weeks = json.loads(m_weeks.group(2))
-
-# Build merged WEEKS list (preserve order; append new weeks that aren't there),
-# then trim to the most recent MAX_WEEKS entries.
-merged_weeks = list(existing_weeks)
-for w in new_weeks:
-    if w not in merged_weeks:
-        merged_weeks.append(w)
-if len(merged_weeks) > MAX_WEEKS:
-    merged_weeks = merged_weeks[-MAX_WEEKS:]
-# Map each existing week label → its index in the old WEEKS array, so we can
-# slice each agent's historical r[] array to match merged_weeks.
-existing_week_to_old_idx = {w: i for i, w in enumerate(existing_weeks)}
-
-# Build map: agent_name -> existing r: array (so we keep historical values)
 m_sections = re.search(r'const SECTIONS=\[\n(.*?)\n\];', html, re.DOTALL)
-sections_text = m_sections.group(1)
-existing_agent_r = {}
-for line in sections_text.split("\n"):
-    m = re.match(r'\s*\{n:"([^"]+)"\s*,r:\[([^\]]*)\]', line)
-    if m:
-        existing_agent_r[m.group(1)] = [v.strip() for v in m.group(2).split(",")]
 
-# Build new SECTIONS text from the JSON payload, but merge each agent's r
-# array with their historical values: extend existing to len(merged_weeks)
-# padding with N, then overwrite the indexes corresponding to new_weeks.
+# new_weeks is the chronologically ordered trailing window from the fetch.
+# Take the most recent MAX_WEEKS directly — no merge with HTML history needed
+# (the fetch always returns more weeks than we display).
+merged_weeks = new_weeks[-MAX_WEEKS:]
+slice_start = len(new_weeks) - len(merged_weeks)
+
 def fmt_val(v):
     if v is None:
         return "N"
     if v == int(v):
         return str(int(v))
     return str(v)
-
-def merged_r_for_agent(name, new_r):
-    existing = list(existing_agent_r.get(name, []))
-    # Slice the existing r[] array to match merged_weeks. For each merged week
-    # we copy the existing value if that week was in the old WEEKS, otherwise N.
-    out = []
-    for wk in merged_weeks:
-        old_idx = existing_week_to_old_idx.get(wk)
-        if old_idx is not None and old_idx < len(existing):
-            out.append(existing[old_idx])
-        else:
-            out.append("N")
-    # Overwrite positions corresponding to weeks present in the new JSON.
-    for i, wk in enumerate(new_weeks):
-        if wk in merged_weeks:
-            out[merged_weeks.index(wk)] = fmt_val(new_r[i])
-    return out
 
 # Map section.id -> section.label for header consistency
 new_section_lines = []
@@ -89,7 +54,7 @@ for sec in new_sections:
     sid = sec["id"]
     new_section_lines.append(f'  {{id:"{sid}",group:"{group}",label:"{label}",agents:[')
     for a in sec["agents"]:
-        r_arr = merged_r_for_agent(a["n"], a["r"])
+        r_arr = [fmt_val(v) for v in a["r"][slice_start:]]
         new_section_lines.append(f'    {{n:"{a["n"]}",r:[{",".join(r_arr)}]}},')
     new_section_lines.append("  ]},")
 
