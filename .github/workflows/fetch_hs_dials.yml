@@ -2,9 +2,11 @@ name: Fetch HubSpot Outbound Dials Monthly
 
 on:
   workflow_dispatch:
-  schedule:
-    # 09:00 UTC on the 1st of every month
-    - cron: '0 9 1 * *'
+  # Scheduled run disabled — report is being reworked for accuracy.
+  # Re-enable by uncommenting the schedule block below.
+  # schedule:
+  #   # 09:00 UTC on the 1st of every month
+  #   - cron: '0 9 1 * *'
 
 jobs:
   fetch:
