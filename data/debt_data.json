@@ -1,50 +1,50 @@
 {
-  "generated_at": "2026-05-23T07:30:57",
+  "generated_at": "2026-05-26T07:29:38",
   "summary": {
-    "total_overdue_balance": 17758.56,
-    "overdue_invoice_count": 342,
-    "avg_days_overdue": 99.6,
-    "oldest_overdue_days": 688,
-    "unique_overdue_customers": 113,
+    "total_overdue_balance": 19017.58,
+    "overdue_invoice_count": 388,
+    "avg_days_overdue": 89.9,
+    "oldest_overdue_days": 691,
+    "unique_overdue_customers": 147,
     "wow": {
-      "wow_value": -1765.14,
-      "wow_pct": -9.0,
-      "vs_date": "2026-05-15"
+      "wow_value": -194.0,
+      "wow_pct": -1.0,
+      "vs_date": "2026-05-19"
     }
   },
   "bad_debt_segmentation": {
-    "total": 18644.01,
-    "active": 14552.86,
+    "total": 19811.86,
+    "active": 15720.71,
     "at_risk": 1441.14,
     "bad_debt": 2650.01,
-    "active_pct": 78.1,
-    "at_risk_pct": 7.7,
-    "bad_debt_pct": 14.2
+    "active_pct": 79.3,
+    "at_risk_pct": 7.3,
+    "bad_debt_pct": 13.4
   },
   "customer_risk_tiers": {
-    "total_customers": 114,
-    "red": 40,
-    "amber": 9,
-    "green": 65,
-    "red_pct": 35.1,
-    "amber_pct": 7.9,
-    "green_pct": 57.0
+    "total_customers": 148,
+    "red": 42,
+    "amber": 11,
+    "green": 95,
+    "red_pct": 28.4,
+    "amber_pct": 7.4,
+    "green_pct": 64.2
   },
   "mtd_recovered_overdue": {
     "month": "2026-05",
     "month_label": "May 2026",
-    "total_paid_mtd": 194596.57,
-    "recovered": 25886.03,
-    "on_time": 168710.54,
-    "recovered_pct": 13.3
+    "total_paid_mtd": 213290.74,
+    "recovered": 27671.05,
+    "on_time": 185619.69,
+    "recovered_pct": 13.0
   },
   "recovered_overdue_history": [
     {
       "month": "2025-12",
       "month_label": "Dec 2025",
       "is_mtd": false,
-      "total_paid": 228207.1,
-      "recovered": 45798.18,
+      "total_paid": 228159.12,
+      "recovered": 45750.2,
       "on_time": 182408.92,
       "recovered_pct": 20.1
     },
@@ -70,10 +70,10 @@
       "month": "2026-03",
       "month_label": "Mar 2026",
       "is_mtd": false,
-      "total_paid": 244732.83,
-      "recovered": 44013.78,
+      "total_paid": 244572.91,
+      "recovered": 43853.86,
       "on_time": 200719.05,
-      "recovered_pct": 18.0
+      "recovered_pct": 17.9
     },
     {
       "month": "2026-04",
@@ -88,10 +88,10 @@
       "month": "2026-05",
       "month_label": "May 2026 MTD",
       "is_mtd": true,
-      "total_paid": 194596.57,
-      "recovered": 25886.03,
-      "on_time": 168710.54,
-      "recovered_pct": 13.3
+      "total_paid": 213290.74,
+      "recovered": 27671.05,
+      "on_time": 185619.69,
+      "recovered_pct": 13.0
     }
   ],
   "debt_curve": [
@@ -296,11 +296,11 @@
         },
         {
           "bucket": ">51",
-          "amount": 2299.48,
-          "cumulative_pct": 96.42
+          "amount": 2526.04,
+          "cumulative_pct": 96.52
         }
       ],
-      "uncollected_pct": 3.58
+      "uncollected_pct": 3.48
     },
     {
       "month": "2026-03",
@@ -444,70 +444,70 @@
       "month": "2026-05",
       "label": "May 2026 MTD",
       "is_mtd": true,
-      "denominator": 195393.73,
+      "denominator": 215255.75,
       "buckets": [
         {
           "bucket": "<1",
-          "amount": 168710.54,
-          "cumulative_pct": 86.34
+          "amount": 185619.69,
+          "cumulative_pct": 86.23
         },
         {
           "bucket": "1-5",
-          "amount": 13800.52,
-          "cumulative_pct": 93.41
+          "amount": 14475.47,
+          "cumulative_pct": 92.96
         },
         {
           "bucket": "6-10",
-          "amount": 2050.19,
-          "cumulative_pct": 94.46
+          "amount": 2200.19,
+          "cumulative_pct": 93.98
         },
         {
           "bucket": "11-15",
-          "amount": 434.01,
-          "cumulative_pct": 94.68
+          "amount": 1033.57,
+          "cumulative_pct": 94.46
         },
         {
           "bucket": "16-20",
-          "amount": 338.89,
-          "cumulative_pct": 94.85
+          "amount": 472.84,
+          "cumulative_pct": 94.68
         },
         {
           "bucket": "21-25",
           "amount": 0.0,
-          "cumulative_pct": 94.85
+          "cumulative_pct": 94.68
         },
         {
           "bucket": "26-30",
           "amount": 0.0,
-          "cumulative_pct": 94.85
+          "cumulative_pct": 94.68
         },
         {
           "bucket": "31-35",
           "amount": 0.0,
-          "cumulative_pct": 94.85
+          "cumulative_pct": 94.68
         },
         {
           "bucket": "36-40",
           "amount": 0.0,
-          "cumulative_pct": 94.85
+          "cumulative_pct": 94.68
         },
         {
           "bucket": "41-45",
           "amount": 0.0,
-          "cumulative_pct": 94.85
+          "cumulative_pct": 94.68
         },
         {
           "bucket": "46-51",
           "amount": 0.0,
-          "cumulative_pct": 94.85
+          "cumulative_pct": 94.68
         },
         {
           "bucket": ">51",
           "amount": 0.0,
-          "cumulative_pct": 94.85
+          "cumulative_pct": 94.68
         }
       ],
-      "uncollected_pct": 5.15
+      "uncollected_pct": 5.32
     }
   ],
   "outstanding_by_cohort": [
@@ -515,13 +515,13 @@
       "month": "2026-05",
       "label": "May 2026",
       "is_partial": true,
-      "invoiced": 195393.73,
-      "collected": 185334.15,
-      "collected_overdue": 16623.61,
-      "collected_overdue_pct": 9.0,
-      "outstanding": 9066.7,
+      "invoiced": 215255.75,
+      "collected": 203801.76,
+      "collected_overdue": 18182.07,
+      "collected_overdue_pct": 8.9,
+      "outstanding": 10461.11,
       "written_off": 992.88,
-      "collection_pct": 94.9,
+      "collection_pct": 94.7,
       "flag": "active",
       "months_old": 0
     },
@@ -558,12 +558,12 @@
       "label": "Feb 2026",
       "is_partial": false,
       "invoiced": 222075.77,
-      "collected": 214119.06,
-      "collected_overdue": 41065.83,
-      "collected_overdue_pct": 19.2,
-      "outstanding": 855.96,
+      "collected": 214345.62,
+      "collected_overdue": 41292.39,
+      "collected_overdue_pct": 19.3,
+      "outstanding": 629.4,
       "written_off": 7100.75,
-      "collection_pct": 96.4,
+      "collection_pct": 96.5,
       "flag": "active",
       "months_old": 3
     },
