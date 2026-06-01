@@ -548,15 +548,20 @@ def aggregate_monthly(invoices, deals):
 # ─── YOY COMPUTATION (MTD only) ────────────────────────────────────────────────
 
 def compute_yoy(token, current_months, transport_monthly):
-    cur_month_label = month_label(TODAY)
+    # Anchor on YESTERDAY (the month MTD is reporting through — data runs 1 day in
+    # retrospect). Using TODAY breaks on the 1st of a new month: the new month has
+    # no data yet so cur_month is empty, every CY value collapses to 0, and the YoY
+    # row gets written under the wrong period — leaving the previous (just-closed)
+    # month with no YoY data in the UI.
+    cur_month_label = month_label(YESTERDAY)
     cur_month = next((m for m in current_months if m["label"] == cur_month_label), {})
 
-    days_elapsed  = (TODAY - date(TODAY.year, TODAY.month, 1)).days + 1
-    days_in_month = (date(TODAY.year, TODAY.month % 12 + 1, 1) -
-                     date(TODAY.year, TODAY.month, 1)).days if TODAY.month < 12 else 31
+    days_elapsed  = (YESTERDAY - date(YESTERDAY.year, YESTERDAY.month, 1)).days + 1
+    days_in_month = (date(YESTERDAY.year, YESTERDAY.month % 12 + 1, 1) -
+                     date(YESTERDAY.year, YESTERDAY.month, 1)).days if YESTERDAY.month < 12 else 31
 
-    py_month_start = date(TODAY.year - 1, TODAY.month, 1)
-    py_same_day    = date(TODAY.year - 1, TODAY.month, TODAY.day)
+    py_month_start = date(YESTERDAY.year - 1, YESTERDAY.month, 1)
+    py_same_day    = date(YESTERDAY.year - 1, YESTERDAY.month, YESTERDAY.day)
     py_month_end_  = month_end(py_month_start)
 
     py_inv_month = fetch_invoices(token, py_month_start, py_same_day,
