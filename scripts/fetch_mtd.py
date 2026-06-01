@@ -665,15 +665,18 @@ def build_daily_revenue(invoices, token):
                 totals[d.day] = totals.get(d.day, 0.0) + float(inv.get("total") or 0)
         return totals
 
-    cy_totals = {d: v for d, v in daily_totals(invoices, TODAY.year, TODAY.month).items() if d <= TODAY.day}
-    py_totals = daily_totals(py_invoices, TODAY.year - 1, TODAY.month)
+    # NB: anchor on YESTERDAY (the month MTD is reporting), not TODAY — otherwise on the
+    # 1st of a new month TODAY.month points at the empty new month and date(PY, TODAY.month, 31)
+    # blows up for months where day-31 doesn't exist (e.g. Jun 1 → date(2025,6,31)).
+    cy_totals = {d: v for d, v in daily_totals(invoices, YESTERDAY.year, YESTERDAY.month).items() if d <= YESTERDAY.day}
+    py_totals = daily_totals(py_invoices, YESTERDAY.year - 1, YESTERDAY.month)
 
     days_in_month = (py_month_end_ - py_month_start).days + 1
     rows = []
     for day in range(1, days_in_month + 1):
-        d_py = date(TODAY.year - 1, TODAY.month, day)
+        d_py = date(YESTERDAY.year - 1, YESTERDAY.month, day)
         try:
-            d_cy = date(TODAY.year, TODAY.month, day)
+            d_cy = date(YESTERDAY.year, YESTERDAY.month, day)
         except ValueError:
             d_cy = d_py  # fallback if current year month is shorter
         rows.append({
