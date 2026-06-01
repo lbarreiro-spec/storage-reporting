@@ -1,20 +1,20 @@
 {
-  "generated_at": "2026-06-01T08:01:50",
+  "generated_at": "2026-06-01T08:28:22",
   "summary": {
-    "total_overdue_balance": 18955.18,
-    "overdue_invoice_count": 401,
-    "avg_days_overdue": 88.7,
+    "total_overdue_balance": 18938.18,
+    "overdue_invoice_count": 400,
+    "avg_days_overdue": 88.9,
     "oldest_overdue_days": 697,
-    "unique_overdue_customers": 142,
+    "unique_overdue_customers": 141,
     "wow": {
-      "wow_value": 1196.62,
-      "wow_pct": 6.7,
+      "wow_value": 1179.62,
+      "wow_pct": 6.6,
       "vs_date": "2026-05-23"
     }
   },
   "bad_debt_segmentation": {
-    "total": 19749.46,
-    "active": 15289.84,
+    "total": 19732.46,
+    "active": 15272.84,
     "at_risk": 792.24,
     "bad_debt": 3667.38,
     "active_pct": 77.4,
@@ -22,20 +22,20 @@
     "bad_debt_pct": 18.6
   },
   "customer_risk_tiers": {
-    "total_customers": 143,
+    "total_customers": 142,
     "red": 46,
     "amber": 7,
-    "green": 90,
-    "red_pct": 32.2,
+    "green": 89,
+    "red_pct": 32.4,
     "amber_pct": 4.9,
-    "green_pct": 62.9
+    "green_pct": 62.7
   },
   "mtd_recovered_overdue": {
     "month": "2026-06",
     "month_label": "Jun 2026",
-    "total_paid_mtd": 6598.62,
+    "total_paid_mtd": 6615.62,
     "recovered": 205.85,
-    "on_time": 6392.77,
+    "on_time": 6409.77,
     "recovered_pct": 3.1
   },
   "recovered_overdue_history": [
@@ -88,9 +88,9 @@
       "month": "2026-06",
       "month_label": "Jun 2026 MTD",
       "is_mtd": true,
-      "total_paid": 6598.62,
+      "total_paid": 6615.62,
       "recovered": 205.85,
-      "on_time": 6392.77,
+      "on_time": 6409.77,
       "recovered_pct": 3.1
     }
   ],
@@ -448,66 +448,66 @@
       "buckets": [
         {
           "bucket": "<1",
-          "amount": 6392.77,
-          "cumulative_pct": 84.98
+          "amount": 6409.77,
+          "cumulative_pct": 85.21
         },
         {
           "bucket": "1-5",
           "amount": 0.0,
-          "cumulative_pct": 84.98
+          "cumulative_pct": 85.21
         },
         {
           "bucket": "6-10",
           "amount": 0.0,
-          "cumulative_pct": 84.98
+          "cumulative_pct": 85.21
         },
         {
           "bucket": "11-15",
           "amount": 0.0,
-          "cumulative_pct": 84.98
+          "cumulative_pct": 85.21
         },
         {
           "bucket": "16-20",
           "amount": 0.0,
-          "cumulative_pct": 84.98
+          "cumulative_pct": 85.21
         },
         {
           "bucket": "21-25",
           "amount": 0.0,
-          "cumulative_pct": 84.98
+          "cumulative_pct": 85.21
         },
         {
           "bucket": "26-30",
           "amount": 0.0,
-          "cumulative_pct": 84.98
+          "cumulative_pct": 85.21
         },
         {
           "bucket": "31-35",
           "amount": 0.0,
-          "cumulative_pct": 84.98
+          "cumulative_pct": 85.21
         },
         {
           "bucket": "36-40",
           "amount": 0.0,
-          "cumulative_pct": 84.98
+          "cumulative_pct": 85.21
         },
         {
           "bucket": "41-45",
           "amount": 0.0,
-          "cumulative_pct": 84.98
+          "cumulative_pct": 85.21
         },
         {
           "bucket": "46-51",
           "amount": 0.0,
-          "cumulative_pct": 84.98
+          "cumulative_pct": 85.21
         },
         {
           "bucket": ">51",
           "amount": 0.0,
-          "cumulative_pct": 84.98
+          "cumulative_pct": 85.21
         }
       ],
-      "uncollected_pct": 15.02
+      "uncollected_pct": 14.79
     }
   ],
   "outstanding_by_cohort": [
@@ -516,12 +516,12 @@
       "label": "Jun 2026",
       "is_partial": true,
       "invoiced": 7522.46,
-      "collected": 6392.77,
+      "collected": 6409.77,
       "collected_overdue": 0.0,
       "collected_overdue_pct": 0.0,
-      "outstanding": 1129.69,
+      "outstanding": 1112.69,
       "written_off": 0.0,
-      "collection_pct": 85.0,
+      "collection_pct": 85.2,
       "flag": "active",
       "months_old": 0
     },
