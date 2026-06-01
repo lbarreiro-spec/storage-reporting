@@ -202,26 +202,11 @@ def main():
         })
         print(f"  {label}: {years}")
 
-    # Transport breakdown: collection + redelivery (Supabase only — sheet doesn't split these)
-    for key, label in [
-        ("transport_collection", "Transport — Collection"),
-        ("transport_redelivery", "Transport — Redelivery"),
-    ]:
-        years = ["2024", "2025", "2026"]
-        series = {y: [] for y in years}
-        for m in range(12):
-            for year in years:
-                month_key = f"{year}-{str(m + 1).zfill(2)}"
-                if month_key > current_month:
-                    series[year].append(None)
-                else:
-                    raw = supabase_data.get(month_key, {}).get(key)
-                    series[year].append(cast_val(raw, "money"))
-        output_metrics.append({
-            "key": key, "label": label, "format": "money",
-            "years": years, "series": series,
-        })
-        print(f"  {label}: {years}")
+    # NB: the Transport — Collection / Transport — Redelivery sub-metrics were
+    # previously appended here but were removed from the Monthly Trends view
+    # (top-line Transport Fee already covers the combined number). Leaving the
+    # cast_val plumbing above so the values still flow into the supabase row,
+    # but they're no longer published as their own metrics block.
 
     output = {
         "updated": date.today().isoformat(),

@@ -172,16 +172,6 @@ td.cur{color:#1f1f1f;font-weight:600}
     </table>
   </div>
 
-  <!-- TRANSPORT BREAKDOWN -->
-  <div id="transport-breakdown-wrap" style="display:none">
-    <div class="chart-wrap">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-        <span style="font-size:15px;font-weight:600;color:#111827">Collection vs Redelivery</span>
-        <div class="legend" id="transport-breakdown-legend"></div>
-      </div>
-      <canvas id="transport-breakdown-chart" style="max-height:280px"></canvas>
-    </div>
-  </div>
 </div>
 </div>
 
@@ -200,7 +190,6 @@ const YEAR_STYLES = {
 
 let _data           = null
 let _chart          = null
-let _breakdownChart = null
 let _activeIdx      = 0
 let _hiddenYrs      = new Set()
 
@@ -227,87 +216,6 @@ function fmtYoy(pct){
 function yoyColor(pct){
   if(pct == null) return '#9ca3af'
   return pct >= 0 ? '#16a34a' : '#dc2626'
-}
-
-function renderTransportBreakdown(data){
-  const collM  = data.metrics.find(m => m.key === 'transport_collection')
-  const redelM = data.metrics.find(m => m.key === 'transport_redelivery')
-  if(!collM || !redelM) return
-
-  document.getElementById('transport-breakdown-wrap').style.display = ''
-
-  const legendEl = document.getElementById('transport-breakdown-legend')
-  if(!legendEl.children.length){
-    const items = [
-      { label:'2026 Collection',  color:'rgba(245,158,11,1)'    },
-      { label:'2026 Redelivery',  color:'rgba(59,130,246,1)'    },
-      { label:'2025 Collection',  color:'rgba(245,158,11,0.45)' },
-      { label:'2025 Redelivery',  color:'rgba(59,130,246,0.45)' },
-    ]
-    items.forEach(li => {
-      const el = document.createElement('div')
-      el.className = 'legend-item'
-      el.innerHTML = `<div class="legend-dot" style="background:${li.color}"></div><span>${li.label}</span>`
-      legendEl.appendChild(el)
-    })
-  }
-
-  const datasets = [
-    { label:'2025 Collection', data:collM.series['2025'],  backgroundColor:'rgba(245,158,11,0.45)', stack:'2025' },
-    { label:'2025 Redelivery', data:redelM.series['2025'], backgroundColor:'rgba(59,130,246,0.45)', stack:'2025' },
-    { label:'2026 Collection', data:collM.series['2026'],  backgroundColor:'rgba(245,158,11,1)',    stack:'2026' },
-    { label:'2026 Redelivery', data:redelM.series['2026'], backgroundColor:'rgba(59,130,246,1)',    stack:'2026' },
-  ]
-
-  if(_breakdownChart){
-    _breakdownChart.data.datasets = datasets
-    _breakdownChart.update()
-    return
-  }
-
-  const ctx = document.getElementById('transport-breakdown-chart').getContext('2d')
-  _breakdownChart = new Chart(ctx, {
-    type: 'bar',
-    data: { labels: MONTHS, datasets },
-    options:{
-      responsive: true,
-      maintainAspectRatio: true,
-      interaction:{ mode:'index', intersect:false },
-      plugins:{
-        legend:{ display:false },
-        datalabels:{ display:false },
-        tooltip:{
-          backgroundColor:'#fff', borderColor:'#e2e2e2', borderWidth:1,
-          titleColor:'#111827', bodyColor:'#6b7280',
-          titleFont:{ family:'-apple-system,sans-serif', size:13, weight:'600' },
-          bodyFont:{ family:"'SF Mono',monospace", size:13 },
-          padding:12,
-          callbacks:{
-            label: ctx => ctx.raw == null ? null :
-              ` ${ctx.dataset.label}: £${Math.round(ctx.raw).toLocaleString('en-GB')}`
-          }
-        }
-      },
-      scales:{
-        x:{
-          stacked:true,
-          grid:{ color:'#f0f0f0' },
-          ticks:{ color:'#6b7280', font:{ family:"'SF Mono',monospace", size:12 } },
-          border:{ color:'#e2e2e2' }
-        },
-        y:{
-          stacked:true,
-          grid:{ color:'#f0f0f0' },
-          ticks:{
-            color:'#6b7280',
-            font:{ family:"'SF Mono',monospace", size:12 },
-            callback: v => '£'+Number(v/1000).toFixed(0)+'k'
-          },
-          border:{ color:'#e2e2e2' }
-        }
-      }
-    }
-  })
 }
 
 function renderMetric(idx){
@@ -432,13 +340,6 @@ function renderMetric(idx){
         }
       }
     })
-  }
-
-  // Transport breakdown chart
-  if(m.key === 'transport_fee'){
-    renderTransportBreakdown(_data)
-  } else {
-    document.getElementById('transport-breakdown-wrap').style.display = 'none'
   }
 
   // Table
