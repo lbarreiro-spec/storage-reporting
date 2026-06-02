@@ -800,16 +800,16 @@ function renderSqftFees(m, f){
   document.getElementById('sqft-fees-section').innerHTML = `
     <div class="info-card">
       <div class="info-title">Sq ft</div>
-      <div class="info-row"><span class="info-lbl">Booked (by deal created)</span><span class="info-val">${fmtN(m.sqft_booked)}</span></div>
-      <div class="info-row"><span class="info-lbl">Entering (by collection date)</span><span class="info-val">${fmtN(m.sqft_entering)}</span></div>
-      <div class="info-row"><span class="info-lbl">Exiting (by redelivery date)</span><span class="info-val">${fmtN(m.sqft_exiting)}</span></div>
+      <div class="info-row"><span class="info-lbl">Booked MTD (by deal created)</span><span class="info-val">${fmtN(m.sqft_booked)}</span></div>
+      <div class="info-row"><span class="info-lbl">Entering — full month (by collection date)</span><span class="info-val">${fmtN(m.sqft_entering)}</span></div>
+      <div class="info-row"><span class="info-lbl">Exiting — full month (by redelivery date)</span><span class="info-val">${fmtN(m.sqft_exiting)}</span></div>
       <div class="info-row"><span class="info-lbl">Net (in − out)</span><span class="info-val" style="color:${netCol(netSqft)}">${netFmt(netSqft)}</span></div>
     </div>
     <div class="info-card">
       <div class="info-title">Customers (CRM)</div>
-      <div class="info-row"><span class="info-lbl">Booked (by deal created)</span><span class="info-val">${fmtN(m.customers_booked)}</span></div>
-      <div class="info-row"><span class="info-lbl">Entering (by collection date)</span><span class="info-val">${fmtN(m.customers_entering)}</span></div>
-      <div class="info-row"><span class="info-lbl">Exiting (by redelivery date)</span><span class="info-val">${fmtN(m.customers_exiting)}</span></div>
+      <div class="info-row"><span class="info-lbl">Booked MTD (by deal created)</span><span class="info-val">${fmtN(m.customers_booked)}</span></div>
+      <div class="info-row"><span class="info-lbl">Entering — full month (by collection date)</span><span class="info-val">${fmtN(m.customers_entering)}</span></div>
+      <div class="info-row"><span class="info-lbl">Exiting — full month (by redelivery date)</span><span class="info-val">${fmtN(m.customers_exiting)}</span></div>
       <div class="info-row"><span class="info-lbl">Net (in − out)</span><span class="info-val" style="color:${netCol(netCust)}">${netFmt(netCust)}</span></div>
     </div>
     <div class="info-card">
