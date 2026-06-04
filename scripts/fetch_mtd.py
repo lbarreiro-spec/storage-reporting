@@ -19,7 +19,7 @@ import json
 import time
 import warnings
 import requests
-from datetime import date, timedelta, datetime
+from datetime import date, timedelta, datetime, timezone
 from dateutil.relativedelta import relativedelta
 from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
@@ -513,6 +513,10 @@ def compute_yoy(token, current_months):
         "id":                            1,
         "period":                        cur_month_label,
         "as_of":                         TODAY.isoformat(),
+        # Full UTC timestamp of this run so the dashboard can show last-updated TIME,
+        # not just the date. (The column default only fires on insert; we must set it
+        # explicitly on every upsert or it stays frozen at row-creation time.)
+        "updated_at":                    datetime.now(timezone.utc).isoformat(),
         "days_elapsed":                  days_elapsed,
         "days_in_month":                 days_in_month,
         "cy_invoiced":                   cy_act_inv,
