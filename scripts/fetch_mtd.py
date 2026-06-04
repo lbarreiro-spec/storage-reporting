@@ -59,11 +59,6 @@ SUPABASE_HEADERS  = {
     "Prefer":        "resolution=merge-duplicates",
 }
 
-SNOWFLAKE_ACCOUNT = os.environ["SNOWFLAKE_ACCOUNT"]
-SNOWFLAKE_USER    = os.environ["SNOWFLAKE_USER"]
-SNOWFLAKE_WH      = "MART_SALES_OPS_WH"
-SNOWFLAKE_ROLE    = "MART_SALES_OPS_GROUP"
-
 HISTORY_START = date(2024, 1, 1)
 TODAY         = date.today()
 YESTERDAY     = TODAY - timedelta(days=1)
