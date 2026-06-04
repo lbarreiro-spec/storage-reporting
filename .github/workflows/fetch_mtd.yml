@@ -22,15 +22,11 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests python-dateutil python-dotenv snowflake-connector-python
+        run: pip install requests python-dateutil python-dotenv
 
-      - name: Write Snowflake config
-        run: |
-          mkdir -p ~/.snowflake
-          cat > ~/.snowflake/connections.toml << 'EOF'
-          [connections.default]
-          token = "${{ secrets.SNOWFLAKE_PAT }}"
-          EOF
+      # Transport now comes live from the AnyVan Dashboards managed Snowflake
+      # queries (storage_transport_monthly / storage_transport_yoy_mtd) — this
+      # Action no longer touches Snowflake or the personal PAT.
 
       - name: Write .env
         run: |
@@ -44,8 +40,6 @@ jobs:
           ZOHO_REGION=eu
           SUPABASE_URL=${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
-          SNOWFLAKE_ACCOUNT=${{ secrets.SNOWFLAKE_ACCOUNT }}
-          SNOWFLAKE_USER=${{ secrets.SNOWFLAKE_USER }}
           EOF
 
       - name: Run fetch

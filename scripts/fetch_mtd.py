@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """
 AnyVan Storage — MTD Revenue Intelligence Fetcher
-Sources: Zoho Books, Zoho CRM, Snowflake (transport)
-Writes to Supabase (mtd_monthly, mtd_transport_monthly, mtd_fees_monthly, mtd_yoy)
+Sources: Zoho Books, Zoho CRM
+Writes to Supabase (mtd_monthly, mtd_fees_monthly, mtd_yoy)
+Transport is NOT fetched here — it is served live to the dashboard by the AnyVan
+Dashboards managed queries storage_transport_monthly / storage_transport_yoy_mtd
+(server-side Snowflake connection, no personal PAT).
 
 Usage:
   python3 fetch_mtd.py          # Current month start → today + YoY (past months left in Supabase)
@@ -329,105 +332,6 @@ def fetch_crm_deals(token):
     return deals
 
 
-# ─── SNOWFLAKE TRANSPORT ───────────────────────────────────────────────────────
-
-def get_snowflake_token():
-    toml = open(os.path.expanduser("~/.snowflake/connections.toml")).read()
-    return toml.split('token = "')[1].split('"')[0]
-
-
-def fetch_transport():
-    import snowflake.connector
-
-    sf_token  = get_snowflake_token()
-    conn      = snowflake.connector.connect(
-        account=SNOWFLAKE_ACCOUNT,
-        user=SNOWFLAKE_USER,
-        authenticator="programmatic_access_token",
-        token=sf_token,
-        warehouse=SNOWFLAKE_WH,
-        role=SNOWFLAKE_ROLE,
-    )
-    cur = conn.cursor()
-
-    cy_start  = START_DATE.isoformat()
-    py_start  = (START_DATE - relativedelta(years=1)).isoformat()
-    py_end    = (YESTERDAY - relativedelta(years=1)).isoformat()
-    today_str = YESTERDAY.isoformat()
-
-    print(f"📥 Fetching transport from Snowflake ({cy_start} → {today_str})...")
-
-    cur.execute(f"""
-        WITH cy AS (
-            SELECT
-                DATE_TRUNC('month', PICK_UP_DATE)::DATE                              AS period,
-                TO_CHAR(DATE_TRUNC('month', PICK_UP_DATE), 'YYYY-MM')                AS label,
-                STORAGE_EVENT_TYPE,
-                COUNT(*)                                                              AS total_jobs,
-                SUM(CASE WHEN DEAL_STAGE != 'Cancel' THEN 1 ELSE 0 END)              AS completed_jobs,
-                ROUND(SUM(REVENUE_FINAL_AV_FEE), 2)                                  AS av_fee
-            FROM CONFORMED.PRODUCTION.FCT_STORAGE
-            WHERE PICK_UP_DATE >= '{cy_start}'
-              AND PICK_UP_DATE <= '{today_str}'
-              AND STORAGE_EVENT_TYPE IN ('Collection', 'Re-Delivery')
-            GROUP BY 1, 2, 3
-        ),
-        py AS (
-            SELECT
-                DATEADD(year, 1, DATE_TRUNC('month', PICK_UP_DATE))::DATE AS period,
-                STORAGE_EVENT_TYPE,
-                ROUND(SUM(REVENUE_FINAL_AV_FEE), 2)                      AS av_fee
-            FROM CONFORMED.PRODUCTION.FCT_STORAGE
-            WHERE PICK_UP_DATE >= '{py_start}'
-              AND PICK_UP_DATE <= '{py_end}'
-              AND STORAGE_EVENT_TYPE IN ('Collection', 'Re-Delivery')
-            GROUP BY 1, 2
-        )
-        SELECT cy.label, cy.period, cy.storage_event_type,
-               cy.total_jobs, cy.completed_jobs, cy.av_fee,
-               py.av_fee AS prior_year_av_fee,
-               CASE WHEN py.av_fee IS NOT NULL AND py.av_fee != 0
-                    THEN ROUND(((cy.av_fee - py.av_fee) / py.av_fee) * 100, 1)
-                    ELSE NULL END AS yoy_pct
-        FROM cy LEFT JOIN py
-          ON py.period = cy.period AND py.storage_event_type = cy.storage_event_type
-        ORDER BY cy.period, cy.storage_event_type
-    """)
-    monthly_raw = cur.fetchall()
-    cur.close()
-    conn.close()
-
-    periods = {}
-    for label, period, event_type, total_jobs, completed_jobs, av_fee, py_av_fee, yoy_pct in monthly_raw:
-        label = str(label)
-        if label not in periods:
-            period_date = period if isinstance(period, date) else date.fromisoformat(str(period)[:10])
-            periods[label] = {
-                "label": label,
-                "coll_jobs": 0, "coll_completed": 0, "coll_av_fee": 0.0,
-                "coll_av_fee_prior_year": None, "coll_yoy_pct": None,
-                "redel_jobs": 0, "redel_completed": 0, "redel_av_fee": 0.0,
-                "redel_av_fee_prior_year": None, "redel_yoy_pct": None,
-            }
-        p = periods[label]
-        if event_type == "Collection":
-            p["coll_jobs"]              = int(total_jobs)
-            p["coll_completed"]         = int(completed_jobs)
-            p["coll_av_fee"]            = float(av_fee or 0)
-            p["coll_av_fee_prior_year"] = float(py_av_fee) if py_av_fee is not None else None
-            p["coll_yoy_pct"]           = float(yoy_pct) if yoy_pct is not None else None
-        elif event_type == "Re-Delivery":
-            p["redel_jobs"]              = int(total_jobs)
-            p["redel_completed"]         = int(completed_jobs)
-            p["redel_av_fee"]            = float(av_fee or 0)
-            p["redel_av_fee_prior_year"] = float(py_av_fee) if py_av_fee is not None else None
-            p["redel_yoy_pct"]           = float(yoy_pct) if yoy_pct is not None else None
-
-    monthly = sorted(periods.values(), key=lambda x: x["label"])
-    print(f"   ✅ Transport: {len(monthly)} months")
-    return monthly
-
-
 # ─── AGGREGATION ───────────────────────────────────────────────────────────────
 
 def is_promo(inv):
@@ -547,7 +451,7 @@ def aggregate_monthly(invoices, deals):
 
 # ─── YOY COMPUTATION (MTD only) ────────────────────────────────────────────────
 
-def compute_yoy(token, current_months, transport_monthly):
+def compute_yoy(token, current_months):
     # Anchor on YESTERDAY (the month MTD is reporting through — data runs 1 day in
     # retrospect). Using TODAY breaks on the 1st of a new month: the new month has
     # no data yet so cur_month is empty, every CY value collapses to 0, and the YoY
@@ -610,8 +514,6 @@ def compute_yoy(token, current_months, transport_monthly):
     cy_fore_inv  = round(cy_act_inv  / days_elapsed * days_in_month, 2) if days_elapsed else 0
     cy_fore_paid = round(cy_act_paid / days_elapsed * days_in_month, 2) if days_elapsed else 0
 
-    t = next((m for m in transport_monthly if m["label"] == cur_month_label), {})
-
     return {
         "id":                            1,
         "period":                        cur_month_label,
@@ -636,12 +538,9 @@ def compute_yoy(token, current_months, transport_monthly):
         "cy_customers_forecast":         round(cy_act_cust / days_elapsed * days_in_month) if days_elapsed else 0,
         "py_customers_full_month":       py_full_cust,
         "customers_forecast_yoy_pct":    yoy(round(cy_act_cust / days_elapsed * days_in_month) if days_elapsed else 0, py_full_cust),
-        "coll_av_fee":                   t.get("coll_av_fee", 0),
-        "coll_av_fee_prior_year":        t.get("coll_av_fee_prior_year"),
-        "coll_yoy_pct":                  t.get("coll_yoy_pct"),
-        "redel_av_fee":                  t.get("redel_av_fee", 0),
-        "redel_av_fee_prior_year":       t.get("redel_av_fee_prior_year"),
-        "redel_yoy_pct":                 t.get("redel_yoy_pct"),
+        # Transport YoY now served live by the AnyVan Dashboards managed query
+        # storage_transport_yoy_mtd (server-side Snowflake, no personal PAT) and
+        # overlaid client-side — no longer written here.
     }
 
 
@@ -718,8 +617,10 @@ def main():
     invoices  = fetch_invoices(token, START_DATE, end=TODAY, label=f"{START_DATE} → {TODAY}")
     deals     = fetch_crm_deals(token)
     fee_data  = fetch_line_item_fees(invoices, token)
-    transport = fetch_transport()
     monthly   = aggregate_monthly(invoices, deals)
+    # NOTE: transport (Snowflake) is no longer fetched here. It is served live to the
+    # dashboard by the AnyVan Dashboards managed queries storage_transport_monthly /
+    # storage_transport_yoy_mtd (server-side Snowflake connection — no personal PAT).
 
     # Build Supabase rows for mtd_monthly
     monthly_rows = []
@@ -742,19 +643,6 @@ def main():
             "customers_exiting":  m["customers_exiting"],
         })
 
-    # Build Supabase rows for mtd_transport_monthly
-    transport_rows = []
-    for t in transport:
-        transport_rows.append({
-            "label":          t["label"],
-            "coll_jobs":      t["coll_jobs"],
-            "coll_completed": t["coll_completed"],
-            "coll_av_fee":    t["coll_av_fee"],
-            "redel_jobs":     t["redel_jobs"],
-            "redel_completed":t["redel_completed"],
-            "redel_av_fee":   t["redel_av_fee"],
-        })
-
     # Build Supabase rows for mtd_fees_monthly
     fees_rows = []
     for f in fee_data:
@@ -768,11 +656,10 @@ def main():
 
     print("\n📤 Writing to Supabase...")
     upsert("mtd_monthly",           monthly_rows)
-    upsert("mtd_transport_monthly", transport_rows)
     upsert("mtd_fees_monthly",      fees_rows)
 
     if IS_MTD:
-        yoy_data = compute_yoy(token, monthly, transport)
+        yoy_data = compute_yoy(token, monthly)
         upsert("mtd_yoy", [yoy_data])
         daily_rows = build_daily_revenue(invoices, token)
         upsert("mtd_daily_revenue", daily_rows)
