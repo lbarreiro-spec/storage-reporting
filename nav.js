@@ -28,6 +28,8 @@
       blurb:'AVC-UK-STORAGE pipeline — lead volume, funnel, win rate, owner leaderboard, uncontacted backlog and speed-to-lead conversion.' },
     { path:'/operations/storage-sales-leaderboard',   label:'Sales Leaderboard',icon:'🏆', badge:'live',
       blurb:'Storage sales ranking by agent — bookings & revenue, updated live from the team sheet.' },
+    { path:'/operations/storage-calculator',          label:'Storage Pricing',  icon:'🧮', badge:'tool',
+      blurb:'Agent pricing tool — Sq Ft / M² sizing plus price-match for Access, Non-Access & BlueSpace (Spain): full price, discount ladder and a 15% margin floor. Live from the price sheet.' },
     { path:'/operations/storage-voice-activity',      label:'Voice Activity',   icon:'🎙️', badge:'live',
       blurb:'Inbound + outbound dials, answer rate, talk time & AHT per agent. Month selector + ops/sales toggle.' },
     { path:'/operations/storage-daily-activity',      label:'Daily Activity',   icon:'📊', badge:'live',
@@ -78,7 +80,7 @@
     var here = curPath();
     grid.innerHTML = AV_STORAGE_BOARDS.filter(function(b){ return !b.hero; }).map(function(b){
       var badge = b.badge || 'live';
-      var btxt  = badge==='deck' ? 'Decks' : badge==='manual' ? 'Manual' : 'Live';
+      var btxt  = badge==='deck' ? 'Decks' : badge==='manual' ? 'Manual' : badge==='tool' ? 'Tool' : 'Live';
       var self  = (here === b.path.replace(/\/+$/,''));
       return '<a class="card live'+(self?' current':'')+'" href="'+b.path+'">'+
         '<div class="top"><div class="ico">'+b.icon+'</div><span class="badge '+badge+'">'+btxt+'</span></div>'+
