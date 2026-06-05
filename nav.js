@@ -16,7 +16,8 @@
   // Canonical board registry. Order = sidebar order = hub card order.
   // hero:true  -> the hub renders this as the big hero (kept hardcoded in the hub), so it is NOT added to the card grid.
   // sidebar:false -> excluded from the left sidebar.
-  // badge: 'live' | 'manual' | 'deck'
+  // hubCard:false -> excluded from the hub card grid (still shows in the sidebar).
+  // badge: 'live' | 'manual' | 'deck' | 'tool' | 'guide'
   var AV_STORAGE_BOARDS = [
     { path:'/operations/storage-mtd',                 label:'MTD Revenue',      icon:'💷', badge:'live',   hero:true,
       blurb:'Month-to-date invoiced & paid revenue, YoY (actual + forecast), transport AV fee, sq ft & customer flow, fees and pipeline — the headline board for the month.' },
@@ -45,7 +46,9 @@
     { path:'/operations/storage-debt',                label:'Debt Intelligence',icon:'📉', badge:'live',
       blurb:'Overdue balance, recovery, debt segmentation, customer risk tiers, collection curve & cohorts.' },
     { path:'/operations/storage-weekly-presentations',label:'Weekly Decks',     icon:'🗂️', badge:'deck',
-      blurb:'Every weekly Storage presentation, archived as a branded deck — slides, commentary and type per screenshot.' }
+      blurb:'Every weekly Storage presentation, archived as a branded deck — slides, commentary and type per screenshot.' },
+    { path:'/operations/storage-guides',              label:'How-To Guides',    icon:'📚', badge:'guide', hubCard:false,
+      blurb:'Step-by-step team guides for running the day-to-day in Zoho — starting with one-click customer onboarding.' }
   ];
 
   // expose for debugging / reuse
@@ -78,9 +81,9 @@
     var grid = document.getElementById('av-hub-grid');
     if(!grid) return false;
     var here = curPath();
-    grid.innerHTML = AV_STORAGE_BOARDS.filter(function(b){ return !b.hero; }).map(function(b){
+    grid.innerHTML = AV_STORAGE_BOARDS.filter(function(b){ return !b.hero && b.hubCard !== false; }).map(function(b){
       var badge = b.badge || 'live';
-      var btxt  = badge==='deck' ? 'Decks' : badge==='manual' ? 'Manual' : badge==='tool' ? 'Tool' : 'Live';
+      var btxt  = badge==='deck' ? 'Decks' : badge==='manual' ? 'Manual' : badge==='tool' ? 'Tool' : badge==='guide' ? 'Guides' : 'Live';
       var self  = (here === b.path.replace(/\/+$/,''));
       return '<a class="card live'+(self?' current':'')+'" href="'+b.path+'">'+
         '<div class="top"><div class="ico">'+b.icon+'</div><span class="badge '+badge+'">'+btxt+'</span></div>'+
