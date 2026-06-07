@@ -80,11 +80,22 @@ def search(q,max_pages=6):
     return out
 
 def pull_open(since=None):
+    # Freshdesk's updated_at filter is DATE-granular (YYYY-MM-DD) — strip any time/tz.
+    # Use the day BEFORE last_run so the run's own day is re-included (overlap is idempotent;
+    # re-judging an unchanged ticket just re-writes the same tag), avoiding a same-day-tail miss.
+    since_date=None
+    if since:
+        d=pdt(since) or pdt(since+'T00:00:00')
+        try:
+            from datetime import timedelta
+            since_date=(d - timedelta(days=1)).date().isoformat()
+        except Exception:
+            since_date=str(since)[:10]
     seen={}
     for gid in GROUPS:
         for st in OPEN_STATUSES:
             q=f"group_id:{gid} AND status:{st}"
-            if since: q+=f" AND updated_at:>'{since}'"
+            if since_date: q+=f" AND updated_at:>'{since_date}'"
             for t in search(q): seen[t['id']]=t
             time.sleep(0.25)
     return list(seen.values())
@@ -193,7 +204,10 @@ def cmd_apply(infile,dry,no_close,notes):
             continue
         cur=get_tags(tid)
         if cur is None: print(f"  !! #{tid} read failed",file=sys.stderr); errs+=1; continue
-        merged=sorted(set(cur)|set(new_tags))
+        # Strip any stale RAG tag so a re-judged ticket carries only its CURRENT grade
+        # (keeps triage-assigned, triage-bounce-resend and all non-triage tags).
+        RAG_TAGS={'triage-red','triage-amber','triage-blue','triage-green'}
+        merged=sorted((set(cur)-RAG_TAGS)|set(new_tags))
         payload={"tags":merged}
         if do_close: payload["status"]=RESOLVED; payload["responder_id"]=RESOLVE_RESPONDER
         r=put_ticket(tid,payload)
@@ -228,8 +242,14 @@ def stakes(reason):
 
 def cmd_assign(per,dry):
     per=per or 20
-    V=json.load(open('/tmp/triage_verdicts.json'))
-    cand={c['id']:c for c in json.load(open('/tmp/triage_all_candidates.json'))}
+    # Read THIS run's judgements + candidates (the canonical files written by judge/fetch).
+    # Fall back to the legacy workflow filenames only if the current ones are absent.
+    def _load(primary,legacy):
+        for p in (primary,legacy):
+            if os.path.exists(p): return json.load(open(p))
+        raise FileNotFoundError(f"{primary} (or {legacy})")
+    V=_load('/tmp/triage_judgements.json','/tmp/triage_verdicts.json')
+    cand={c['id']:c for c in _load('/tmp/triage_candidates.json','/tmp/triage_all_candidates.json')}
     # worklist = reds, highest stakes first then oldest
     reds=[x for x in V if x['rag']=='red']
     reds.sort(key=lambda x:(-stakes(x['reason']), -(cand.get(x['id'],{}).get('age_h') or 0)))
@@ -272,13 +292,32 @@ def cmd_assign(per,dry):
     # emit slack message text + structured assignments
     out={'per':per,'kept':kept,'assignments':{nm[fd]['name']:ids for fd,ids in byagent.items()}}
     json.dump(out,open('/tmp/triage_assignments.json','w'),indent=2)
-    lines=["🎫 *Storage Freshdesk — your tickets for today* (AI-triaged, reds first)",""]
-    for a in ROSTER:
-        ids=byagent[a['fd']]
-        tix=' '.join(f"#{t}" for t in ids)
-        lines.append(f"<@{a['slack']}> — *{len(ids)}* tickets: {tix}")
+    # high-level run summary (counts) from the apply step's dashboard JSON
+    try:
+        d=json.load(open(DASH_JSON)); c=d.get('counts',{})
+        red,amb,blu,grn=c.get('red',0),c.get('amber',0),c.get('blue',0),c.get('green',0)
+        res,flg,tot=d.get('resolved',0),d.get('flagged',0),d.get('total',0)
+    except Exception:
+        red=amb=blu=grn=res=flg=tot=0
+    URL="https://dashboards.anyvan.com/operations/storage-freshdesk-triage"
+    lines=[]
+    lines.append("🎫 *Storage triage has just run* — here's the latest sweep 👇")
     lines.append("")
-    lines.append("Full worklist + reasons → https://dashboards.anyvan.com/operations/storage-freshdesk-triage")
+    lines.append(f"📥 *{tot} tickets triaged this run*")
+    lines.append(f"   🔴 *{red}* urgent  ·  🟠 *{amb}* can-wait  ·  🔵 *{blu}* awaiting customer  ·  🟢 *{grn}* no-reply")
+    lines.append(f"   ✅ *{res}* auto-resolved (signed docs & system notifications)  ·  📨 *{flg}* delivery failures flagged to resend")
+    lines.append("")
+    lines.append("🧑‍💻 *New tickets added to your queue* — open Freshdesk → *\"Tickets assigned to me\"*:")
+    any_new=False
+    for a in ROSTER:
+        n=len(byagent[a['fd']])
+        if n: any_new=True
+        lines.append(f"   • <@{a['slack']}> — {'*'+str(n)+'* new' if n else 'up to date ✅'}")
+    if not any_new:
+        lines.append("   _(no new allocations — everyone's at capacity; please clear current queues first)_")
+    lines.append("")
+    lines.append("Reds first please — clear or note your queue by end of day. 💪")
+    lines.append(f"📋 Full board → {URL}")
     open('/tmp/triage_slack_assign.txt','w').write('\n'.join(lines))
     print(f"\nslack text -> /tmp/triage_slack_assign.txt")
 
@@ -300,11 +339,16 @@ def cmd_fetchall():
     json.dump(cands,open('/tmp/triage_all_candidates.json','w'),indent=2)
     print(f"fetched {len(cands)} open tickets -> /tmp/triage_all_candidates.json")
 
-def cmd_fetch(limit,since):
-    if since is None:
-        since=load_state().get('last_run')
-        if since: print(f"[since last run: {since}]",file=sys.stderr)
-    ts=pull_open(since)
+def cmd_fetch(limit,allflag):
+    # INCREMENTAL = tickets with no triage-<rag> tag yet (genuinely new/untriaged).
+    # We key off the tag, NOT updated_at: our own tag writes bump updated_at, so a
+    # time-based filter re-pulls everything we touched. --all re-judges the whole open set.
+    RAG_TAGS={'triage-red','triage-amber','triage-blue','triage-green'}
+    ts=pull_open(None)
+    if not allflag:
+        before=len(ts)
+        ts=[t for t in ts if not (set(t.get('tags') or []) & RAG_TAGS)]
+        print(f"[incremental: {len(ts)} untriaged of {before} open]",file=sys.stderr)
     ts.sort(key=lambda t:-rules(t)[1])   # most-urgent-first so a sample shows the interesting ones
     if limit: ts=ts[:limit]
     cands=[]
@@ -326,10 +370,10 @@ ap=argparse.ArgumentParser(); ap.add_argument('mode',nargs='?',default='summary'
 ap.add_argument('--limit',type=int,default=0); ap.add_argument('--since',default=None)
 ap.add_argument('--dry',action='store_true'); ap.add_argument('--no-close',dest='no_close',action='store_true')
 ap.add_argument('--notes',action='store_true'); ap.add_argument('--in',dest='infile',default=None)
-ap.add_argument('--per',type=int,default=20)
+ap.add_argument('--per',type=int,default=20); ap.add_argument('--all',dest='allflag',action='store_true')
 a=ap.parse_args()
 if a.mode=='summary': cmd_summary()
-elif a.mode=='fetch': cmd_fetch(a.limit,a.since)
+elif a.mode=='fetch': cmd_fetch(a.limit,a.allflag)
 elif a.mode=='greens': cmd_greens(a.limit or 40)
 elif a.mode=='fetchall': cmd_fetchall()
 elif a.mode=='assign': cmd_assign(a.per,a.dry)
