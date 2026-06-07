@@ -5,12 +5,40 @@ freshdesk_triage.py apply). Prints HTML to /tmp/triage_dashboard.html — upload
 the hub at operations/storage-freshdesk-triage via the AV Dashboards MCP.
 Reds-first worklist; matches the operations/storage hub brand styling.
 """
-import json, html, sys
+import json, html, sys, os
 from datetime import datetime, timezone
+from collections import Counter
 
 SRC='/tmp/triage_dashboard.json'
 OUT='/tmp/triage_dashboard.html'
-d=json.load(open(SRC))
+REPO_JSON=os.path.expanduser('~/Documents/storage-reporting/data/triage.json')
+# --replace (alias --full): rebuild the published feed from this run alone (use after a
+# `fetch --all` rebaseline, where the run IS the complete open set). Default = MERGE.
+REPLACE='--replace' in sys.argv or '--full' in sys.argv
+
+delta=json.load(open(SRC))
+
+def _recount(tk):
+    c=Counter((t.get('rag') or '').lower() for t in tk)
+    return {'red':c.get('red',0),'amber':c.get('amber',0),'blue':c.get('blue',0),'green':c.get('green',0)}
+
+if REPLACE or not os.path.exists(REPO_JSON):
+    d=delta
+else:
+    # Incremental run: `apply` wrote DASH_JSON with ONLY this run's judged tickets, so
+    # publishing it verbatim would shrink the board to just the latest batch (the bug
+    # fixed here, 7 Jun 2026). Merge the run into the persistent published feed instead
+    # — prior feed ∪ this run, run wins by id — so the board keeps the full open set.
+    prev=json.load(open(REPO_JSON))
+    by_id={t['id']:t for t in prev.get('tickets',[])}
+    for t in delta.get('tickets',[]): by_id[t['id']]=t
+    merged=list(by_id.values())
+    d={'generated_at':delta.get('generated_at',prev.get('generated_at','')),
+       'counts':_recount(merged),
+       'resolved':sum(1 for t in merged if t.get('resolved')),
+       'flagged':sum(1 for t in merged if (t.get('action')=='flag')),
+       'total':len(merged),'tickets':merged}
+
 c=d.get('counts',{}); tickets=d.get('tickets',[])
 gen=d.get('generated_at','')
 try:
@@ -157,3 +185,15 @@ tr.r-red{{background:#fef6f6}} tr.r-amber{{background:#fffaf2}} tr.r-blue{{backg
 
 open(OUT,'w').write(HTML)
 print(f"wrote {OUT} ({len(HTML)} bytes, {len(tickets)} tickets)")
+
+# Publish the live-fetch data feed: full (merged) dataset + owner, written to the repo's
+# Pages-served data dir. The board shell at operations/storage-freshdesk-triage fetches this,
+# so the morning run just needs: regenerate -> git commit+push data/triage.json (no HTML push).
+# `d` is already the full merged set (or this run, under --replace). Owners: this run's
+# assignments win; otherwise keep whatever owner the ticket already carried in the feed.
+for t in d.get('tickets',[]): t['owner']=OWNER.get(t['id'], t.get('owner','') or '')
+try:
+    json.dump(d,open(REPO_JSON,'w'),indent=1)
+    print(f"wrote {REPO_JSON} ({len(d.get('tickets',[]))} tickets) [{'replace' if REPLACE else 'merged'}] — commit+push to publish")
+except Exception as e:
+    print(f"(could not write repo data json: {e})")
