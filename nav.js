@@ -39,6 +39,8 @@
       blurb:'Inbound/outbound chats, wait & response times, engagement and reply rate per agent.' },
     { path:'/operations/storage-freshdesk',           label:'Freshdesk',        icon:'🎫', badge:'live',
       blurb:'Daily ticket KPIs — in/resolved/backlog, SLA %, resolve times, by queue and by agent.' },
+    { path:'/operations/storage-freshdesk-triage',    label:'Freshdesk Triage', icon:'🚦', badge:'tool',
+      blurb:'AI triage of open Storage tickets — 🔴/🟠/🔵/🟢 with a one-line reason, reds first. Standing backlog + ageing, auto-resolves greens, flags delivery failures, assigns reds to the team.' },
     { path:'/operations/storage-csat',                label:'CSAT & NPS',       icon:'⭐', badge:'live',
       blurb:'Weekly CSAT per Ops agent and NPS (collection / redelivery / combined) with promoters & detractors.' },
     { path:'/operations/storage-call-grading',        label:'Call Grading',     icon:'📞', badge:'live',
