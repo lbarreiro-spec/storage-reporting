@@ -45,6 +45,44 @@ try:
     gd=datetime.fromisoformat(gen); genh=gd.strftime('%d %b %Y, %H:%M UTC')
 except Exception: genh=gen
 
+# ---- Standing backlog (FULL open set, not just this run) + ageing buckets ----
+# Computed from the merged feed so the report shows total volumes still sitting in
+# each RAG and how long they've been there, alongside the per-run "what's new" counts.
+def _agebucket(h):
+    h=float(h or 0)
+    if h<24:  return 'new'   # <24h
+    if h<72:  return 'd13'   # 1-3d
+    if h<168: return 'd37'   # 3-7d
+    return 'gt7'             # >7d
+_open=[t for t in d.get('tickets',[]) if not t.get('resolved')]
+backlog={}
+for rag in ('red','amber','blue','green'):
+    rows=[t for t in _open if t.get('rag')==rag]
+    bk={'new':0,'d13':0,'d37':0,'gt7':0}
+    for t in rows: bk[_agebucket(t.get('age_h'))]+=1
+    oldest=max([(t.get('age_h') or 0) for t in rows], default=0)/24.0
+    backlog[rag]={'total':len(rows),'oldest_d':round(oldest),**bk}
+backlog['open_total']=len(_open)
+d['backlog']=backlog
+try: json.dump(backlog, open('/tmp/triage_backlog.json','w'), indent=2)
+except Exception: pass
+
+# Inject the standing-backlog block into the Slack summary the `assign` step wrote
+# (assign runs first, then this generator, then the Slack post — so the file exists).
+_EMO={'red':'🔴','amber':'🟠','blue':'🔵'}
+_bl=[f"📊 *Standing backlog: {backlog['open_total']} open*"]
+for rag in ('red','amber','blue'):
+    s=backlog[rag]
+    if not s['total']: continue
+    _bl.append(f"   {_EMO[rag]} *{s['total']}* {rag} — {s['new']} new · {s['d13']} (1–3d) · {s['d37']} (3–7d) · *{s['gt7']} >7d* (oldest {s['oldest_d']}d)")
+_BLOCK='\n'.join(_bl)
+_SLK='/tmp/triage_slack_assign.txt'
+try:
+    _txt=open(_SLK).read()
+    if '📊 *Standing backlog' not in _txt and '🧑‍💻' in _txt:
+        open(_SLK,'w').write(_txt.replace('🧑‍💻', _BLOCK+'\n\n🧑‍💻', 1))
+except Exception: pass
+
 ORDER={'red':0,'amber':1,'blue':2,'green':3}
 tickets=sorted(tickets,key=lambda t:(ORDER.get(t.get('rag'),9), -(t.get('age_h') or 0)))
 # Worklist board: show the actionable tickets (reds, awaiting-customer blues, flagged bounces)
@@ -84,6 +122,28 @@ for t in tickets:
       <td class="rsn">{esc(t.get('reason'))}</td>
       <td class="age">{age_str(t.get('age_h'))}</td>
     </tr>""")
+
+# Standing-backlog ageing strip: total open per RAG and how long they've been sitting.
+_RAGMETA={'red':('🔴','Urgent'),'amber':('🟠','Can wait'),'blue':('🔵','Awaiting customer')}
+agerows=[]
+for rag in ('red','amber','blue'):
+    s=backlog.get(rag,{})
+    if not s.get('total'): continue
+    emo,lbl=_RAGMETA[rag]
+    agerows.append(f"""<tr class="ag-{rag}">
+      <td class="agr"><span class="pill {rag}">{emo} {lbl}</span></td>
+      <td class="agt">{s.get('total',0)}</td>
+      <td>{s.get('new',0)}</td><td>{s.get('d13',0)}</td><td>{s.get('d37',0)}</td>
+      <td class="agstale">{s.get('gt7',0)}</td>
+      <td class="agold">{s.get('oldest_d',0)}d</td>
+    </tr>""")
+ageing_html=f"""<div class="ageing">
+  <div class="ag-h">Standing backlog — {backlog.get('open_total',0)} open · ageing by category</div>
+  <table class="agtbl">
+    <thead><tr><th>Category</th><th>Total open</th><th>&lt;24h</th><th>1&ndash;3d</th><th>3&ndash;7d</th><th>&gt;7d</th><th>Oldest</th></tr></thead>
+    <tbody>{''.join(agerows)}</tbody>
+  </table>
+</div>"""
 
 HTML=f"""<!DOCTYPE html>
 <html lang="en"><head>
@@ -135,6 +195,17 @@ tr.r-red{{background:#fef6f6}} tr.r-amber{{background:#fffaf2}} tr.r-blue{{backg
 .actb{{display:inline-block;margin-left:8px;font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:20px;vertical-align:middle}}
 .actb.close{{background:#dcfce7;color:#15803d}} .actb.flag{{background:#ede9fe;color:#6d28d9}}
 .foot{{margin-top:26px;font-size:12px;color:#9ca3af;border-top:1px solid #e8edf2;padding-top:16px}}
+.ageing{{background:#fff;border:1px solid #e2e2e2;border-radius:13px;padding:18px 20px;margin-bottom:26px;box-shadow:0 1px 3px rgba(0,0,0,0.05)}}
+.ag-h{{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#6b7280;font-weight:700;margin-bottom:12px}}
+.agtbl{{box-shadow:none;border:none;border-radius:0}}
+.agtbl th{{background:transparent;text-align:right;padding:6px 12px}}
+.agtbl th:first-child{{text-align:left}}
+.agtbl td{{text-align:right;padding:8px 12px;font-size:14px;font-weight:600;color:#1f2937;border-bottom:1px solid #f1f3f5}}
+.agtbl td.agr{{text-align:left}}
+.agtbl td.agt{{color:#002333;font-weight:800}}
+.agtbl td.agstale{{color:#b45309;font-weight:800}}
+.agtbl td.agold{{color:#9ca3af;font-weight:600}}
+.agtbl tr:last-child td{{border-bottom:none}}
 </style></head><body>
 <nav class="sidebar">
   <div class="sidebar-brand">
@@ -171,6 +242,7 @@ tr.r-red{{background:#fef6f6}} tr.r-amber{{background:#fffaf2}} tr.r-blue{{backg
     <div class="kpi res"><div class="n">{d.get('resolved',0)}</div><div class="l">Auto-resolved</div></div>
     <div class="kpi flag"><div class="n">{d.get('flagged',0)}</div><div class="l">Flagged resend</div></div>
   </div>
+  {ageing_html}
   <table>
     <thead><tr><th>RAG</th><th>Ticket</th><th>Queue</th><th>Subject</th><th>Owner</th><th>Why</th><th>Age</th></tr></thead>
     <tbody>
