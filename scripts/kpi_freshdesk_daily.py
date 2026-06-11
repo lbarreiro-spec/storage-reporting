@@ -51,9 +51,9 @@ STORAGE_GROUPS = {
     31000119031: "Storage Warehouse Redeliveries",
 }
 
-TRACKED_AGENTS = ['Shaun', 'Emmanuel', 'Theo', 'Shafwaan']
+TRACKED_AGENTS = ['Sage', 'Emmanuel', 'Theo', 'Shafwaan']
 AGENT_NAME_FRAGMENTS = {
-    'Shaun':    'Shaun G',
+    'Sage':     'Sage',
     'Emmanuel': 'Emmanuel',
     'Theo':     'Theo',
     'Shafwaan': 'Shafwaan',
@@ -73,12 +73,12 @@ ROW = {
     'Storage':                          {'in':21,'resolved':22,'backlog':23,'fr_sla':24},
     'Storage Whs. Redeliveries':        {'in':25,'resolved':26,'backlog':27,'fr_sla':28},
     'Storage Complaints':               {'in':29,'resolved':30,'backlog':31,'fr_sla':32},
-    'Shaun':    {'assigned':34,'resolved':35,'backlog':36,'fr_sla':37,'avg':38,'p90':39},
+    'Sage':     {'assigned':34,'resolved':35,'backlog':36,'fr_sla':37,'avg':38,'p90':39},
     'Emmanuel': {'assigned':40,'resolved':41,'backlog':42,'fr_sla':43,'avg':44,'p90':45},
     'Theo':     {'assigned':46,'resolved':47,'backlog':48,'fr_sla':49,'avg':50,'p90':51},
     'Shafwaan': {'assigned':52,'resolved':53,'backlog':54,'fr_sla':55,'avg':56,'p90':57},
     'quality': {
-        'Shaun':    {'replied':59,'note_only':60,'nothing':61,'reply_rate':62,'fast':63},
+        'Sage':     {'replied':59,'note_only':60,'nothing':61,'reply_rate':62,'fast':63},
         'Emmanuel': {'replied':64,'note_only':65,'nothing':66,'reply_rate':67,'fast':68},
         'Theo':     {'replied':69,'note_only':70,'nothing':71,'reply_rate':72,'fast':73},
         'Shafwaan': {'replied':74,'note_only':75,'nothing':76,'reply_rate':77,'fast':78},
@@ -408,7 +408,7 @@ for a, q in quality_metrics.items():
 import os as _os
 
 _AGENT_DISPLAY = {
-    'Shaun':    'Shaun Gae',
+    'Sage':     'Sage I',
     'Emmanuel': 'Emmanuel Nsenga',
     'Theo':     'Theo J',
     'Shafwaan': 'Shafwaan Titus',
