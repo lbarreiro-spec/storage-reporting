@@ -31,6 +31,8 @@
       blurb:'Storage sales ranking by agent — bookings & revenue, updated live from the team sheet.' },
     { path:'/operations/storage-calculator',          label:'Storage Pricing',  icon:'🧮', badge:'tool',
       blurb:'Agent pricing tool — Sq Ft / M² sizing plus price-match for Access, Non-Access & BlueSpace (Spain): full price, discount ladder and a 15% margin floor. Live from the price sheet.' },
+    { path:'/operations/storage-placement-map',       label:'Placement Map',    icon:'🗺️', badge:'tool',
+      blurb:'Find the best storage site for any postcode — pins sized by sell priority, with each site’s address, opening hours, pricing and sales notes. Live from the master storage map.' },
     { path:'/operations/storage-voice-activity',      label:'Voice Activity',   icon:'🎙️', badge:'live',
       blurb:'Inbound + outbound dials, answer rate, talk time & AHT per agent. Month selector + ops/sales toggle.' },
     { path:'/operations/storage-daily-activity',      label:'Daily Activity',   icon:'📊', badge:'live',
