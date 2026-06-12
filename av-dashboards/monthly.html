@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monthly Trends — AnyVan Storage</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<meta name="av-dashboard-api" content="https://63g6ly45b0.execute-api.eu-west-1.amazonaws.com/production">
+<script src="https://assets.anyvan.com/tracking/av-track.7fa8936e.js"></script>
+<script>window.av && window.av.configureTracking && window.av.configureTracking({ baseUrl: 'https://www.anyvan.com' })</script>
+<script src="https://assets.anyvan.com/av-dashboards/av-dashboard.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --mono:'SF Mono','Menlo','Monaco',monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
+}
+html,body{height:100%;font-family:var(--sans);background:#f5f7fa}
+body{display:flex;flex-direction:column;min-height:100vh;flex-direction:row}
+
+/* SIDEBAR */
+.sidebar{
+  width:220px;min-width:220px;background:#002333;
+  display:flex;flex-direction:column;
+  padding:24px 0;flex-shrink:0;height:100vh;position:sticky;top:0;z-index:100;
+  border-top:4px solid #ffc907;
+}
+.sidebar-brand{padding:0 24px 24px;margin-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.08)}
+.sidebar-label{font-size:18px;font-weight:800;letter-spacing:-.02em;color:#fff;margin-bottom:2px}
+.sidebar-label span{color:#41a5dd}
+.sidebar-title{font-size:12px;font-weight:500;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:.12em}
+.nav-link{
+  display:block;padding:10px 24px;font-size:13px;color:rgba(255,255,255,0.65);
+  text-decoration:none;transition:color .12s,background .12s;border-left:3px solid transparent;
+}
+.nav-link:hover{color:rgba(255,255,255,0.85)}
+.nav-link.active{color:#fff;border-left-color:#41a5dd;background:rgba(65,165,221,0.12)}
+.sidebar-bottom{margin-top:auto;padding:16px 24px;border-top:1px solid rgba(255,255,255,0.08)}
+.sidebar-home{font-size:13px;color:rgba(255,255,255,0.65);text-decoration:none;transition:color .12s}
+.sidebar-home:hover{color:#fff}
+
+/* MAIN */
+.main-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:100vh}
+
+/* TOP BAR */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 28px;border-bottom:1px solid #e2e2e2;
+  background:#fff;flex-shrink:0;z-index:20;
+}
+.topbar-title{font-size:15px;font-weight:600;color:#002333;letter-spacing:-.01em}
+.topbar-meta{font-size:12px;color:#6b7280;font-family:var(--mono)}
+
+/* METRIC TABS */
+.tab-bar{
+  display:flex;gap:0;overflow-x:auto;flex-shrink:0;
+  border-bottom:1px solid #e2e2e2;background:#fff;padding:0 20px;
+}
+.tab-bar::-webkit-scrollbar{height:3px}
+.tab-bar::-webkit-scrollbar-thumb{background:#cfe3f0;border-radius:2px}
+.tab{
+  flex-shrink:0;padding:11px 16px;font-size:13px;color:#6b7280;
+  cursor:pointer;border-bottom:2px solid transparent;transition:color .1s,border-color .1s;
+  white-space:nowrap;
+}
+.tab:hover{color:#002333}
+.tab.active{color:#002333;border-bottom-color:#41a5dd;font-weight:600}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;padding:28px 32px;gap:24px;overflow-y:auto}
+
+.chart-header{display:flex;align-items:baseline;gap:16px}
+.chart-title{font-size:20px;font-weight:700;letter-spacing:-.01em;color:#002333}
+
+.chart-wrap{
+  background:#fff;border:1px solid #e2e2e2;border-radius:12px;
+  padding:24px;position:relative;box-shadow:0 1px 3px rgba(0,0,0,0.06);
+}
+.chart-wrap canvas{max-height:380px}
+
+/* LEGEND */
+.legend{display:flex;gap:20px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:7px;font-size:13px;color:#6b7280;cursor:pointer;transition:opacity .15s}
+.legend-item.faded{opacity:.35}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+/* DATA TABLE */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead th{
+  background:#f4f4f4;color:#6b7280;font-size:12px;text-transform:uppercase;
+  letter-spacing:.08em;padding:9px 12px;border-bottom:1px solid #e2e2e2;
+  font-weight:600;white-space:nowrap;text-align:right;
+}
+thead th:first-child{text-align:left}
+tbody td{
+  font-family:var(--mono);font-size:13px;padding:9px 12px;
+  border-bottom:1px solid #f0f0f0;color:#374151;text-align:right;white-space:nowrap;
+  background:#fff;
+}
+tbody td:first-child{font-family:var(--sans);font-size:13px;font-weight:500;color:#111827;text-align:left}
+tbody tr:hover td{background:#fafafa}
+td.cur{color:#002333;font-weight:600}
+
+.refresh-btn{
+  background:#fff;border:1px solid #e2e2e2;border-radius:7px;padding:4px 10px;
+  font-family:var(--sans);font-size:13px;color:#6b7280;cursor:pointer;transition:all .12s;
+}
+.refresh-btn:hover:not(:disabled){border-color:#41a5dd;color:#106799}
+.refresh-btn:disabled{opacity:0.5;cursor:default}
+.spin{display:inline-block;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#cfe3f0;border-radius:2px}
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-label">Any<span>Van</span></div>
+    <div class="sidebar-title">Storage Reporting</div>
+  </div>
+  <a class="nav-link" href="/operations/storage-mtd">MTD Revenue</a>
+  <a class="nav-link active" href="/operations/storage-monthly">Monthly Trends</a>
+  <a class="nav-link" href="/operations/storage-voice-activity">Voice Activity</a>
+  <a class="nav-link" href="/operations/storage-daily-activity">Daily Activity</a>
+  <a class="nav-link" href="/operations/storage-whatsapp">WhatsApp</a>
+  <a class="nav-link" href="/operations/storage-freshdesk">Freshdesk</a>
+  <a class="nav-link" href="/operations/storage-csat">CSAT &amp; NPS</a>
+  <a class="nav-link" href="/operations/storage-call-grading">Call Grading</a>
+  <a class="nav-link" href="/operations/storage-debt">Debt Intelligence</a>
+  <div class="sidebar-bottom">
+    <a class="sidebar-home" href="/operations/storage">← All boards (Hub)</a>
+  </div>
+</nav>
+
+<div class="main-wrap">
+<div class="topbar">
+  <span class="topbar-title">Monthly Trends</span>
+  <div style="display:flex;align-items:center;gap:12px">
+    <span class="refresh-note" title="Data updates daily. ↻ Refresh kicks off a quick rebuild (~1 min) then reloads." style="display:inline-flex;align-items:center;font-size:11px;font-weight:600;border-radius:20px;padding:4px 10px;white-space:nowrap;background:#fffbeb;color:#b45309;border:1px solid #fcd34d">Updates daily · ~1 min refresh</span>
+    <button class="refresh-btn" id="refresh-btn" onclick="triggerRefresh()" title="Triggers the fetch_monthly rebuild via GitHub Actions, then reloads.">↻ Refresh</button>
+    <span class="topbar-meta" id="meta">Loading…</span>
+  </div>
+</div>
+
+<div class="tab-bar" id="tabs"></div>
+
+<div class="main">
+  <!-- REVENUE OVERVIEW -->
+  <div class="chart-wrap" id="rev-overview-wrap" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <span style="font-size:15px;font-weight:700;color:#002333;letter-spacing:-.01em">Revenue Overview</span>
+      <div class="legend" id="rev-legend"></div>
+    </div>
+    <canvas id="rev-chart" style="max-height:260px"></canvas>
+  </div>
+
+  <div class="chart-header">
+    <div class="chart-title" id="chart-title">—</div>
+  </div>
+  <div class="legend" id="legend"></div>
+  <div class="chart-wrap">
+    <canvas id="chart"></canvas>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr id="tbl-head"></tr></thead>
+      <tbody id="tbl-body"></tbody>
+    </table>
+  </div>
+
+</div>
+</div>
+
+<script>
+Chart.register(ChartDataLabels)
+
+const DATA_URL = 'https://robbosd.github.io/storage-reporting/data/monthly.json'
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+
+// Year colour palette
+const YEAR_STYLES = {
+  '2023': { color: 'rgba(156,163,175,0.7)',  border: 'rgba(156,163,175,0.7)',  width: 1.5 },
+  '2024': { color: 'rgba(107,114,128,0.85)', border: 'rgba(107,114,128,0.85)', width: 1.5 },
+  '2025': { color: 'rgba(16,103,153,0.85)',  border: 'rgba(16,103,153,0.85)',  width: 2 },
+  '2026': { color: '#002333',                border: '#002333',                width: 2.5 },
+}
+
+let _data           = null
+let _chart          = null
+let _activeIdx      = 0
+let _hiddenYrs      = new Set()
+
+function fmt(v, format){
+  if(v == null) return '—'
+  if(format === 'money') return '£' + Math.round(v).toLocaleString('en-GB')
+  if(format === 'pct')   return v.toFixed(1) + '%'
+  if(format === 'int')   return Math.round(v).toLocaleString('en-GB')
+  if(format === 'float') return Math.round(v).toLocaleString('en-GB')
+  return v
+}
+
+function yoyPct(cy, py){
+  if(cy == null || py == null || py === 0) return null
+  return ((cy - py) / Math.abs(py)) * 100
+}
+
+function fmtYoy(pct){
+  if(pct == null) return '—'
+  const sign = pct >= 0 ? '+' : ''
+  return sign + pct.toFixed(1) + '%'
+}
+
+function yoyColor(pct){
+  if(pct == null) return '#9ca3af'
+  return pct >= 0 ? '#16a34a' : '#dc2626'
+}
+
+function renderMetric(idx){
+  _activeIdx = idx
+  const m = _data.metrics[idx]
+
+  // Update tab highlight
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i === idx))
+  document.getElementById('chart-title').textContent = m.label
+
+  // Legend
+  const legendEl = document.getElementById('legend')
+  legendEl.innerHTML = ''
+  m.years.forEach(y => {
+    const s = YEAR_STYLES[y] || YEAR_STYLES['2025']
+    const el = document.createElement('div')
+    el.className = 'legend-item' + (_hiddenYrs.has(y) ? ' faded' : '')
+    el.innerHTML = `<div class="legend-dot" style="background:${s.color}"></div><span>${y}</span>`
+    el.addEventListener('click', () => {
+      _hiddenYrs.has(y) ? _hiddenYrs.delete(y) : _hiddenYrs.add(y)
+      renderMetric(_activeIdx)
+    })
+    legendEl.appendChild(el)
+  })
+
+  // Chart datasets
+  const latestYr = m.years[m.years.length - 1]
+  const datasets = m.years.map(y => {
+    const s = YEAR_STYLES[y] || YEAR_STYLES['2025']
+    const isLatest = y === latestYr
+    const priorY   = String(parseInt(y) - 1)
+
+    return {
+      label: y,
+      data: m.series[y],
+      borderColor: s.border,
+      backgroundColor: 'transparent',
+      borderWidth: s.width,
+      pointRadius: 3,
+      pointHoverRadius: 5,
+      pointBackgroundColor: s.border,
+      tension: 0.3,
+      hidden: _hiddenYrs.has(y),
+      spanGaps: false,
+      datalabels: isLatest ? {
+        display: (ctx) => ctx.dataset.data[ctx.dataIndex] != null,
+        anchor: 'end',
+        align: 'top',
+        offset: 4,
+        font: { size: 11, family: '-apple-system, BlinkMacSystemFont, sans-serif', weight: '700' },
+        formatter: (value, ctx) => {
+          if(value == null) return ''
+          const py = m.series[priorY]?.[ctx.dataIndex]
+          const pct = yoyPct(value, py)
+          return pct != null ? fmtYoy(pct) : ''
+        },
+        color: (ctx) => {
+          const value = ctx.dataset.data[ctx.dataIndex]
+          const py = m.series[priorY]?.[ctx.dataIndex]
+          return yoyColor(yoyPct(value, py))
+        },
+      } : { display: false },
+    }
+  })
+
+  const tooltipLabel = (ctx) => {
+    if(ctx.raw == null) return null
+    const year = ctx.dataset.label
+    const mi = ctx.dataIndex
+    const priorYear = String(parseInt(year) - 1)
+    const priorVal = m.series[priorYear] ? m.series[priorYear][mi] : null
+    const pct = yoyPct(ctx.raw, priorVal)
+    const yoy = pct != null ? `  ${fmtYoy(pct)} YoY` : ''
+    return ` ${year}: ${fmt(ctx.raw, m.format)}${yoy}`
+  }
+
+  if(_chart){
+    _chart.data.datasets = datasets
+    _chart.options.plugins.tooltip.callbacks.label = tooltipLabel
+    _chart.options.scales.y.ticks.callback = (v) => fmt(v, m.format)
+    _chart.options.layout = { padding: { top: 28 } }
+    _chart.update()
+  } else {
+    const ctx = document.getElementById('chart').getContext('2d')
+    _chart = new Chart(ctx, {
+      type: 'line',
+      data: { labels: MONTHS, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        layout: { padding: { top: 28 } },
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#fff',
+            borderColor: '#e2e2e2',
+            borderWidth: 1,
+            titleColor: '#111827',
+            bodyColor: '#6b7280',
+            titleFont: { family: "-apple-system, sans-serif", size: 13, weight: '600' },
+            bodyFont: { family: "'SF Mono', monospace", size: 13 },
+            padding: 12,
+            callbacks: { label: tooltipLabel }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: '#f0f0f0' },
+            ticks: { color: '#6b7280', font: { family: "'SF Mono', monospace", size: 12 } },
+            border: { color: '#e2e2e2' }
+          },
+          y: {
+            grid: { color: '#f0f0f0' },
+            ticks: {
+              color: '#6b7280',
+              font: { family: "'SF Mono', monospace", size: 12 },
+              callback: (v) => fmt(v, m.format)
+            },
+            border: { color: '#e2e2e2' }
+          }
+        }
+      }
+    })
+  }
+
+  // Table
+  const curYear = new Date().getFullYear().toString()
+  const head = document.getElementById('tbl-head')
+  const body = document.getElementById('tbl-body')
+
+  // Find the two most recent years for YoY column
+  const latestYear  = m.years[m.years.length - 1]
+  const priorYear   = m.years[m.years.length - 2] || null
+
+  head.innerHTML = '<th>Month</th>' + m.years.map(y =>
+    `<th style="color:${y === curYear ? '#002333' : ''};font-weight:${y === curYear ? '700' : ''}">${y}</th>`
+  ).join('') + (priorYear ? `<th style="color:#002333;font-weight:700">${latestYear} vs ${priorYear}</th>` : '')
+
+  // For the current year, blank out months beyond the last one with data
+  const curYearSeries = m.series[curYear] || []
+  const lastDataMi = curYearSeries.reduce((last, v, i) => v != null ? i : last, -1)
+
+  body.innerHTML = MONTHS.map((mo, mi) => {
+    const cells = m.years.map(y => {
+      const v = m.series[y][mi]
+      const isCur = y === curYear
+      if(isCur && mi > lastDataMi) return '<td></td>'
+      return `<td class="${isCur && v != null ? 'cur' : ''}">${fmt(v, m.format)}</td>`
+    }).join('')
+
+    // YoY column
+    let yoyCell = ''
+    if(priorYear){
+      const cy  = m.series[latestYear]?.[mi]
+      const py  = m.series[priorYear]?.[mi]
+      const pct = yoyPct(cy, py)
+      const tooFar = m.series[latestYear] && mi > m.series[latestYear].reduce((l,v,i)=>v!=null?i:l,-1)
+      yoyCell = tooFar
+        ? '<td></td>'
+        : `<td style="font-family:var(--mono);font-size:13px;text-align:right;font-weight:600;color:${yoyColor(pct)}">${fmtYoy(pct)}</td>`
+    }
+
+    return `<tr><td>${mo}</td>${cells}${yoyCell}</tr>`
+  }).join('')
+}
+
+function renderRevenueChart(data){
+  const invM   = data.metrics.find(m => m.key === 'invoice_revenue')
+  const paidM  = data.metrics.find(m => m.key === 'paid_cash')
+  const transM = data.metrics.find(m => m.key === 'transport_fee')
+  const invTM  = data.metrics.find(m => m.key === 'invoiced_plus_transport')
+  const paidTM = data.metrics.find(m => m.key === 'paid_plus_transport')
+  if(!invM && !paidM && !transM) return
+
+  const startYear = 2024
+  const now = new Date()
+  const curYear = now.getFullYear()
+  const curMonth = now.getMonth()
+
+  const labels = []
+  const series = { inv:[], paid:[], trans:[], invT:[], paidT:[] }
+
+  for(let y = startYear; y <= curYear; y++){
+    const ys = String(y)
+    const maxMo = (y === curYear) ? curMonth : 12
+    for(let m = 0; m < maxMo; m++){
+      labels.push(MONTHS[m] + " '" + ys.slice(2))
+      series.inv.push(invM?.series[ys]?.[m] ?? null)
+      series.paid.push(paidM?.series[ys]?.[m] ?? null)
+      series.trans.push(transM?.series[ys]?.[m] ?? null)
+      series.invT.push(invTM?.series[ys]?.[m] ?? null)
+      series.paidT.push(paidTM?.series[ys]?.[m] ?? null)
+    }
+  }
+
+  const datasets = [
+    { label:'Invoiced',          data:series.inv,   borderColor:'#002333', borderWidth:2,   borderDash:undefined },
+    { label:'Paid',              data:series.paid,  borderColor:'#41a5dd', borderWidth:2,   borderDash:undefined },
+    { label:'Transport',         data:series.trans, borderColor:'#f59e0b', borderWidth:2,   borderDash:undefined },
+    { label:'Inv + Transport',   data:series.invT,  borderColor:'#6b7280', borderWidth:1.5, borderDash:[4,3] },
+    { label:'Paid + Transport',  data:series.paidT, borderColor:'#9ca3af', borderWidth:1.5, borderDash:[4,3] },
+  ].map(d => ({
+    ...d,
+    backgroundColor: 'transparent',
+    pointRadius: 2,
+    pointHoverRadius: 4,
+    pointBackgroundColor: d.borderColor,
+    tension: 0.3,
+    spanGaps: false,
+    segment: d.borderDash ? { borderDash: () => d.borderDash } : undefined,
+  }))
+
+  document.getElementById('rev-overview-wrap').style.display = ''
+
+  const legendEl = document.getElementById('rev-legend')
+  datasets.forEach(ds => {
+    const el = document.createElement('div')
+    el.className = 'legend-item'
+    el.innerHTML = `<div class="legend-dot" style="background:${ds.borderColor}"></div><span>${ds.label}</span>`
+    legendEl.appendChild(el)
+  })
+
+  const ctx = document.getElementById('rev-chart').getContext('2d')
+  new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options:{
+      responsive: true,
+      interaction:{ mode:'index', intersect:false },
+      plugins:{
+        legend:{ display:false },
+        datalabels:{ display:false },
+        tooltip:{
+          backgroundColor:'#fff', borderColor:'#e2e2e2', borderWidth:1,
+          titleColor:'#111827', bodyColor:'#6b7280',
+          titleFont:{ family:'-apple-system,sans-serif', size:13, weight:'600' },
+          bodyFont:{ family:"'SF Mono',monospace", size:12 },
+          padding:12,
+          callbacks:{
+            label: ctx => ctx.raw == null ? null :
+              ` ${ctx.dataset.label}: £${Math.round(ctx.raw).toLocaleString('en-GB')}`
+          }
+        }
+      },
+      scales:{
+        x:{ grid:{ color:'#f0f0f0' }, ticks:{ font:{ size:11 }, color:'#6b7280', maxRotation:45 }, border:{ color:'#e2e2e2' } },
+        y:{
+          grid:{ color:'#f0f0f0' },
+          ticks:{
+            font:{ size:11 }, color:'#6b7280',
+            callback: v => '£'+Number(v/1000).toFixed(0)+'k'
+          },
+          border:{ color:'#e2e2e2' }
+        }
+      }
+    }
+  })
+}
+
+async function load(){
+  let data
+  try {
+    const r = await fetch(DATA_URL + '?_=' + Date.now())
+    if(!r.ok) throw new Error(r.status)
+    data = await r.json()
+  } catch(e) {
+    document.getElementById('meta').textContent = 'Failed to load monthly.json'
+    return
+  }
+  _data = data
+  document.getElementById('meta').textContent = 'updated ' + data.updated
+
+  renderRevenueChart(data)
+
+  // Build tabs
+  const tabBar = document.getElementById('tabs')
+  data.metrics.forEach((m, i) => {
+    const t = document.createElement('div')
+    t.className = 'tab' + (i === 0 ? ' active' : '')
+    t.textContent = m.label
+    t.addEventListener('click', () => renderMetric(i))
+    tabBar.appendChild(t)
+  })
+
+  renderMetric(0)
+}
+
+const GITHUB_PAT  = 'worker-handles-auth'
+const GITHUB_REPO = 'Robbosd/storage-reporting'
+const WORKFLOW_ID = 'fetch_monthly.yml'
+
+async function triggerRefresh(){
+  const btn = document.getElementById('refresh-btn')
+  const meta = document.getElementById('meta')
+  btn.disabled = true
+  btn.innerHTML = '<span class="spin">↻</span> Refreshing…'
+  try{
+    const dispatch = await fetch(
+      `https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/dispatches`,
+      {method:'POST',headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify({ref:'main'})}
+    )
+    if(!dispatch.ok) throw new Error(`Dispatch failed: ${dispatch.status}`)
+    if(meta) meta.textContent = 'Triggering workflow…'
+    await new Promise(r=>setTimeout(r,5000))
+    let runId = null
+    for(let i=0;i<12;i++){
+      const runs = await fetch(`https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/runs?per_page=1`,
+        {headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json'}})
+      const d = await runs.json()
+      if(d.workflow_runs?.[0]){runId=d.workflow_runs[0].id;break}
+      await new Promise(r=>setTimeout(r,3000))
+    }
+    if(!runId) throw new Error('Could not find workflow run')
+    if(meta) meta.textContent = 'Workflow running…'
+    for(let i=0;i<50;i++){
+      await new Promise(r=>setTimeout(r,6000))
+      const check = await fetch(`https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/runs/${runId}`,
+        {headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json'}})
+      const run = await check.json()
+      const elapsed = Math.round((i+1)*6/60*10)/10
+      if(meta) meta.textContent = `Running… ${elapsed}m`
+      if(run.status==='completed'){
+        if(run.conclusion!=='success') throw new Error(`Workflow ${run.conclusion}`)
+        break
+      }
+    }
+    if(meta) meta.textContent = 'Deploying…'
+    await new Promise(r=>setTimeout(r,12000))
+    location.reload()
+  }catch(e){
+    alert('Refresh failed: '+e.message)
+    console.error(e)
+  }finally{
+    btn.disabled = false
+    btn.innerHTML = '↻ Refresh'
+  }
+}
+
+load()
+</script>
+</body>
+</html>

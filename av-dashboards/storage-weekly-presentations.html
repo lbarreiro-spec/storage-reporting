@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Storage Weekly — Presentations</title>
+<meta name="av-dashboard-api" content="https://63g6ly45b0.execute-api.eu-west-1.amazonaws.com/production">
+<script src="https://assets.anyvan.com/tracking/av-track.7fa8936e.js"></script>
+<script>window.av && window.av.configureTracking && window.av.configureTracking({ baseUrl: 'https://www.anyvan.com' })</script>
+<script src="https://assets.anyvan.com/av-dashboards/av-dashboard.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;--mono:'SF Mono','Menlo',monospace;
+  --navy:#002333;--blue:#41a5dd;--yellow:#ffc907;--link:#106799}
+body{font-family:var(--sans);background:#f5f7fa;min-height:100vh;color:#111827}
+.brandbar{background:var(--navy);color:#fff;padding:14px 40px;display:flex;align-items:center;gap:14px;border-bottom:4px solid var(--yellow)}
+.brandbar .logo{font-size:18px;font-weight:800;letter-spacing:-.02em;color:#fff}
+.brandbar .logo span{color:var(--blue)}
+.brandbar .seg{font-size:13px;color:rgba(255,255,255,0.6);font-weight:500;border-left:1px solid rgba(255,255,255,0.2);padding-left:14px}
+.brandbar .home{margin-left:auto;font-size:13px;color:rgba(255,255,255,0.65);text-decoration:none}
+.brandbar .home:hover{color:#fff}
+.wrap{max-width:1100px;margin:0 auto;padding:40px}
+.head{margin-bottom:28px}
+.head .lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--blue);font-weight:700;margin-bottom:6px}
+.head h1{font-size:28px;font-weight:800;color:var(--navy);letter-spacing:-.01em}
+.head p{font-size:14px;color:#6b7280;margin-top:8px;max-width:640px;line-height:1.5}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
+.card{display:block;text-decoration:none;background:#fff;border:1px solid #e2e2e2;border-radius:14px;overflow:hidden;
+  box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all .14s}
+.card:hover{border-color:var(--blue);box-shadow:0 8px 24px rgba(65,165,221,0.18);transform:translateY(-2px)}
+.thumb{width:100%;aspect-ratio:16/9;background:#eef4f8;object-fit:cover;display:block;border-bottom:1px solid #e8edf2}
+.card .body{padding:16px 18px 18px}
+.card h2{font-size:16px;font-weight:700;color:var(--navy);margin-bottom:4px}
+.card .meta{font-size:12px;color:#6b7280;font-family:var(--mono)}
+.card .arrow{margin-top:12px;font-size:13px;font-weight:600;color:var(--blue)}
+.state{padding:60px 0;text-align:center;color:#6b7280;font-size:14px}
+.foot{margin-top:34px;font-size:12px;color:#9ca3af;border-top:1px solid #e8edf2;padding-top:16px}
+</style>
+</head>
+<body>
+<div class="brandbar">
+  <span class="logo">Any<span>Van</span></span>
+  <span class="seg">Storage Weekly</span>
+  <a class="home" href="/operations/storage">← All boards (Hub)</a>
+</div>
+<div class="wrap">
+  <div class="head">
+    <div class="lbl">Storage · Leadership</div>
+    <h1>Weekly Presentations</h1>
+    <p>Every Storage Weekly presentation, archived as an AnyVan-branded deck. Click any week to open it — slides, commentary and type per screenshot.</p>
+  </div>
+  <div id="grid" class="grid"></div>
+  <div id="state" class="state">Loading…</div>
+  <div class="foot">Presentations are auto-built from the weekly Google Slides deck and stored in Supabase. Newest first.</div>
+</div>
+<script>
+const SUPABASE_URL='https://loyvicdabsncwhssjkxy.supabase.co'
+const SUPABASE_ANON_KEY='sb_publishable_QWQOo0CWifid4QyyRzRYvQ_P5DP8ecZ'
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)
+function fmtDate(d){ if(!d) return ''; const dt=new Date(d+'T00:00:00Z'); return dt.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'}) }
+async function load(){
+  let rows,error
+  try{ ({data:rows,error}=await db.from('storage_presentations').select('id,title,week_ending,slides').order('week_ending',{ascending:false})); if(error) throw error }
+  catch(e){ document.getElementById('state').textContent='Failed to load: '+(e.message||e); return }
+  const grid=document.getElementById('grid'), state=document.getElementById('state')
+  if(!rows||!rows.length){ state.textContent='No presentations yet.'; return }
+  state.remove()
+  rows.forEach(r=>{
+    const slides=r.slides||[]
+    const thumb=(slides.find(s=>s.image_url)||{}).image_url||''
+    const a=document.createElement('a'); a.className='card'; a.href=`/operations/storage-weekly-presentation?id=${encodeURIComponent(r.id)}`
+    a.innerHTML=`${thumb?`<img class="thumb" src="${thumb}" alt="">`:`<div class="thumb"></div>`}
+      <div class="body">
+        <h2>${r.title||r.id}</h2>
+        <div class="meta">${fmtDate(r.week_ending)} · ${slides.length} slide${slides.length===1?'':'s'}</div>
+        <div class="arrow">Open deck →</div>
+      </div>`
+    grid.appendChild(a)
+  })
+}
+load()
+</script>
+</body>
+</html>

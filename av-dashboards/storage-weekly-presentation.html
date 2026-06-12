@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Storage Weekly — Presentation</title>
+<meta name="av-dashboard-api" content="https://63g6ly45b0.execute-api.eu-west-1.amazonaws.com/production">
+<script src="https://assets.anyvan.com/tracking/av-track.7fa8936e.js"></script>
+<script>window.av && window.av.configureTracking && window.av.configureTracking({ baseUrl: 'https://www.anyvan.com' })</script>
+<script src="https://assets.anyvan.com/av-dashboards/av-dashboard.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;--mono:'SF Mono','Menlo',monospace;
+  --navy:#002333;--blue:#41a5dd;--yellow:#ffc907;--link:#106799}
+body{font-family:var(--sans);background:#f5f7fa;min-height:100vh;color:#111827}
+.brandbar{background:var(--navy);color:#fff;padding:14px 40px;display:flex;align-items:center;gap:14px;border-bottom:4px solid var(--yellow);position:sticky;top:0;z-index:50}
+.brandbar .logo{font-size:18px;font-weight:800;letter-spacing:-.02em;color:#fff}
+.brandbar .logo span{color:var(--blue)}
+.brandbar .seg{font-size:13px;color:rgba(255,255,255,0.6);font-weight:500;border-left:1px solid rgba(255,255,255,0.2);padding-left:14px}
+.brandbar .spacer{flex:1}
+.btn{font-size:13px;font-family:var(--mono);color:rgba(255,255,255,0.85);background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:6px 12px;cursor:pointer;transition:all .12s;text-decoration:none}
+.btn:hover:not(:disabled){background:rgba(255,255,255,0.16);color:#fff}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.primary{background:var(--yellow);color:var(--navy);border-color:var(--yellow);font-weight:700}
+.btn.primary:hover:not(:disabled){background:#ffd633}
+.home{font-size:13px;color:rgba(255,255,255,0.65);text-decoration:none}
+.home:hover{color:#fff}
+.wrap{max-width:1180px;margin:0 auto;padding:32px 40px 80px}
+.head{margin-bottom:24px;display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.head .lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--blue);font-weight:700;margin-bottom:6px}
+.head h1{font-size:26px;font-weight:800;color:var(--navy);letter-spacing:-.01em}
+.head .meta{font-size:13px;color:#6b7280;font-family:var(--mono);margin-left:auto}
+.edit-badge{font-size:11px;font-family:var(--mono);color:#b45309;background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:4px 9px}
+
+.slide{background:#fff;border:1px solid #e2e2e2;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:26px;display:grid;grid-template-columns:1.55fr 1fr}
+@media(max-width:900px){.slide{grid-template-columns:1fr}}
+.slide .imgwrap{background:#0b1c26;display:flex;align-items:center;justify-content:center;padding:10px}
+.slide img{width:100%;height:auto;display:block;border-radius:6px}
+.slide .panel{padding:22px 24px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.s-top{display:flex;align-items:center;gap:10px}
+.s-num{font-family:var(--mono);font-size:12px;color:#9ca3af}
+.s-type{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border-radius:20px;background:#eaf6fd;color:var(--link)}
+.s-title{font-size:18px;font-weight:700;color:var(--navy);line-height:1.25}
+.points{list-style:none;display:flex;flex-direction:column;gap:9px}
+.points li{position:relative;padding-left:18px;font-size:14px;line-height:1.5;color:#374151}
+.points li::before{content:'';position:absolute;left:0;top:8px;width:6px;height:6px;border-radius:50%;background:var(--blue)}
+.points.empty-note{color:#9ca3af;font-style:italic;padding-left:0}
+.no-points{color:#9ca3af;font-size:13px;font-style:italic}
+
+/* edit controls */
+.typesel{font-family:var(--mono);font-size:12px;border:1px solid #e2e2e2;border-radius:6px;padding:4px 8px;color:#111827;background:#fff;cursor:pointer}
+.pt-edit{display:flex;flex-direction:column;gap:8px}
+.pt-row{display:flex;gap:8px;align-items:flex-start}
+.pt-row textarea{flex:1;font-family:var(--sans);font-size:14px;line-height:1.45;color:#374151;border:1px solid #e2e2e2;border-radius:8px;padding:8px 10px;resize:vertical;min-height:38px;outline:none}
+.pt-row textarea:focus{border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue)}
+.pt-del{flex-shrink:0;border:1px solid #fecaca;color:#b91c1c;background:#fff;border-radius:6px;padding:6px 9px;cursor:pointer;font-size:12px}
+.pt-del:hover{border-color:#ef4444}
+.pt-add{align-self:flex-start;border:1px dashed #cbd5e1;color:#6b7280;background:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px}
+.pt-add:hover{border-color:var(--blue);color:var(--link)}
+.title-edit{font-size:18px;font-weight:700;color:var(--navy);border:1px solid #e2e2e2;border-radius:8px;padding:6px 10px;width:100%;outline:none}
+.title-edit:focus{border-color:var(--blue)}
+.state{padding:80px 0;text-align:center;color:#6b7280;font-size:14px}
+.spin{display:inline-block;animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="brandbar">
+  <span class="logo">Any<span>Van</span></span>
+  <span class="seg">Storage Weekly</span>
+  <div class="spacer"></div>
+  <span class="edit-badge" id="edit-badge" style="display:none">● Editing — unsaved changes</span>
+  <button class="btn" id="cancel-btn" style="display:none" onclick="cancelEdit()">Cancel</button>
+  <button class="btn primary" id="save-btn" style="display:none" onclick="saveDoc()">Save</button>
+  <button class="btn" id="edit-btn" style="display:none" onclick="startEdit()">✎ Edit</button>
+  <a class="home" href="/operations/storage-weekly-presentations">← All presentations</a>
+</div>
+<div class="wrap">
+  <div class="head" id="head" style="display:none">
+    <div>
+      <div class="lbl">Storage · Weekly Presentation</div>
+      <h1 id="title">—</h1>
+    </div>
+    <div class="meta" id="meta"></div>
+  </div>
+  <div id="deck"></div>
+  <div id="state" class="state">Loading…</div>
+</div>
+<script>
+const SUPABASE_URL='https://loyvicdabsncwhssjkxy.supabase.co'
+const SUPABASE_ANON_KEY='sb_publishable_QWQOo0CWifid4QyyRzRYvQ_P5DP8ecZ'
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)
+const TYPES=['Title','Commentary','Revenue','Funnel','Debt','Capacity','Initiatives','Other']
+
+let _doc=null, _editing=false
+function fmtDate(d){ if(!d) return ''; const dt=new Date(d+'T00:00:00Z'); return dt.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'}) }
+
+async function load(){
+  const params=new URLSearchParams(location.search)
+  let id=params.get('id')
+  let q=db.from('storage_presentations').select('id,title,week_ending,slides')
+  q = id ? q.eq('id',id) : q.order('week_ending',{ascending:false}).limit(1)
+  let rows,error
+  try{ ({data:rows,error}=await q); if(error) throw error }
+  catch(e){ document.getElementById('state').textContent='Failed to load: '+(e.message||e); return }
+  if(!rows||!rows.length){ document.getElementById('state').textContent='Presentation not found.'; return }
+  _doc=rows[0]; if(!_doc.slides) _doc.slides=[]
+  document.getElementById('state').remove()
+  document.getElementById('head').style.display=''
+  document.getElementById('title').textContent=_doc.title||_doc.id
+  document.getElementById('meta').textContent=fmtDate(_doc.week_ending)+' · '+_doc.slides.length+' slides'
+  document.getElementById('edit-btn').style.display=''
+  render()
+}
+
+function render(){
+  const deck=document.getElementById('deck'); deck.innerHTML=''
+  _doc.slides.forEach((s,i)=>{
+    const card=document.createElement('div'); card.className='slide'
+    const imgwrap=document.createElement('div'); imgwrap.className='imgwrap'
+    if(s.image_url){ const img=document.createElement('img'); img.src=s.image_url; img.alt=s.title||('Slide '+(i+1)); imgwrap.appendChild(img) }
+    card.appendChild(imgwrap)
+
+    const panel=document.createElement('div'); panel.className='panel'
+    const top=document.createElement('div'); top.className='s-top'
+    const num=document.createElement('span'); num.className='s-num'; num.textContent='Slide '+(i+1); top.appendChild(num)
+    if(_editing){
+      const sel=document.createElement('select'); sel.className='typesel'
+      TYPES.concat(s.type && !TYPES.includes(s.type)?[s.type]:[]).forEach(t=>{ const o=document.createElement('option'); o.value=t; o.textContent=t; if(t===s.type)o.selected=true; sel.appendChild(o) })
+      sel.onchange=()=>{ s.type=sel.value }
+      top.appendChild(sel)
+    }else if(s.type){
+      const ty=document.createElement('span'); ty.className='s-type'; ty.textContent=s.type; top.appendChild(ty)
+    }
+    panel.appendChild(top)
+
+    if(_editing){
+      const ti=document.createElement('input'); ti.className='title-edit'; ti.value=s.title||''; ti.placeholder='Slide title'
+      ti.oninput=()=>{ s.title=ti.value }
+      panel.appendChild(ti)
+    }else{
+      const ti=document.createElement('div'); ti.className='s-title'; ti.textContent=s.title||''; panel.appendChild(ti)
+    }
+
+    if(_editing){
+      const wrap=document.createElement('div'); wrap.className='pt-edit'
+      ;(s.points||[]).forEach((p,pi)=>wrap.appendChild(ptRow(s,pi)))
+      const add=document.createElement('button'); add.className='pt-add'; add.textContent='+ Add point'
+      add.onclick=()=>{ if(!s.points)s.points=[]; s.points.push(''); render() }
+      wrap.appendChild(add)
+      panel.appendChild(wrap)
+    }else{
+      if(s.points && s.points.length){
+        const ul=document.createElement('ul'); ul.className='points'
+        s.points.forEach(p=>{ const li=document.createElement('li'); li.textContent=p; ul.appendChild(li) })
+        panel.appendChild(ul)
+      }else{
+        const np=document.createElement('div'); np.className='no-points'; np.textContent='No commentary'; panel.appendChild(np)
+      }
+    }
+    card.appendChild(panel)
+    deck.appendChild(card)
+  })
+}
+
+function ptRow(s,pi){
+  const row=document.createElement('div'); row.className='pt-row'
+  const ta=document.createElement('textarea'); ta.value=s.points[pi]; ta.rows=2
+  ta.oninput=()=>{ s.points[pi]=ta.value }
+  const del=document.createElement('button'); del.className='pt-del'; del.textContent='✕'
+  del.onclick=()=>{ s.points.splice(pi,1); render() }
+  row.appendChild(ta); row.appendChild(del)
+  return row
+}
+
+function startEdit(){
+  _editing=true
+  document.getElementById('edit-btn').style.display='none'
+  document.getElementById('save-btn').style.display=''
+  document.getElementById('cancel-btn').style.display=''
+  document.getElementById('edit-badge').style.display=''
+  render()
+}
+function cancelEdit(){ location.reload() }
+
+async function saveDoc(){
+  const btn=document.getElementById('save-btn')
+  btn.disabled=true; btn.innerHTML='<span class="spin">↻</span> Saving…'
+  try{
+    const { error } = await db.from('storage_presentations')
+      .update({ slides:_doc.slides, title:_doc.title, updated_at:new Date().toISOString() })
+      .eq('id',_doc.id)
+    if(error) throw error
+    _editing=false
+    document.getElementById('save-btn').style.display='none'
+    document.getElementById('cancel-btn').style.display='none'
+    document.getElementById('edit-badge').style.display='none'
+    document.getElementById('edit-btn').style.display=''
+    render()
+  }catch(e){ alert('Save failed: '+(e.message||e)) }
+  finally{ btn.disabled=false; btn.innerHTML='Save' }
+}
+load()
+</script>
+</body>
+</html>

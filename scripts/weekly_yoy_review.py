@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Weekly YoY review — W16 2026 vs W16 2025
-W16 2026: 2026-04-13 to 2026-04-19
-W16 2025: 2025-04-14 to 2025-04-20
+Weekly YoY review — W22 2026 vs W22 2025
+W22 2026: 2026-04-13 to 2026-04-19
+W22 2025: 2025-04-14 to 2025-04-20
 """
 
 import os, sys, time, warnings, requests
@@ -25,10 +25,10 @@ BOOKS_BASE = f"https://www.zohoapis.{ZOHO_REGION}/books/v3"
 TOKEN_URL  = f"https://accounts.zoho.{ZOHO_REGION}/oauth/v2/token"
 STATUSES   = ["sent", "draft", "overdue", "paid", "void", "unpaid"]
 
-CY_START = date(2026, 4, 13)
-CY_END   = date(2026, 4, 19)
-PY_START = date(2025, 4, 14)
-PY_END   = date(2025, 4, 20)
+CY_START = date(2026, 5, 25)
+CY_END   = date(2026, 5, 31)
+PY_START = date(2025, 5, 26)
+PY_END   = date(2025, 6, 1)
 
 SNOWFLAKE_ACCOUNT = os.environ["SNOWFLAKE_ACCOUNT"]
 SNOWFLAKE_USER    = os.environ["SNOWFLAKE_USER"]
@@ -187,26 +187,30 @@ def fmt_gbp(v):
 
 def main():
     print(f"\nWeekly YoY Review")
-    print(f"  W16 2026 (CY): {CY_START} → {CY_END}")
-    print(f"  W16 2025 (PY): {PY_START} → {PY_END}\n")
+    print(f"  W22 2026 (CY): {CY_START} → {CY_END}")
+    print(f"  W22 2025 (PY): {PY_START} → {PY_END}\n")
 
     token = get_zoho_token()
     print("✅ Zoho authenticated\n")
 
-    cy_inv = fetch_invoices(token, CY_START, CY_END, "W16 2026")
-    py_inv = fetch_invoices(token, PY_START, PY_END, "W16 2025")
+    cy_inv = fetch_invoices(token, CY_START, CY_END, "W22 2026")
+    py_inv = fetch_invoices(token, PY_START, PY_END, "W22 2025")
 
     cy = aggregate(cy_inv)
     py = aggregate(py_inv)
 
-    transport = fetch_transport(CY_START, CY_END, PY_START, PY_END)
+    try:
+        transport = fetch_transport(CY_START, CY_END, PY_START, PY_END)
+    except Exception as e:
+        print(f"  ⚠️ transport fetch failed ({e}) — set to 0, get via MCP")
+        transport = {}
     cy_transport = transport.get("CY", {}).get("av_fee", 0)
     py_transport = transport.get("PY", {}).get("av_fee", 0)
 
     print("\n" + "="*60)
-    print(f"  WEEKLY YoY — W16  (ISO Week 16)")
+    print(f"  WEEKLY YoY — W22  (ISO Week 22)")
     print("="*60)
-    print(f"{'Metric':<30} {'W16 2026':>12} {'W16 2025':>12} {'YoY':>8}")
+    print(f"{'Metric':<30} {'W22 2026':>12} {'W22 2025':>12} {'YoY':>8}")
     print("-"*60)
 
     metrics = [

@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Call Mention Rate — AnyVan Storage</title>
+<meta name="av-dashboard-api" content="https://63g6ly45b0.execute-api.eu-west-1.amazonaws.com/production">
+<script src="https://assets.anyvan.com/tracking/av-track.7fa8936e.js"></script>
+<script>window.av && window.av.configureTracking && window.av.configureTracking({ baseUrl: 'https://www.anyvan.com' })</script>
+<script src="https://assets.anyvan.com/av-dashboards/av-dashboard.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--mono:'SF Mono','Menlo','Monaco',monospace;--sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif}
+html,body{height:100%;overflow:hidden}
+body{display:flex;height:100%;font-family:var(--sans);background:#f5f7fa}
+.sidebar{width:220px;min-width:220px;background:#002333;display:flex;flex-direction:column;padding:24px 0;flex-shrink:0;height:100%;overflow-y:auto;border-top:4px solid #ffc907}
+.sidebar-brand{padding:0 24px 24px;margin-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.08)}
+.sidebar-label{font-size:18px;font-weight:800;letter-spacing:-.02em;color:#fff;margin-bottom:2px}
+.sidebar-label span{color:#41a5dd}
+.sidebar-title{font-size:12px;font-weight:500;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:.12em}
+.nav-link{display:block;padding:10px 24px;font-size:13px;color:rgba(255,255,255,0.65);text-decoration:none;transition:color .12s,background .12s;border-left:3px solid transparent}
+.nav-link:hover{color:rgba(255,255,255,0.85)}
+.nav-link.active{color:#fff;border-left-color:#41a5dd;background:rgba(65,165,221,0.12)}
+.sidebar-bottom{margin-top:auto;padding:16px 24px;border-top:1px solid rgba(255,255,255,0.08)}
+.sidebar-home{font-size:13px;color:rgba(255,255,255,0.65);text-decoration:none;transition:color .12s}
+.sidebar-home:hover{color:#fff}
+.main{padding:32px 40px;flex:1;overflow-y:auto}
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:16px;flex-wrap:wrap}
+.ph-lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#41a5dd;font-weight:700;margin-bottom:6px}
+.ph-title{font-size:24px;font-weight:700;color:#002333}
+.ph-sub{font-size:13px;color:#6b7280;margin-top:4px;font-family:var(--mono)}
+.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.toggle-group{display:flex;gap:6px}
+.toggle-btn{background:#fff;border:1px solid #e2e2e2;border-radius:7px;padding:6px 16px;font-family:var(--sans);font-size:13px;color:#6b7280;cursor:pointer;transition:all .12s}
+.toggle-btn:hover{border-color:#41a5dd;color:#106799}
+.toggle-btn.active{background:#41a5dd;border-color:#41a5dd;color:#fff;font-weight:600}
+.refresh-btn{background:#fff;border:1px solid #e2e2e2;border-radius:7px;padding:6px 12px;font-family:var(--sans);font-size:13px;color:#6b7280;cursor:pointer;transition:all .12s}
+.refresh-btn:hover:not(:disabled){border-color:#41a5dd;color:#106799}
+.refresh-btn:disabled{opacity:0.5;cursor:default}
+.spin{display:inline-block;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.userbar{font-size:12px;color:#9ca3af;margin-bottom:16px;font-family:var(--mono)}
+.legend{display:flex;gap:14px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:12px;color:#6b7280}
+.legend-swatch{width:14px;height:14px;border-radius:3px;border:1px solid rgba(0,0,0,0.06)}
+.sec{background:#fff;border:1px solid #e2e2e2;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);margin-bottom:20px;overflow:hidden}
+.sec-hdr{padding:14px 20px;border-bottom:1px solid #e2e2e2;font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#6b7280;font-weight:600}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse}
+thead th{background:#f9fafb;color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:8px 8px;border-bottom:1px solid #e2e2e2;font-weight:600;white-space:nowrap;text-align:center;font-family:var(--mono)}
+thead th.name-col{text-align:left;padding-left:20px;position:sticky;left:0;z-index:2;background:#f9fafb;min-width:160px}
+tbody td{font-family:var(--mono);font-size:12px;padding:7px 8px;border-bottom:1px solid #f0f0f0;color:#374151;text-align:center;white-space:nowrap;min-width:58px}
+tbody td.name-col{font-family:var(--sans);font-size:13px;font-weight:500;color:#111827;text-align:left;padding-left:20px;position:sticky;left:0;z-index:1;background:#fff;border-right:1px solid #e2e2e2}
+tbody tr:last-child td{border-bottom:none}
+.r0{background:#fca5a5;color:#7f1d1d}
+.r1{background:#fde68a;color:#78350f}
+.r2{background:#fef9c3;color:#713f12}
+.r3{background:#bbf7d0;color:#14532d}
+.r4{background:#6ee7b7;color:#065f46}
+.r5{background:#34d399;color:#064e3b;font-weight:700}
+.state{padding:40px 0;text-align:center;color:#6b7280;font-size:14px}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#cfe3f0;border-radius:2px}
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-label">Any<span>Van</span></div>
+    <div class="sidebar-title">Storage Reporting</div>
+  </div>
+  <a class="nav-link" href="/operations/storage-mtd">MTD Revenue</a>
+  <a class="nav-link" href="/operations/storage-monthly">Monthly Trends</a>
+  <a class="nav-link" href="/operations/storage-voice-activity">Voice Activity</a>
+  <a class="nav-link" href="/operations/storage-daily-activity">Daily Activity</a>
+  <a class="nav-link" href="/operations/storage-whatsapp">WhatsApp</a>
+  <a class="nav-link" href="/operations/storage-freshdesk">Freshdesk</a>
+  <a class="nav-link" href="/operations/storage-csat">CSAT &amp; NPS</a>
+  <a class="nav-link active" href="/operations/storage-call-grading">Call Grading</a>
+  <a class="nav-link" href="/operations/storage-debt">Debt Intelligence</a>
+  <div class="sidebar-bottom">
+    <a class="sidebar-home" href="/operations/storage">← All boards (Hub)</a>
+  </div>
+</nav>
+
+<div class="main">
+  <div class="topbar">
+    <div>
+      <div class="ph-lbl">Storage · Contact Centre</div>
+      <div class="ph-title">Call Mention Rate</div>
+      <div class="ph-sub">% of eligible Jiminny calls where agent mentioned storage — keyword-only · trailing 8 weeks</div>
+    </div>
+    <div class="controls">
+      <div class="toggle-group">
+        <button class="toggle-btn active" onclick="setGroup('all',this)">All</button>
+        <button class="toggle-btn" onclick="setGroup('inbound',this)">Inbound</button>
+        <button class="toggle-btn" onclick="setGroup('outbound',this)">Outbound</button>
+        <button class="toggle-btn" onclick="setGroup('lg',this)">Lead Gen</button>
+      </div>
+      <span class="refresh-note" title="This board reads Snowflake live. Data updates once a day at source — hit ↻ Refresh to re-pull the latest figures instantly." style="display:inline-flex;align-items:center;font-size:11px;font-weight:600;border-radius:20px;padding:4px 10px;white-space:nowrap;background:#dcfce7;color:#15803d;border:1px solid #86efac">Updates daily · instant refresh</span>
+    <button class="refresh-btn" id="refresh-btn" onclick="triggerRefresh()">↻ Refresh</button>
+    </div>
+  </div>
+
+  <div class="userbar" id="userbar"></div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-swatch r0"></div>0%</div>
+    <div class="legend-item"><div class="legend-swatch r1"></div>1–9%</div>
+    <div class="legend-item"><div class="legend-swatch r2"></div>10–19%</div>
+    <div class="legend-item"><div class="legend-swatch r3"></div>20–34%</div>
+    <div class="legend-item"><div class="legend-swatch r4"></div>35–49%</div>
+    <div class="legend-item"><div class="legend-swatch r5"></div>50%+</div>
+  </div>
+
+  <div id="sections"><div class="state">Loading…</div></div>
+</div>
+
+<script>
+const QUERY = 'storage_call_grading_8w'
+const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+const SECTION_ORDER = ['ib-liam','ib-brian','ob-kyle','ob-alex','lg-damien']
+
+let WEEKS = []        // sorted distinct week_start (YYYY-MM-DD)
+let SECTIONS = []     // [{id,group,label,agents:[{n,r:[...]}]}]
+let GROUP = 'all'
+
+function normalise(rows){
+  if(!Array.isArray(rows)) return []
+  return rows.map(r => { const o={}; for(const k in r) o[k.toLowerCase()] = r[k]; return o })
+}
+function extractRows(res){
+  if(Array.isArray(res)) return res
+  if(!res || typeof res !== 'object') return []
+  if(Array.isArray(res.rows)) return res.rows
+  if(Array.isArray(res.data)) return res.data
+  if(Array.isArray(res.results)) return res.results
+  if(res.data && Array.isArray(res.data.rows)) return res.data.rows
+  if(res.result && Array.isArray(res.result.rows)) return res.result.rows
+  return []
+}
+function wkLabel(iso){ const d=new Date(iso+'T00:00:00'); return `${d.getDate()} ${MO[d.getMonth()]}` }
+function cls(v){
+  if(v===null||v===undefined)return''
+  if(v===0)return'r0'; if(v<10)return'r1'; if(v<20)return'r2'
+  if(v<35)return'r3'; if(v<50)return'r4'; return'r5'
+}
+
+// Pivot flat (agent, section, week, mention_rate) rows into WEEKS + SECTIONS.
+function build(rows){
+  WEEKS = [...new Set(rows.map(r => r.week_start))].sort()
+  const wkIndex = Object.fromEntries(WEEKS.map((w,i)=>[w,i]))
+  const secMap = new Map()
+  for(const r of rows){
+    if(!secMap.has(r.section_id)) secMap.set(r.section_id, {id:r.section_id, group:r.grp, label:r.section_label, agents:new Map()})
+    const sec = secMap.get(r.section_id)
+    if(!sec.agents.has(r.agent)) sec.agents.set(r.agent, new Array(WEEKS.length).fill(null))
+    sec.agents.get(r.agent)[wkIndex[r.week_start]] = (r.mention_rate==null?null:Number(r.mention_rate))
+  }
+  SECTIONS = SECTION_ORDER.filter(id => secMap.has(id)).map(id => {
+    const s = secMap.get(id)
+    const agents = [...s.agents.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([n,r])=>({n,r}))
+    return {id:s.id, group:s.group, label:s.label, agents}
+  })
+}
+
+function render(){
+  const container=document.getElementById('sections')
+  const visible = GROUP==='all' ? SECTIONS : SECTIONS.filter(s=>s.group===GROUP)
+  if(!visible.length){ container.innerHTML='<div class="state">No data for this selection</div>'; return }
+  container.innerHTML=''
+  visible.forEach(sec=>{
+    const wkHdrs=WEEKS.map(w=>`<th>${wkLabel(w)}</th>`).join('')
+    const rows=sec.agents.map(a=>{
+      const cells=a.r.map(v=>v===null?'<td></td>':`<td class="${cls(v)}">${v.toFixed(1)}%</td>`).join('')
+      return`<tr><td class="name-col">${a.n}</td>${cells}</tr>`
+    }).join('')
+    container.innerHTML+=`
+      <div class="sec">
+        <div class="sec-hdr">${sec.label}</div>
+        <div class="tbl-wrap">
+          <table><thead><tr><th class="name-col">Agent</th>${wkHdrs}</tr></thead>
+          <tbody>${rows}</tbody></table>
+        </div>
+      </div>`
+  })
+}
+
+function setGroup(group,btn){
+  GROUP=group
+  document.querySelectorAll('.toggle-btn').forEach(b=>b.classList.remove('active'))
+  btn.classList.add('active')
+  render()
+}
+
+async function showUser(cached, executedAt){
+  let who=''
+  try{ const u=await AVDashboard.getCurrentUser(); who = u&&(u.email||u.name)?`Signed in as ${u.email||u.name} · `:'' }catch(e){}
+  const when = executedAt ? new Date(executedAt).toLocaleString('en-GB') : ''
+  document.getElementById('userbar').innerHTML = `${who}data ${cached?'cached':'live'}${when?' · '+when:''}`
+}
+
+async function loadAll(freshness){
+  const res = await AVDashboard.runQuery(QUERY, freshness != null ? { freshness } : undefined)
+  console.log('[call-grading] runQuery result:', res)
+  const rows = normalise(extractRows(res))
+  showUser(res && res.cached, res && res.executedAt)
+  if(!rows.length){ document.getElementById('sections').innerHTML='<div class="state">No data available</div>'; return }
+  build(rows)
+  render()
+}
+
+async function triggerRefresh(){
+  const btn=document.getElementById('refresh-btn')
+  btn.disabled=true; btn.innerHTML='<span class="spin">↻</span> Refreshing…'
+  try{
+    // Live re-query straight from Snowflake (platform enforces a 10-min cache floor).
+    await loadAll(600)
+  }catch(e){ alert('Refresh failed: '+e.message); console.error(e) }
+  finally{ btn.disabled=false; btn.innerHTML='↻ Refresh' }
+}
+
+window.addEventListener('load', async () => {
+  try{
+    await AVDashboard.ensureAuthenticated()
+    await loadAll()
+  }catch(e){
+    const detail=[e.statusCode&&`HTTP ${e.statusCode}`,e.code,e.details].filter(Boolean).join(' · ')
+    const msg=(e.message||String(e))+(detail?`  (${detail})`:'')
+    document.getElementById('sections').innerHTML=`<div class="state" style="color:#dc2626">${msg}</div>`
+    console.error('[call-grading] load failed:', e)
+  }
+})
+</script>
+</body>
+</html>

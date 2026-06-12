@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weekly KPI — AnyVan Storage</title>
+
+<meta name="av-dashboard-api" content="https://63g6ly45b0.execute-api.eu-west-1.amazonaws.com/production">
+<script src="https://assets.anyvan.com/tracking/av-track.7fa8936e.js"></script>
+<script>window.av && window.av.configureTracking && window.av.configureTracking({ baseUrl: 'https://www.anyvan.com' })</script>
+<script src="https://assets.anyvan.com/av-dashboards/av-dashboard.js"></script>
+<!-- Supabase client (manual-entry data store) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --mono:'SF Mono','Menlo','Monaco',monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
+  --navy:#002333; --blue:#41a5dd; --yellow:#ffc907; --link:#106799;
+}
+html,body{height:100%;overflow:hidden}
+body{display:flex;height:100%;font-family:var(--sans);background:#f5f7fa;color:#111827}
+
+/* SIDEBAR (matches sibling hub boards) */
+.sidebar{
+  width:220px;min-width:220px;background:var(--navy);
+  display:flex;flex-direction:column;
+  padding:24px 0;flex-shrink:0;height:100%;overflow-y:auto;
+  border-top:4px solid var(--yellow);z-index:100;
+}
+.sidebar-brand{padding:0 24px 24px;margin-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.08)}
+.sidebar-label{font-size:18px;font-weight:800;letter-spacing:-.02em;color:#fff;margin-bottom:2px}
+.sidebar-label span{color:var(--blue)}
+.sidebar-title{font-size:12px;font-weight:500;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:.12em}
+.nav-link{
+  display:block;padding:10px 24px;font-size:13px;color:rgba(255,255,255,0.65);
+  text-decoration:none;transition:color .12s,background .12s;border-left:3px solid transparent;
+}
+.nav-link:hover{color:rgba(255,255,255,0.85)}
+.nav-link.active{color:#fff;border-left-color:var(--blue);background:rgba(65,165,221,0.12)}
+.sidebar-bottom{margin-top:auto;padding:16px 24px;border-top:1px solid rgba(255,255,255,0.08)}
+.sidebar-home{font-size:13px;color:rgba(255,255,255,0.65);text-decoration:none;transition:color .12s}
+.sidebar-home:hover{color:#fff}
+
+/* MAIN */
+.main-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+/* TOP BAR */
+.topbar{
+  display:flex;align-items:center;gap:14px;
+  padding:16px 28px;
+  border-bottom:1px solid #e2e2e2;
+  background:#fff;flex-shrink:0;z-index:30;flex-wrap:wrap;
+}
+.ph-lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--blue);font-weight:700;margin-bottom:3px}
+.ph-title{font-size:20px;font-weight:700;color:var(--navy);letter-spacing:-.01em;line-height:1}
+.topbar-meta{font-size:12px;color:#6b7280;font-family:var(--mono)}
+.topbar-spacer{flex:1}
+.window-btns{display:flex;gap:4px}
+.wbtn,.btn{
+  font-size:13px;font-family:var(--mono);color:#6b7280;
+  background:#fff;border:1px solid #e2e2e2;border-radius:6px;padding:5px 11px;
+  cursor:pointer;transition:color .12s,border-color .12s,background .12s;
+}
+.wbtn:hover,.btn:hover:not(:disabled){color:var(--link);border-color:var(--blue)}
+.wbtn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.primary{background:var(--navy);color:#fff;border-color:var(--navy)}
+.btn.primary:hover:not(:disabled){background:#013049;color:#fff}
+.btn.warn{color:#b91c1c;border-color:#fecaca}
+.btn.warn:hover:not(:disabled){border-color:#ef4444;color:#b91c1c}
+/* DATE RANGE PICKER */
+.range{display:none;align-items:center;gap:6px;font-size:12px;color:#6b7280}
+.range.on{display:flex}
+.range .rlbl{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;font-weight:700}
+.rsel{
+  font-family:var(--mono);font-size:12px;color:#111827;background:#fff;
+  border:1px solid #e2e2e2;border-radius:6px;padding:5px 8px;cursor:pointer;outline:none;
+}
+.rsel:hover{border-color:var(--blue)}
+.range .arrow{color:#9ca3af}
+.edit-tools{display:none;gap:6px;align-items:center}
+.edit-tools.on{display:flex}
+.edit-badge{font-size:11px;font-family:var(--mono);color:#b45309;background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:4px 9px}
+
+/* MATRIX */
+.matrix-wrap{flex:1;overflow:auto;position:relative;background:#fff}
+table{border-collapse:collapse;white-space:nowrap;font-size:14px}
+
+tr.sec-hdr>td{
+  background:#eef4f8;padding:12px 10px 8px;
+  font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--navy);border-top:2px solid #d8e6ef;border-bottom:1px solid #d8e6ef;
+}
+tr.sec-hdr>td.sec-label{position:sticky;left:0;z-index:9;background:#eef4f8;padding-left:14px;vertical-align:middle}
+.sec-name{display:block;color:var(--navy)}
+.sec-range{display:block;font-family:var(--mono);font-size:10px;font-weight:400;letter-spacing:.04em;text-transform:none;color:#6b7280;margin-top:3px}
+tr.sec-hdr>td.sec-metric{position:sticky;left:64px;z-index:9;background:#eef4f8;border-right:1px solid #d8e6ef;padding-left:10px}
+tr.sec-hdr>td.sec-date{font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.06em;color:#6b7280;text-align:right;padding:12px 12px 8px}
+
+tr.dr>td{border-bottom:1px solid #f0f0f0;vertical-align:middle}
+tr.dr:hover>td{background:#fafafa}
+td.c-section{position:sticky;left:0;z-index:9;background:#fff;width:64px;min-width:64px;max-width:64px;padding:5px 6px 5px 14px;color:transparent}
+td.c-metric{position:sticky;left:64px;z-index:9;background:#fff;width:280px;min-width:280px;max-width:280px;padding:7px 14px 7px 10px;font-size:14px;color:#111827;border-right:1px solid #e2e2e2;display:flex;align-items:center;gap:10px}
+.metric-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spark{flex-shrink:0;opacity:.9}
+tr.dr:hover>td.c-section,tr.dr:hover>td.c-metric{background:#fafafa}
+
+td.c-val{font-family:var(--mono);font-size:14px;color:#374151;text-align:right;padding:7px 12px;min-width:100px;background:#fff}
+td.c-val.empty{color:#d1d5db}
+.wow{display:block;font-size:10px;font-family:var(--mono);margin-top:2px;letter-spacing:.02em;font-weight:500}
+.wow-good{color:#16a34a}
+.wow-bad{color:#dc2626}
+.wow-flat{color:#9ca3af}
+td.c-val.cf-green{background:#f0fdf4}
+td.c-val.cf-amber{background:#fffbeb}
+td.c-val.cf-red  {background:#fff1f2}
+tr.dr:hover>td.cf-green{background:#dcfce7 !important}
+tr.dr:hover>td.cf-amber{background:#fef9c3 !important}
+tr.dr:hover>td.cf-red  {background:#fee2e2 !important}
+
+/* EDIT MODE */
+body.editing td.c-val{cursor:text;outline:none}
+body.editing td.c-val:focus{background:#eaf6fd !important;box-shadow:inset 0 0 0 2px var(--blue)}
+body.editing tr.sec-hdr>td.sec-date{cursor:text}
+body.editing tr.sec-hdr>td.sec-date:focus{background:#eaf6fd;box-shadow:inset 0 0 0 2px var(--blue);color:var(--navy);outline:none}
+
+.state{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;color:#6b7280}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#cfe3f0;border-radius:2px}
+.spin{display:inline-block;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-label">Any<span>Van</span></div>
+    <div class="sidebar-title">Storage Reporting</div>
+  </div>
+  <a class="nav-link" href="/operations/storage-mtd">MTD Revenue</a>
+  <a class="nav-link" href="/operations/storage-monthly">Monthly Trends</a>
+  <a class="nav-link active" href="/operations/storage-weekly">Weekly KPI</a>
+  <a class="nav-link" href="/operations/storage-voice-activity">Voice Activity</a>
+  <a class="nav-link" href="/operations/storage-daily-activity">Daily Activity</a>
+  <a class="nav-link" href="/operations/storage-whatsapp">WhatsApp</a>
+  <a class="nav-link" href="/operations/storage-freshdesk">Freshdesk</a>
+  <a class="nav-link" href="/operations/storage-csat">CSAT &amp; NPS</a>
+  <a class="nav-link" href="/operations/storage-call-grading">Call Grading</a>
+  <a class="nav-link" href="/operations/storage-debt">Debt Intelligence</a>
+  <div class="sidebar-bottom">
+    <a class="sidebar-home" href="/operations/storage">← All boards (Hub)</a>
+  </div>
+</nav>
+
+<div class="main-wrap">
+<div class="topbar">
+  <div>
+    <div class="ph-lbl">Storage · Leadership</div>
+    <div class="ph-title">Weekly KPI</div>
+  </div>
+  <div class="topbar-spacer"></div>
+  <div class="window-btns" id="wbtns" style="display:none">
+    <button class="wbtn" data-w="8">Last 8w</button>
+    <button class="wbtn active" data-w="12">Last 12w</button>
+    <button class="wbtn" data-w="0">All</button>
+  </div>
+  <div class="range" id="range">
+    <span class="rlbl">Range</span>
+    <select class="rsel" id="from"></select>
+    <span class="arrow">→</span>
+    <select class="rsel" id="to"></select>
+  </div>
+  <span class="edit-badge" id="edit-badge" style="display:none">● Editing — unsaved changes</span>
+  <div class="edit-tools" id="edit-tools">
+    <button class="btn" id="add-week-btn" onclick="addWeek()">+ Week</button>
+    <button class="btn warn" id="del-week-btn" onclick="removeLastWeek()">− Week</button>
+    <button class="btn" id="cancel-btn" onclick="cancelEdit()">Cancel</button>
+    <button class="btn primary" id="save-btn" onclick="saveDoc()">Save</button>
+  </div>
+  <button class="btn" id="edit-btn" onclick="startEdit()" style="display:none">✎ Edit</button>
+  <span class="topbar-meta" id="meta">Loading…</span>
+</div>
+
+<div class="matrix-wrap" id="wrap">
+  <div class="state" id="state">Loading…</div>
+</div>
+</div>
+
+<script>
+/* ---------- Supabase ---------- */
+const SUPABASE_URL = 'https://loyvicdabsncwhssjkxy.supabase.co'
+const SUPABASE_ANON_KEY = 'sb_publishable_QWQOo0CWifid4QyyRzRYvQ_P5DP8ecZ'
+const TABLE = 'weekly_board'      // single-row JSON document: { id:1, doc:jsonb, updated_at }
+const ROW_ID = 1
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+/* ---------- Conditional formatting ---------- */
+const LOWER_IS_BETTER = new Set([
+  '% Prospecting','Outstanding Tickets','% Outstanding',
+  'Not Striped','Not E-Signed','Promotions','Promo %','Refunds / Write-off'
+])
+function parseVal(v){
+  if(v==null||v===''||v==='—') return null
+  const n=parseFloat(String(v).replace(/[£%,\s]/g,''))
+  return isNaN(n)?null:n
+}
+function rowAvg(values){
+  const nums=values.map(parseVal).filter(n=>n!==null)
+  if(nums.length<2) return null
+  return nums.reduce((a,b)=>a+b,0)/nums.length
+}
+function cfClass(val,avg,lowerBetter){
+  if(val===null||avg===null||avg===0) return ''
+  const r=val/avg
+  if(lowerBetter) return r<0.93?'cf-green':r>1.08?'cf-red':'cf-amber'
+  return r>1.08?'cf-green':r<0.93?'cf-red':'cf-amber'
+}
+
+/* ---------- Value formatting (auto £ / % on type) ---------- */
+/* Detect a row's format from its first non-empty value */
+function rowFormat(values){
+  for(const v of values){
+    if(v==null||v==='') continue
+    const s=String(v)
+    if(s.includes('£')) return 'gbp'
+    if(s.includes('%')) return 'pct'
+    return 'num'
+  }
+  return 'num'
+}
+/* Normalise a typed value to the row's format */
+function formatValue(t, fmt){
+  t=String(t).trim()
+  if(t===''||t==='—') return ''
+  const n=parseFloat(t.replace(/[£%,\s]/g,''))
+  if(isNaN(n)) return t.replace(/\s+/g,' ')          // leave non-numeric text as-is
+  if(fmt==='gbp') return '£'+n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2})
+  if(fmt==='pct'){
+    const dec=(t.split('.')[1]||'').replace(/[^\d]/g,'')
+    return (dec ? n.toFixed(dec.length) : String(n)) + '%'
+  }
+  return t.replace(/[£%]/g,'')                        // plain number: strip stray symbols
+}
+
+/* Week-over-week variance vs the previous week's value (relative %) */
+function wowDelta(cur, prev){
+  const c=parseVal(cur), p=parseVal(prev)
+  if(c===null||p===null||p===0) return null
+  return (c-p)/Math.abs(p)*100
+}
+function wowMarkup(delta, lowerBetter){
+  const arrow = delta>0 ? '▲' : delta<0 ? '▼' : '▬'
+  let cls = 'wow-flat'
+  if(delta!==0){ const up=delta>0; const good = lowerBetter ? !up : up; cls = good ? 'wow-good' : 'wow-bad' }
+  return { cls, text: `${arrow} ${Math.abs(delta).toFixed(1)}%` }
+}
+
+/* Inline SVG sparkline of a metric row (full history) */
+function buildSpark(values){
+  const W=78, H=22, pad=2, NS='http://www.w3.org/2000/svg'
+  const pts = values.map((v,i)=>({i, n:parseVal(v)})).filter(p=>p.n!==null)
+  if(pts.length < 2) return null
+  const ns = pts.map(p=>p.n)
+  let min=Math.min(...ns), max=Math.max(...ns); if(max===min) max=min+1
+  const n1 = values.length - 1
+  const x = i => pad + (n1 ? i/n1 : 0)*(W-2*pad)
+  const y = v => H-pad - ((v-min)/(max-min))*(H-2*pad)
+  const d = pts.map((p,k)=>`${k?'L':'M'}${x(p.i).toFixed(1)} ${y(p.n).toFixed(1)}`).join(' ')
+  const last = pts[pts.length-1]
+  const svg=document.createElementNS(NS,'svg')
+  svg.setAttribute('class','spark'); svg.setAttribute('width',W); svg.setAttribute('height',H); svg.setAttribute('viewBox',`0 0 ${W} ${H}`)
+  const path=document.createElementNS(NS,'path')
+  path.setAttribute('d',d); path.setAttribute('fill','none'); path.setAttribute('stroke','#41a5dd')
+  path.setAttribute('stroke-width','1.4'); path.setAttribute('stroke-linejoin','round'); path.setAttribute('stroke-linecap','round')
+  svg.appendChild(path)
+  const dot=document.createElementNS(NS,'circle')
+  dot.setAttribute('cx',x(last.i).toFixed(1)); dot.setAttribute('cy',y(last.n).toFixed(1)); dot.setAttribute('r','1.8'); dot.setAttribute('fill','#002333')
+  svg.appendChild(dot)
+  return svg
+}
+
+/* ---------- State ---------- */
+let _doc = null            // { updated, weeks:[{label,iso}], sections:[{name,rows:[{metric,values:[]}]}] }
+let _startIdx = 0, _endIdx = 0   // visible week range (column indices, inclusive)
+let _editing = false
+
+/* ---------- Render ---------- */
+function render(){
+  const wrap = document.getElementById('wrap')
+  wrap.innerHTML = ''
+  const table = document.createElement('table')
+  const tbody = table.createTBody()
+
+  _doc.sections.forEach((section, si) => {
+    const sr = tbody.insertRow()
+    sr.className = 'sec-hdr'
+
+    const sdLabel = document.createElement('td')
+    sdLabel.className = 'sec-label'
+    const nameSpan = document.createElement('span'); nameSpan.className = 'sec-name'; nameSpan.textContent = section.name
+    const rangeSpan = document.createElement('span'); rangeSpan.className = 'sec-range'
+    sdLabel.appendChild(nameSpan); sdLabel.appendChild(rangeSpan)
+    sr.appendChild(sdLabel)
+
+    const sdMetric = document.createElement('td'); sdMetric.className = 'sec-metric'; sr.appendChild(sdMetric)
+
+    _doc.weeks.forEach((w, wi) => {
+      const td = document.createElement('td')
+      td.className = 'sec-date'
+      td.textContent = w.label
+      if(_editing && si === 0){            // edit week labels once, on the first section header
+        td.contentEditable = 'true'
+        td.dataset.wi = wi
+        td.addEventListener('input', () => { w.label = td.textContent.trim() })
+      }
+      sr.appendChild(td)
+    })
+
+    section.rows.forEach(row => {
+      const tr = tbody.insertRow(); tr.className = 'dr'
+      const tdSec = document.createElement('td'); tdSec.className = 'c-section'; tr.appendChild(tdSec)
+      const tdMet = document.createElement('td'); tdMet.className = 'c-metric'
+      const nm = document.createElement('span'); nm.className = 'metric-name'; nm.textContent = row.metric; tdMet.appendChild(nm)
+      if(!_editing){ const sp = buildSpark(row.values); if(sp) tdMet.appendChild(sp) }
+      tr.appendChild(tdMet)
+
+      const lowerBetter = LOWER_IS_BETTER.has(row.metric)
+      const fmt = rowFormat(row.values)
+      const avg = rowAvg(row.values)
+      row.values.forEach((v, vi) => {
+        const td = document.createElement('td')
+        const empty = v === '' || v == null
+        td.className = 'c-val' + (empty ? ' empty' : '')
+        td.textContent = empty ? '—' : v
+        if(!empty){ const cls = cfClass(parseVal(v), avg, lowerBetter); if(cls) td.classList.add(cls) }
+        // WoW variance vs the week before (read mode only)
+        if(!_editing && !empty && vi > 0){
+          const d = wowDelta(v, row.values[vi-1])
+          if(d !== null){
+            const m = wowMarkup(d, lowerBetter)
+            const w = document.createElement('span')
+            w.className = 'wow ' + m.cls
+            w.textContent = m.text
+            td.appendChild(w)
+          }
+        }
+        if(_editing){
+          td.contentEditable = 'true'
+          td.dataset.vi = vi
+          td.addEventListener('focus', () => { if(td.textContent === '—') td.textContent = '' })
+          td.addEventListener('blur', () => {
+            const formatted = formatValue(td.textContent, fmt)   // auto £ / % / number
+            row.values[vi] = formatted
+            const a = rowAvg(row.values)
+            td.className = 'c-val' + (formatted === '' ? ' empty' : '')
+            td.textContent = formatted === '' ? '—' : formatted
+            if(formatted !== ''){ const c = cfClass(parseVal(formatted), a, lowerBetter); if(c) td.classList.add(c) }
+          })
+        }
+        tr.appendChild(td)
+      })
+    })
+  })
+
+  wrap.appendChild(table)
+
+  // controls
+  document.getElementById('wbtns').style.display = _editing ? 'none' : ''
+  document.getElementById('range').classList.toggle('on', !_editing)
+  rebuildRangeSelects()
+  if(_editing) showAllColumns()
+  else applyRange()
+}
+
+/* ---------- Date range ---------- */
+function rebuildRangeSelects(){
+  const from=document.getElementById('from'), to=document.getElementById('to')
+  if(!from||!to) return
+  const opts = _doc.weeks.map((w,i)=>`<option value="${i}">${w.label}</option>`).join('')
+  from.innerHTML = opts; to.innerHTML = opts
+  from.value = _startIdx; to.value = _endIdx
+  from.onchange = () => { _startIdx = Math.min(+from.value, _endIdx); applyRange() }
+  to.onchange   = () => { _endIdx   = Math.max(+to.value, _startIdx); applyRange() }
+}
+function showAllColumns(){
+  document.querySelectorAll('tr.dr, tr.sec-hdr').forEach(tr => {
+    tr.querySelectorAll('td').forEach((td, i) => { if(i>=2) td.style.display = '' })
+  })
+}
+function applyRange(){
+  if(!_doc) return
+  const total = _doc.weeks.length
+  if(_endIdx > total-1) _endIdx = total-1
+  if(_startIdx > _endIdx) _startIdx = _endIdx
+  document.querySelectorAll('tr.dr, tr.sec-hdr').forEach(tr => {
+    tr.querySelectorAll('td').forEach((td, i) => {
+      if(i < 2) return
+      const col = i - 2
+      td.style.display = (col >= _startIdx && col <= _endIdx) ? '' : 'none'
+    })
+  })
+  const a=_doc.weeks[_startIdx]?.label, b=_doc.weeks[_endIdx]?.label
+  const range = a===b ? a : `${a} – ${b}`
+  document.querySelectorAll('.sec-range').forEach(el => el.textContent = range)
+  // reflect on quick-preset buttons + selects
+  const span = _endIdx - _startIdx + 1
+  document.querySelectorAll('.wbtn').forEach(btn => {
+    const w = parseInt(btn.dataset.w)
+    const match = (w===0 && _startIdx===0 && _endIdx===total-1) || (w!==0 && _endIdx===total-1 && span===w)
+    btn.classList.toggle('active', match)
+  })
+  const from=document.getElementById('from'), to=document.getElementById('to')
+  if(from) from.value=_startIdx
+  if(to) to.value=_endIdx
+}
+function applyWindow(w){
+  const total = _doc.weeks.length
+  _endIdx = total - 1
+  _startIdx = (w===0 || w>=total) ? 0 : total - w
+  applyRange()
+}
+
+/* ---------- Load ---------- */
+async function load(){
+  let row, error
+  try{
+    ({ data: row, error } = await db.from(TABLE).select('doc,updated_at').eq('id', ROW_ID).single())
+    if(error) throw error
+  }catch(e){
+    document.getElementById('state').textContent = 'Failed to load from Supabase: ' + (e.message || e)
+    return
+  }
+  _doc = row.doc
+  if(!_doc || !_doc.weeks){ document.getElementById('state').textContent = 'No data in weekly_board yet.'; return }
+  if(!_doc.updated) _doc.updated = (row.updated_at || '').slice(0,10)
+
+  const total = _doc.weeks.length
+  _endIdx = total - 1
+  _startIdx = Math.max(0, total - 12)   // default: last 12 weeks
+
+  document.getElementById('meta').textContent =
+    `${_doc.weeks[0].label} – ${_doc.weeks[total-1].label}  ·  updated ${_doc.updated}`
+  document.getElementById('edit-btn').style.display = ''
+
+  // wire quick presets
+  document.querySelectorAll('.wbtn').forEach(b => b.onclick = () => applyWindow(parseInt(b.dataset.w)))
+
+  render()
+}
+
+/* ---------- Edit mode ---------- */
+function startEdit(){
+  _editing = true
+  document.body.classList.add('editing')
+  document.getElementById('edit-tools').classList.add('on')
+  document.getElementById('edit-btn').style.display = 'none'
+  document.getElementById('edit-badge').style.display = ''
+  render()
+}
+function cancelEdit(){ location.reload() }
+
+function addWeek(){
+  const last = _doc.weeks[_doc.weeks.length - 1]
+  const d = new Date(last.iso + 'T00:00:00Z')
+  d.setUTCDate(d.getUTCDate() + 7)
+  const iso = d.toISOString().slice(0,10)
+  const label = d.getUTCDate() + ' ' + d.toLocaleDateString('en-GB',{month:'short',timeZone:'UTC'})
+  _doc.weeks.push({ label, iso })
+  _doc.sections.forEach(s => s.rows.forEach(r => r.values.push('')))
+  _endIdx = _doc.weeks.length - 1
+  render()
+}
+function removeLastWeek(){
+  if(_doc.weeks.length <= 1) return
+  if(!confirm('Remove the last week column ('+_doc.weeks[_doc.weeks.length-1].label+')?')) return
+  _doc.weeks.pop()
+  _doc.sections.forEach(s => s.rows.forEach(r => r.values.pop()))
+  _endIdx = _doc.weeks.length - 1
+  if(_startIdx > _endIdx) _startIdx = _endIdx
+  render()
+}
+
+async function saveDoc(){
+  const btn = document.getElementById('save-btn')
+  // flush any focused cell
+  if(document.activeElement && document.activeElement.blur) document.activeElement.blur()
+  btn.disabled = true; btn.innerHTML = '<span class="spin">↻</span> Saving…'
+  const today = new Date().toISOString().slice(0,10)
+  _doc.updated = today
+  try{
+    const { error } = await db.from(TABLE).upsert({ id: ROW_ID, doc: _doc, updated_at: today }, { onConflict: 'id' })
+    if(error) throw error
+    _editing = false
+    document.body.classList.remove('editing')
+    document.getElementById('edit-tools').classList.remove('on')
+    document.getElementById('edit-badge').style.display = 'none'
+    document.getElementById('edit-btn').style.display = ''
+    document.getElementById('meta').textContent =
+      `${_doc.weeks[0].label} – ${_doc.weeks[_doc.weeks.length-1].label}  ·  updated ${_doc.updated}`
+    render()
+  }catch(e){
+    alert('Save failed: ' + (e.message || e))
+  }finally{
+    btn.disabled = false; btn.innerHTML = 'Save'
+  }
+}
+
+load()
+</script>
+</body>
+</html>

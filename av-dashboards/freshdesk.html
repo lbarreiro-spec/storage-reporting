@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Freshdesk — AnyVan Storage</title>
+<meta name="av-dashboard-api" content="https://63g6ly45b0.execute-api.eu-west-1.amazonaws.com/production">
+<script src="https://assets.anyvan.com/tracking/av-track.7fa8936e.js"></script>
+<script>window.av && window.av.configureTracking && window.av.configureTracking({ baseUrl: 'https://www.anyvan.com' })</script>
+<script src="https://assets.anyvan.com/av-dashboards/av-dashboard.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --mono:'SF Mono','Menlo','Monaco',monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
+}
+html,body{height:100%;font-family:var(--sans);background:#f5f7fa;overflow:hidden}
+body{display:flex}
+
+/* SIDEBAR */
+.sidebar{
+  width:220px;min-width:220px;background:#002333;
+  display:flex;flex-direction:column;
+  padding:24px 0;flex-shrink:0;height:100vh;z-index:100;
+  border-top:4px solid #ffc907;
+}
+.sidebar-brand{padding:0 24px 24px;margin-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.08)}
+.sidebar-label{font-size:18px;font-weight:800;letter-spacing:-.02em;color:#fff;margin-bottom:2px}
+.sidebar-label span{color:#41a5dd}
+.sidebar-title{font-size:12px;font-weight:500;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:.12em}
+.nav-link{
+  display:block;padding:10px 24px;font-size:13px;color:rgba(255,255,255,0.65);
+  text-decoration:none;transition:color .12s,background .12s;border-left:3px solid transparent;
+}
+.nav-link:hover{color:rgba(255,255,255,0.85)}
+.nav-link.active{color:#fff;border-left-color:#41a5dd;background:rgba(65,165,221,0.12)}
+.sidebar-bottom{margin-top:auto;padding:16px 24px;border-top:1px solid rgba(255,255,255,0.08)}
+.sidebar-home{font-size:13px;color:rgba(255,255,255,0.65);text-decoration:none;transition:color .12s}
+.sidebar-home:hover{color:#fff}
+
+/* MAIN */
+.main-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#f5f7fa}
+
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 24px;border-bottom:1px solid #e2e2e2;background:#fff;flex-shrink:0;z-index:30;
+}
+.topbar-title{font-size:15px;font-weight:600;color:#002333;letter-spacing:-.01em}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.topbar-meta{font-size:13px;color:#6b7280;font-family:var(--mono)}
+
+.month-sel{
+  background:#fff;border:1px solid #e2e2e2;border-radius:8px;padding:6px 12px;
+  font-family:var(--mono);font-size:14px;color:#111827;outline:none;cursor:pointer;
+}
+
+.refresh-btn{
+  background:#fff;border:1px solid #e2e2e2;border-radius:8px;padding:6px 14px;
+  font-family:var(--sans);font-size:14px;color:#6b7280;cursor:pointer;transition:all .12s;
+}
+.refresh-btn:hover:not(:disabled){border-color:#41a5dd;color:#106799}
+.refresh-btn:disabled{opacity:0.5;cursor:default}
+.spin{display:inline-block;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.matrix-wrap{flex:1;overflow:auto;position:relative}
+
+table{border-collapse:collapse;white-space:nowrap;font-size:13px}
+
+thead tr.day-hdr th{
+  position:sticky;top:0;z-index:20;
+  background:#f4f4f4;
+  border-bottom:1px solid #e2e2e2;
+  text-align:center;
+  padding:10px 10px;
+  font-family:var(--mono);
+  font-size:11px;font-weight:600;
+  color:#6b7280;
+  min-width:72px;
+  letter-spacing:.08em;text-transform:uppercase;
+}
+thead tr.day-hdr th.c-metric{
+  position:sticky;left:0;top:0;z-index:25;
+  text-align:left;background:#f4f4f4;
+  min-width:180px;width:180px;
+  padding-left:20px;
+  border-right:1px solid #e2e2e2;
+}
+.day-name{display:block;letter-spacing:.1em;text-transform:uppercase;font-size:10px}
+.day-date{display:block;font-size:12px;margin-top:2px;color:#111827}
+
+tr.date-repeat>td{
+  background:rgba(0,35,51,0.82);
+  border-top:1px solid rgba(255,255,255,0.12);border-bottom:1px solid rgba(255,255,255,0.12);
+  text-align:center;
+  padding:7px 10px;
+  font-family:var(--mono);
+  font-size:11px;font-weight:500;
+  color:rgba(255,255,255,0.85);
+  letter-spacing:.06em;
+}
+tr.date-repeat>td.c-metric{
+  position:sticky;left:0;z-index:9;
+  background:rgba(0,35,51,0.92);
+  border-right:1px solid rgba(255,255,255,0.12);
+  text-align:left;padding-left:20px;
+}
+tr.date-repeat>td.wknd{color:rgba(255,255,255,0.25)}
+
+tr.sec-hdr>td{
+  background:#f4f4f4;
+  padding:10px 10px 7px;
+  font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+  color:#6b7280;
+  border-top:1px solid #e2e2e2;
+  border-bottom:1px solid #e2e2e2;
+}
+tr.sec-hdr>td.c-metric{
+  position:sticky;left:0;z-index:9;
+  background:#f4f4f4;
+  padding-left:20px;
+  border-right:1px solid #e2e2e2;
+}
+
+tr.sub-hdr>td{
+  background:#fafafa;
+  padding:8px 10px 6px;
+  font-size:11px;font-weight:600;letter-spacing:.04em;
+  color:#374151;
+  border-top:1px solid #f0f0f0;
+  border-bottom:1px solid #f0f0f0;
+}
+tr.sub-hdr>td.c-metric{
+  position:sticky;left:0;z-index:9;
+  background:#fafafa;
+  padding-left:20px;
+  border-right:1px solid #e2e2e2;
+}
+
+tr.dr>td{border-bottom:1px solid #f0f0f0;vertical-align:middle}
+tr.dr:hover>td{background:#fafafa !important}
+
+td.c-metric{
+  position:sticky;left:0;z-index:9;
+  background:#fff;
+  min-width:180px;width:180px;
+  padding:7px 14px 7px 20px;
+  font-size:14px;color:#111827;
+  border-right:1px solid #e2e2e2;
+}
+tr.dr:hover>td.c-metric{background:#fafafa}
+
+td.c-val{
+  font-family:var(--mono);
+  font-size:14px;
+  color:#374151;
+  text-align:right;
+  padding:7px 14px;
+  min-width:72px;
+  background:#fff;
+}
+td.c-val.empty{color:#d1d5db}
+td.c-val.hl{color:#111827;font-weight:500}
+
+.state{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#6b7280}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#cfe3f0;border-radius:2px}
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-label">Any<span>Van</span></div>
+    <div class="sidebar-title">Storage Reporting</div>
+  </div>
+  <a class="nav-link" href="/operations/storage-mtd">MTD Revenue</a>
+  <a class="nav-link" href="/operations/storage-monthly">Monthly Trends</a>
+  <a class="nav-link" href="/operations/storage-voice-activity">Voice Activity</a>
+  <a class="nav-link" href="/operations/storage-daily-activity">Daily Activity</a>
+  <a class="nav-link" href="/operations/storage-whatsapp">WhatsApp</a>
+  <a class="nav-link active" href="/operations/storage-freshdesk">Freshdesk</a>
+  <a class="nav-link" href="/operations/storage-csat">CSAT &amp; NPS</a>
+  <a class="nav-link" href="/operations/storage-call-grading">Call Grading</a>
+  <a class="nav-link" href="/operations/storage-debt">Debt Intelligence</a>
+  <div class="sidebar-bottom">
+    <a class="sidebar-home" href="/operations/storage">← All boards (Hub)</a>
+  </div>
+</nav>
+
+<div class="main-wrap">
+<div class="topbar">
+  <span class="topbar-title">Freshdesk</span>
+  <div class="topbar-right">
+    <select class="month-sel" id="month-sel" onchange="switchMonth(this.value)"></select>
+    <span class="refresh-note" title="Data updates daily. ↻ Refresh kicks off a rebuild (~1–2 min) then reloads." style="display:inline-flex;align-items:center;font-size:11px;font-weight:600;border-radius:20px;padding:4px 10px;white-space:nowrap;background:#fffbeb;color:#b45309;border:1px solid #fcd34d">Updates daily · ~1–2 min refresh</span>
+    <button class="refresh-btn" id="refresh-btn" onclick="triggerRefresh()" title="Triggers the refresh-freshdesk rebuild via GitHub Actions, then reloads.">↻ Refresh</button>
+    <span class="topbar-meta" id="meta">Loading…</span>
+  </div>
+</div>
+
+<div class="matrix-wrap" id="wrap">
+  <div class="state" id="state">Loading…</div>
+</div>
+</div>
+
+<script>
+const GITHUB_PAT  = 'worker-handles-auth'
+const GITHUB_REPO = 'Robbosd/storage-reporting'
+const WORKFLOW_ID = 'refresh-freshdesk.yml'
+const DATA_URL    = 'https://robbosd.github.io/storage-reporting/data/freshdesk_data.json'
+
+const DAY_ABBR    = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+const MO_LABEL    = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+const QUEUE_NAMES = ['Storage Support','Storage Warehouse','Storage','Whs. Redeliveries','Storage Complaints']
+const AGENT_NAMES = ['Shaun Gae','Emmanuel Nsenga','Theo J','Shafwaan Titus']
+
+let ALL_DATA = {}
+let SELECTED_MONTH = null
+
+function monthLabel(mk){ const [y,m]=mk.split('-'); return `${MO_LABEL[+m-1]} ${y}` }
+
+function daysInMonth(mk){
+  const [y,m] = mk.split('-').map(Number)
+  const count = new Date(y, m, 0).getDate()
+  const days = []
+  for(let d=1;d<=count;d++){
+    const iso = `${mk}-${String(d).padStart(2,'0')}`
+    const dt  = new Date(iso+'T00:00:00')
+    days.push({ iso, day: DAY_ABBR[dt.getDay()], dd: String(d).padStart(2,'0'), wknd: dt.getDay()===0||dt.getDay()===6 })
+  }
+  return days
+}
+
+function buildTable(days){
+  const table = document.createElement('table')
+  const thead = table.createTHead()
+  const hdr   = thead.insertRow()
+  hdr.className = 'day-hdr'
+  const thMet = document.createElement('th')
+  thMet.className = 'c-metric'
+  hdr.appendChild(thMet)
+  days.forEach(d => {
+    const th = document.createElement('th')
+    th.className = d.wknd ? 'wknd' : ''
+    th.innerHTML = `<span class="day-name">${d.day}</span><span class="day-date">${d.dd}/${SELECTED_MONTH.slice(5,7)}</span>`
+    hdr.appendChild(th)
+  })
+
+  const tbody = table.createTBody()
+
+  function dateHdrRow(){
+    const tr = tbody.insertRow(); tr.className='date-repeat'
+    const td = document.createElement('td'); td.className='c-metric'; tr.appendChild(td)
+    days.forEach(d => {
+      const t = document.createElement('td')
+      t.className = d.wknd ? 'wknd' : ''
+      t.innerHTML = `<span class="day-name">${d.day}</span><span class="day-date" style="display:block;font-size:11px;color:rgba(255,255,255,0.85)">${d.dd}/${SELECTED_MONTH.slice(5,7)}</span>`
+      tr.appendChild(t)
+    })
+  }
+  function secRow(label){
+    const tr = tbody.insertRow(); tr.className='sec-hdr'
+    const td = document.createElement('td'); td.className='c-metric'; td.textContent=label; tr.appendChild(td)
+    for(let i=0;i<days.length;i++){ const t=document.createElement('td'); tr.appendChild(t) }
+  }
+  function subRow(label){
+    const tr = tbody.insertRow(); tr.className='sub-hdr'
+    const td = document.createElement('td'); td.className='c-metric'; td.textContent=label; tr.appendChild(td)
+    for(let i=0;i<days.length;i++){ const t=document.createElement('td'); tr.appendChild(t) }
+  }
+  function dataRow(metric, getter, highlight=false){
+    const tr = tbody.insertRow(); tr.className='dr'
+    const tdM = document.createElement('td'); tdM.className='c-metric'; tdM.textContent=metric; tr.appendChild(tdM)
+    days.forEach(d => {
+      const td  = document.createElement('td')
+      const rec = ALL_DATA[d.iso]
+      const raw = rec ? getter(rec) : null
+      const empty = raw==null||raw===''||raw==='—'
+      td.className = 'c-val' + (empty?' empty': highlight?' hl':'') + (d.wknd?' wknd':'')
+      td.textContent = empty ? '—' : String(raw)
+      tr.appendChild(td)
+    })
+  }
+
+  dateHdrRow()
+  secRow('Overview')
+  dataRow('Tickets In',       r => r.inn, true)
+  dataRow('Tickets Resolved', r => r.resolved)
+  dataRow('Backlog',          r => r.backlog)
+  dataRow('FR SLA %',         r => r.fr_sla  != null ? r.fr_sla.toFixed(1)+'%'  : null)
+  dataRow('Res SLA %',        r => r.res_sla != null ? r.res_sla.toFixed(1)+'%' : null)
+  dataRow('Avg Resolve',      r => r.avg_r || null)
+  dataRow('p90 Resolve',      r => r.p90   || null)
+
+  dateHdrRow()
+  secRow('By Queue')
+  QUEUE_NAMES.forEach((qname, qi) => {
+    subRow(qname)
+    dataRow('In',       r => r.queues[qi]?.in  ?? null, true)
+    dataRow('Resolved', r => r.queues[qi]?.res ?? null)
+    dataRow('Backlog',  r => r.queues[qi]?.blg ?? null)
+    dataRow('FR SLA %', r => r.queues[qi]?.fr  != null ? r.queues[qi].fr.toFixed(1)+'%' : null)
+  })
+
+  dateHdrRow()
+  secRow('By Agent (Ops)')
+  AGENT_NAMES.forEach((aname, ai) => {
+    subRow(aname)
+    dataRow('Assigned',    r => r.agents[ai]?.assigned ?? null, true)
+    dataRow('Resolved',    r => r.agents[ai]?.resolved ?? null)
+    dataRow('Backlog',     r => r.agents[ai]?.backlog  ?? null)
+    dataRow('FR SLA %',    r => r.agents[ai]?.fr != null ? r.agents[ai].fr.toFixed(1)+'%' : null)
+    dataRow('Avg Resolve', r => r.agents[ai]?.avg || null)
+    dataRow('p90 Resolve', r => r.agents[ai]?.p90 || null)
+  })
+
+  return table
+}
+
+function render(){
+  const days    = daysInMonth(SELECTED_MONTH)
+  const present = days.filter(d => ALL_DATA[d.iso]).length
+  document.getElementById('meta').textContent =
+    `${monthLabel(SELECTED_MONTH)} · ${present} day${present!==1?'s':''} of data`
+  const wrap = document.getElementById('wrap')
+  const existing = wrap.querySelector('table')
+  if(existing) existing.remove()
+  wrap.appendChild(buildTable(days))
+}
+
+function switchMonth(val){ SELECTED_MONTH=val; render() }
+
+async function loadData(){
+  const r = await fetch(DATA_URL + '?_='+Date.now())
+  if(!r.ok) throw new Error(r.status)
+  ALL_DATA = await r.json()
+}
+
+async function init(){
+  try{ await loadData() }catch(e){
+    document.getElementById('state').textContent='Failed to load freshdesk_data.json'; return
+  }
+  document.getElementById('state').remove()
+  const months = [...new Set(Object.keys(ALL_DATA).sort().reverse().map(d=>d.slice(0,7)))].sort().reverse()
+  const sel = document.getElementById('month-sel')
+  sel.innerHTML = months.map(m=>`<option value="${m}">${monthLabel(m)}</option>`).join('')
+  const now = new Date()
+  const curMk = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
+  SELECTED_MONTH = months.includes(curMk) ? curMk : months[0]
+  sel.value = SELECTED_MONTH
+  render()
+}
+
+async function triggerRefresh(){
+  const btn = document.getElementById('refresh-btn')
+  btn.disabled = true
+  btn.innerHTML = '<span class="spin">↻</span> Refreshing…'
+  try{
+    const dispatch = await fetch(
+      `https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/dispatches`,
+      {method:'POST',headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify({ref:'main'})}
+    )
+    if(!dispatch.ok) throw new Error(`Dispatch failed: ${dispatch.status}`)
+    await new Promise(r=>setTimeout(r,5000))
+    let runId = null
+    for(let i=0;i<12;i++){
+      const runs = await fetch(`https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/runs?per_page=1`,
+        {headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json'}})
+      const d = await runs.json()
+      if(d.workflow_runs?.[0]){runId=d.workflow_runs[0].id;break}
+      await new Promise(r=>setTimeout(r,3000))
+    }
+    if(!runId) throw new Error('Could not find workflow run')
+    for(let i=0;i<50;i++){
+      await new Promise(r=>setTimeout(r,6000))
+      const check = await fetch(`https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/runs/${runId}`,
+        {headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json'}})
+      const run = await check.json()
+      if(run.status==='completed'){
+        if(run.conclusion!=='success') throw new Error(`Workflow ${run.conclusion}`)
+        break
+      }
+    }
+    // Poll until the JSON on GitHub Pages reflects the new data (Pages deploy takes ~1-2 min)
+    const expectedDate = (() => {
+      const d = new Date(); d.setDate(d.getDate() - 1)
+      return d.toISOString().slice(0,10)
+    })()
+    let deployed = false
+    for(let i=0;i<24;i++){
+      await new Promise(r=>setTimeout(r,5000))
+      try{
+        const jr = await fetch(DATA_URL + '?_='+Date.now())
+        if(jr.ok){ const jd = await jr.json(); if(jd[expectedDate]){ deployed=true; break } }
+      }catch(_){}
+    }
+    location.reload()
+  }catch(e){
+    alert('Refresh failed: '+e.message)
+    console.error(e)
+  }finally{
+    btn.disabled = false
+    btn.innerHTML = '↻ Refresh'
+  }
+}
+
+init()
+</script>
+</body>
+</html>

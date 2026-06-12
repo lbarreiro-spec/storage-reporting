@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voice Activity — AnyVan Storage</title>
+<meta name="av-dashboard-api" content="https://63g6ly45b0.execute-api.eu-west-1.amazonaws.com/production">
+<script src="https://assets.anyvan.com/tracking/av-track.7fa8936e.js"></script>
+<script>window.av && window.av.configureTracking && window.av.configureTracking({ baseUrl: 'https://www.anyvan.com' })</script>
+<script src="https://assets.anyvan.com/av-dashboards/av-dashboard.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --mono:'SF Mono','Menlo','Monaco',monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
+}
+html,body{height:100%;overflow:hidden}
+body{display:flex;height:100%;font-family:var(--sans);background:#f5f7fa}
+
+/* SIDEBAR */
+.sidebar{
+  width:220px;min-width:220px;background:#002333;
+  display:flex;flex-direction:column;
+  padding:24px 0;flex-shrink:0;height:100%;overflow-y:auto;
+  border-top:4px solid #ffc907;
+}
+.sidebar-brand{padding:0 24px 24px;margin-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.08)}
+.sidebar-label{font-size:18px;font-weight:800;letter-spacing:-.02em;color:#fff;margin-bottom:2px}
+.sidebar-label span{color:#41a5dd}
+.sidebar-title{font-size:12px;font-weight:500;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:.12em}
+.nav-link{
+  display:block;padding:10px 24px;font-size:13px;color:rgba(255,255,255,0.65);
+  text-decoration:none;transition:color .12s,background .12s;border-left:3px solid transparent;
+}
+.nav-link:hover{color:rgba(255,255,255,0.85)}
+.nav-link.active{color:#fff;border-left-color:#41a5dd;background:rgba(65,165,221,0.12)}
+.sidebar-bottom{margin-top:auto;padding:16px 24px;border-top:1px solid rgba(255,255,255,0.08)}
+.sidebar-home{font-size:13px;color:rgba(255,255,255,0.65);text-decoration:none;transition:color .12s}
+.sidebar-home:hover{color:#fff}
+
+/* MAIN */
+.main{padding:32px 40px;flex:1;overflow-y:auto}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px}
+.topbar-controls{display:flex;gap:10px;align-items:center}
+
+.ph{margin-bottom:0}
+.ph-lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#41a5dd;font-weight:700;margin-bottom:6px}
+.ph-title{font-size:24px;font-weight:700;color:#002333}
+.ph-sub{font-size:13px;color:#6b7280;margin-top:4px;font-family:var(--mono)}
+
+.userbar{font-size:12px;color:#6b7280;margin-bottom:18px;font-family:var(--mono)}
+.userbar .cache{color:#9ca3af}
+
+.sec{
+  background:#fff;border:1px solid #e2e2e2;border-radius:12px;padding:24px;
+  box-shadow:0 1px 3px rgba(0,0,0,0.06);margin-bottom:24px;
+}
+.sec-lbl{
+  font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#6b7280;
+  border-bottom:1px solid #e2e2e2;padding-bottom:8px;margin-bottom:16px;
+}
+
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+
+th.grp-ib{border-left:2px solid rgba(65,165,221,0.35)}
+th.grp-ob{border-left:2px solid #e2e2e2}
+td.grp-ib{border-left:2px solid rgba(65,165,221,0.2)}
+td.grp-ob{border-left:2px solid #f0f0f0}
+
+thead th{
+  background:#f4f4f4;color:#6b7280;font-size:12px;text-transform:uppercase;
+  letter-spacing:.08em;padding:10px 14px;border-bottom:1px solid #e2e2e2;
+  font-weight:600;white-space:nowrap;text-align:right;
+}
+thead th:first-child,thead th:nth-child(2){text-align:left}
+tbody td{
+  font-family:var(--mono);font-size:14px;padding:10px 14px;
+  border-bottom:1px solid #f0f0f0;color:#374151;text-align:right;white-space:nowrap;
+  background:#fff;
+}
+tbody td:first-child{font-family:var(--sans);font-size:14px;font-weight:500;color:#111827;text-align:left}
+tbody td:nth-child(2){font-family:var(--sans);font-size:14px;text-align:left;color:#111827;font-weight:500}
+tbody tr:hover td{background:#fafafa}
+
+td.rate-good{color:#16a34a;font-weight:600}
+td.rate-warn{color:#d97706;font-weight:600}
+td.rate-bad{color:#dc2626;font-weight:600}
+
+tr.date-sep td{
+  background:#f4f4f4;font-family:var(--sans);font-size:13px;font-weight:600;
+  color:#111827;text-align:left;padding:8px 14px;border-bottom:none;
+  border-top:1px solid #e2e2e2;
+}
+
+.loading{font-size:14px;color:#6b7280;padding:40px 0;text-align:center}
+
+.toggle-group{display:flex;gap:6px}
+.toggle-btn{
+  background:#fff;border:1px solid #e2e2e2;border-radius:7px;padding:6px 16px;
+  font-family:var(--sans);font-size:13px;color:#6b7280;cursor:pointer;transition:all .12s;
+}
+.toggle-btn:hover{border-color:#41a5dd;color:#106799}
+.toggle-btn.active{background:#41a5dd;border-color:#41a5dd;color:#fff;font-weight:600}
+
+.month-sel{
+  background:#fff;border:1px solid #e2e2e2;border-radius:8px;padding:7px 12px;
+  font-family:var(--mono);font-size:14px;color:#111827;outline:none;cursor:pointer;
+}
+
+.refresh-btn{
+  background:#fff;border:1px solid #e2e2e2;border-radius:7px;padding:5px 12px;
+  font-family:var(--sans);font-size:13px;color:#6b7280;cursor:pointer;transition:all .12s;
+}
+.refresh-btn:hover:not(:disabled){border-color:#41a5dd;color:#106799}
+.refresh-btn:disabled{opacity:0.5;cursor:default}
+.spin{display:inline-block;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#cfe3f0;border-radius:2px}
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-label">Any<span>Van</span></div>
+    <div class="sidebar-title">Storage Reporting</div>
+  </div>
+  <a class="nav-link" href="/operations/storage-mtd">MTD Revenue</a>
+  <a class="nav-link" href="/operations/storage-monthly">Monthly Trends</a>
+  <a class="nav-link active" href="/operations/storage-voice-activity">Voice Activity</a>
+  <a class="nav-link" href="/operations/storage-daily-activity">Daily Activity</a>
+  <a class="nav-link" href="/operations/storage-whatsapp">WhatsApp</a>
+  <a class="nav-link" href="/operations/storage-freshdesk">Freshdesk</a>
+  <a class="nav-link" href="/operations/storage-csat">CSAT &amp; NPS</a>
+  <a class="nav-link" href="/operations/storage-call-grading">Call Grading</a>
+  <a class="nav-link" href="/operations/storage-debt">Debt Intelligence</a>
+  <div class="sidebar-bottom">
+    <a class="sidebar-home" href="/operations/storage">← All boards (Hub)</a>
+  </div>
+</nav>
+
+<div class="main">
+
+<div class="topbar">
+  <div class="ph">
+    <div class="ph-lbl">Storage · Contact Centre</div>
+    <div class="ph-title">Voice Activity</div>
+    <div class="ph-sub" id="ph-sub">Loading…</div>
+  </div>
+  <div class="topbar-controls">
+    <div class="toggle-group">
+      <button class="toggle-btn active" onclick="setTeam('all',this)">All</button>
+      <button class="toggle-btn" onclick="setTeam('ops',this)">Ops</button>
+      <button class="toggle-btn" onclick="setTeam('sales',this)">Sales</button>
+    </div>
+    <select class="month-sel" id="month-sel" onchange="switchMonth(this.value)"></select>
+    <span class="refresh-note" title="This board reads Snowflake live. Data updates once a day at source — hit ↻ Refresh to re-pull the latest figures instantly." style="display:inline-flex;align-items:center;font-size:11px;font-weight:600;border-radius:20px;padding:4px 10px;white-space:nowrap;background:#dcfce7;color:#15803d;border:1px solid #86efac">Updates daily · instant refresh</span>
+    <button class="refresh-btn" id="refresh-btn" onclick="triggerRefresh()">↻ Refresh</button>
+  </div>
+</div>
+
+<div class="userbar" id="userbar"></div>
+
+<div class="sec">
+  <div class="sec-lbl" id="table-lbl">All agents</div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>Date</th>
+        <th>Agent</th>
+        <th class="grp-ib">IB Dialled</th>
+        <th>IB Answered</th>
+        <th>IB Ans%</th>
+        <th>IB Talk Time</th>
+        <th>IB AHT</th>
+        <th class="grp-ob">OB Dialled</th>
+        <th>OB Answered</th>
+        <th>OB Talk Time</th>
+        <th>OB AHT</th>
+        <th class="grp-ob">Total Talk</th>
+      </tr></thead>
+      <tbody id="voice-body"><tr><td colspan="12" class="loading">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+</div>
+
+<script>
+const QUERY = 'storage_voice_daily_90d'
+
+const MO  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+const DAY = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+
+let ALL_DATA       = []
+let SELECTED_MONTH = null
+let SELECTED_TEAM  = 'all'
+
+function normalise(rows){
+  if(!Array.isArray(rows)) return []
+  return rows.map(r => { const o={}; for(const k in r) o[k.toLowerCase()] = r[k]; return o })
+}
+function extractRows(res){
+  if(Array.isArray(res)) return res
+  if(!res || typeof res !== 'object') return []
+  if(Array.isArray(res.rows)) return res.rows
+  if(Array.isArray(res.data)) return res.data
+  if(Array.isArray(res.results)) return res.results
+  if(res.data && Array.isArray(res.data.rows)) return res.data.rows
+  if(res.result && Array.isArray(res.result.rows)) return res.result.rows
+  return []
+}
+
+function fmtSecs(s){
+  if(s == null || s === 0) return '—'
+  const h   = Math.floor(s / 3600)
+  const m   = Math.floor((s % 3600) / 60)
+  const sec = s % 60
+  return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`
+}
+function fmtDate(iso){
+  const d = new Date(iso + 'T00:00:00')
+  return `${DAY[d.getDay()]} ${d.getDate()} ${MO[d.getMonth()]}`
+}
+function monthLabel(iso){
+  const [y,m] = iso.split('-')
+  return `${MO[parseInt(m)-1]} ${y}`
+}
+function ansRateCell(dialled, answered){
+  if(!dialled) return '<td>—</td>'
+  const pct = Math.round((answered / dialled) * 100)
+  const cls = pct >= 80 ? 'rate-good' : pct >= 65 ? 'rate-warn' : 'rate-bad'
+  return `<td class="${cls}">${pct}%</td>`
+}
+
+async function showUser(cached, executedAt){
+  let who = ''
+  try{
+    const u = await AVDashboard.getCurrentUser()
+    who = u && (u.email || u.name) ? `Signed in as ${u.email || u.name} · ` : ''
+  }catch(e){ /* non-fatal */ }
+  const when = executedAt ? new Date(executedAt).toLocaleString('en-GB') : ''
+  document.getElementById('userbar').innerHTML =
+    `${who}<span class="cache">data ${cached ? 'cached' : 'live'}${when ? ' · ' + when : ''}</span>`
+}
+
+async function loadAll(freshness){
+  const res = await AVDashboard.runQuery(QUERY, freshness != null ? { freshness } : undefined)
+  console.log('[voice] runQuery result:', res)
+  ALL_DATA = normalise(extractRows(res))
+  showUser(res && res.cached, res && res.executedAt)
+
+  if(!ALL_DATA.length){
+    document.getElementById('ph-sub').textContent = 'No data available.'
+    document.getElementById('voice-body').innerHTML = '<tr><td colspan="12" style="text-align:center;color:#6b7280;padding:20px;font-size:14px">No data available</td></tr>'
+    return
+  }
+
+  const months = [...new Set(ALL_DATA.map(r => r.date.slice(0,7)))].sort().reverse()
+  const sel = document.getElementById('month-sel')
+  sel.innerHTML = months.map(m => `<option value="${m}">${monthLabel(m)}</option>`).join('')
+
+  const now = new Date()
+  const curLabel = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
+  SELECTED_MONTH = months.includes(curLabel) ? curLabel : months[0]
+  sel.value = SELECTED_MONTH
+
+  renderMonth()
+}
+
+function renderMonth(){
+  const days = [...new Set(ALL_DATA.filter(r => r.date.slice(0,7) === SELECTED_MONTH).map(r => r.date))]
+  document.getElementById('ph-sub').textContent =
+    `${monthLabel(SELECTED_MONTH)} · ${days.length} day${days.length !== 1 ? 's' : ''} of data`
+  renderTable()
+}
+
+function switchMonth(val){ SELECTED_MONTH = val; renderMonth() }
+
+function setTeam(team, btn){
+  SELECTED_TEAM = team
+  document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'))
+  btn.classList.add('active')
+  const labels = { all: 'All agents', ops: 'Ops team', sales: 'Sales team' }
+  document.getElementById('table-lbl').textContent = labels[team]
+  renderTable()
+}
+
+function renderTable(){
+  let rows = ALL_DATA.filter(r => r.date.slice(0,7) === SELECTED_MONTH)
+  if(SELECTED_TEAM !== 'all') rows = rows.filter(r => r.team === SELECTED_TEAM)
+
+  const tbody = document.getElementById('voice-body')
+  if(!rows.length){
+    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#6b7280;padding:20px;font-size:14px">No data for this selection</td></tr>'
+    return
+  }
+
+  const dates = [...new Set(rows.map(r => r.date))].sort().reverse()
+  let html = ''
+  for(const d of dates){
+    const dayRows = rows.filter(r => r.date === d).sort((a,b) => a.agent.localeCompare(b.agent))
+    html += `<tr class="date-sep"><td colspan="12">${fmtDate(d)}</td></tr>`
+    for(const r of dayRows){
+      const totalTalk = (r.ib_talktime || 0) + (r.ob_talktime || 0)
+      html += `<tr>
+        <td></td>
+        <td>${r.agent}</td>
+        <td class="grp-ib">${r.ib_dialled ?? '—'}</td>
+        <td>${r.ib_answered ?? '—'}</td>
+        ${ansRateCell(r.ib_dialled, r.ib_answered)}
+        <td>${fmtSecs(r.ib_talktime)}</td>
+        <td>${fmtSecs(r.ib_aht)}</td>
+        <td class="grp-ob">${r.ob_dialled ?? '—'}</td>
+        <td>${r.ob_answered ?? '—'}</td>
+        <td>${fmtSecs(r.ob_talktime)}</td>
+        <td>${fmtSecs(r.ob_aht)}</td>
+        <td class="grp-ob" style="color:#111827;font-weight:500">${fmtSecs(totalTalk)}</td>
+      </tr>`
+    }
+  }
+  tbody.innerHTML = html
+}
+
+async function triggerRefresh(){
+  const btn = document.getElementById('refresh-btn')
+  btn.disabled = true
+  btn.innerHTML = '<span class="spin">↻</span> Refreshing…'
+  try{
+    // Live re-query straight from Snowflake (platform enforces a 10-min cache floor).
+    await loadAll(600)
+  }catch(e){
+    alert('Refresh failed: ' + e.message)
+    console.error(e)
+  }finally{
+    btn.disabled = false
+    btn.innerHTML = '↻ Refresh'
+  }
+}
+
+window.addEventListener('load', async () => {
+  try{
+    await AVDashboard.ensureAuthenticated()
+    await loadAll()
+  }catch(e){
+    const detail = [e.statusCode && `HTTP ${e.statusCode}`, e.code, e.details].filter(Boolean).join(' · ')
+    const msg = (e.message || String(e)) + (detail ? `  (${detail})` : '')
+    document.getElementById('ph-sub').textContent = 'Error: ' + msg
+    document.getElementById('voice-body').innerHTML =
+      `<tr><td colspan="12" style="text-align:center;color:#dc2626;padding:20px;font-size:14px">${msg}</td></tr>`
+    console.error('[voice] load failed:', e)
+  }
+})
+</script>
+</body>
+</html>
