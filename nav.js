@@ -27,6 +27,8 @@
       blurb:'Weekly KPI matrix across Website, Leads, Sales, BAU & Zoho. Hand-maintained — click ✎ Edit to update each week.' },
     { path:'/operations/storage-hubspot-pipeline',    label:'HubSpot Pipeline', icon:'🔶', badge:'live',
       blurb:'AVC-UK-STORAGE pipeline — lead volume, funnel, win rate, owner leaderboard, uncontacted backlog and speed-to-lead conversion.' },
+    { path:'/operations/storage-connect',             label:'Connect & Conversion', icon:'🔗', badge:'live',
+      blurb:'Sales effectiveness — per-agent outbound reach & connect rate (v1 proxy from voice activity), building toward a Lead→Onboarded→Signed→Paid conversion funnel.' },
     { path:'/operations/storage-sales-leaderboard',   label:'Sales Leaderboard',icon:'🏆', badge:'live',
       blurb:'Storage sales ranking by agent — bookings & revenue, updated live from the team sheet.' },
     { path:'/operations/storage-calculator',          label:'Storage Pricing',  icon:'🧮', badge:'tool',
