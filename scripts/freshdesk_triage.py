@@ -383,7 +383,7 @@ STAKES=[('chargeback',6),('ombudsman',6),('legal',6),('solicitor',6),('stolen',5
 def stakes(reason):
     s=reason.lower(); return max([w for k,w in STAKES if k in s] or [1])
 
-def cmd_assign(per,dry):
+def cmd_assign(per,dry,allscope=False):
     per=per or 20
     # Read THIS run's judgements + candidates (the canonical files written by judge/fetch).
     # Fall back to the legacy workflow filenames only if the current ones are absent.
@@ -393,11 +393,16 @@ def cmd_assign(per,dry):
         raise FileNotFoundError(f"{primary} (or {legacy})")
     V=_load('/tmp/triage_judgements.json','/tmp/triage_verdicts.json')
     cand={c['id']:c for c in _load('/tmp/triage_candidates.json','/tmp/triage_all_candidates.json')}
-    # worklist = reds, highest stakes first then oldest
-    reds=[x for x in V if x['rag']=='red']
-    reds.sort(key=lambda x:(-stakes(x['reason']), -(cand.get(x['id'],{}).get('age_h') or 0)))
-    cap=per*len(ROSTER)
-    queue=reds[:cap]
+    # worklist: reds only (default) or ALL open tickets (--all). Sort reds→amber→blue→green,
+    # then highest-stakes, then oldest, so high-priority work distributes first/evenly.
+    rank={'red':0,'amber':1,'blue':2,'green':3}
+    if allscope:
+        queue=sorted(V,key=lambda x:(rank.get(x.get('rag'),9),-stakes(x.get('reason','')),-(cand.get(x['id'],{}).get('age_h') or 0)))
+        per=10**6   # no per-agent cap: every open ticket gets an owner; round-robin = even split
+    else:
+        reds=[x for x in V if x['rag']=='red']
+        reds.sort(key=lambda x:(-stakes(x['reason']), -(cand.get(x['id'],{}).get('age_h') or 0)))
+        queue=reds[:per*len(ROSTER)]
     # check current owners; keep tickets already held by a human, round-robin the rest
     load={a['fd']:0 for a in ROSTER}; assign_to={}; kept=[]; gone=set()
     for x in queue:
@@ -423,7 +428,9 @@ def cmd_assign(per,dry):
     byagent={a['fd']:[] for a in ROSTER}
     for tid,fd in assign_to.items(): byagent[fd].append(tid)
     nm={a['fd']:a for a in ROSTER}
-    print(f"{'[DRY] ' if dry else ''}assigning {len(assign_to)} reds across {len(ROSTER)} agents (cap {per} each); {len(kept)} already owned, kept.")
+    _lbl='tickets (ALL open)' if allscope else 'reds'
+    _cap='no cap — every open ticket gets an owner' if allscope else f'cap {per} each'
+    print(f"{'[DRY] ' if dry else ''}assigning {len(assign_to)} {_lbl} across {len(ROSTER)} agents ({_cap}); {len(kept)} already owned, kept.")
     for a in ROSTER:
         ids=byagent[a['fd']]
         print(f"\n  {a['name']} ({len(ids)}):")
@@ -637,6 +644,6 @@ if __name__=='__main__':
     elif a.mode=='fetch': cmd_fetch(a.limit,a.allflag,a.days)
     elif a.mode=='greens': cmd_greens(a.limit or 40)
     elif a.mode=='fetchall': cmd_fetchall()
-    elif a.mode=='assign': cmd_assign(a.per,a.dry)
+    elif a.mode=='assign': cmd_assign(a.per,a.dry,allscope=a.allflag)
     elif a.mode=='assignall': cmd_assignall(a.go)
     elif a.mode=='apply': cmd_apply(a.infile,a.dry,a.no_close,notes=(not a.no_notes))
