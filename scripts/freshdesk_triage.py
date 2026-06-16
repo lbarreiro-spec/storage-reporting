@@ -54,6 +54,27 @@ assert API and DOM, "missing FRESHDESK creds"
 BASE=f"https://{DOM}.freshdesk.com/api/v2"
 HDR={"Authorization":"Basic "+base64.b64encode(f"{API}:X".encode()).decode(),"Content-Type":"application/json"}
 
+# Pooled session + retry: reuse connections (avoids local ephemeral-port exhaustion on big
+# --all sweeps) and retry transient failures. The per-ticket reads have no other 429 handling,
+# so without this a throttled sweep silently returns empty bodies and the judge sees nothing.
+SESS=requests.Session()
+SESS.mount('https://',requests.adapters.HTTPAdapter(pool_connections=8,pool_maxsize=8))
+def rget(url,tries=6,**kw):
+    """GET with connection-error + 429 retry (backoff). Returns the final Response, or None
+    if every attempt errored at the socket level."""
+    if not url.startswith('http'): url=f"{BASE}{url}"
+    kw.setdefault('headers',HDR); kw.setdefault('timeout',30)
+    r=None
+    for k in range(tries):
+        try:
+            r=SESS.get(url,**kw)
+        except requests.exceptions.RequestException:
+            time.sleep(2+k); continue
+        if r.status_code==429:
+            time.sleep(int(r.headers.get('Retry-After','3'))+1); continue
+        return r
+    return r
+
 GROUPS={31000116715:"Storage",31000118020:"Storage Complaints",31000117596:"Storage Payments",
         31000117121:"Storage Support",31000117989:"Storage Warehouse",31000119031:"Storage Whs Redeliveries"}
 OPEN_STATUSES=(2,3,10,11)   # this instance's open/pending states (1 is invalid; 4/5 = resolved/closed)
@@ -92,8 +113,8 @@ def hrs(dt): return None if not dt else round((now-dt).total_seconds()/3600,1)
 def search(q,max_pages=6):
     out=[];page=1
     while page<=max_pages:
-        r=requests.get(f"{BASE}/search/tickets",headers=HDR,params={"query":'"'+q+'"',"page":page},timeout=30)
-        if r.status_code==429: time.sleep(int(r.headers.get('Retry-After','2'))+1); continue
+        r=rget(f"{BASE}/search/tickets",params={"query":'"'+q+'"',"page":page})
+        if r is None: break
         if r.status_code!=200:
             if page==1: print("search HTTP",r.status_code,r.text[:120],file=sys.stderr)
             break
@@ -134,9 +155,9 @@ def pull_open_list(days_back=4, max_pages=80):
     while page<=max_pages:
         # NEWEST-first: if company volume ever exceeds the page cap, we drop the OLDEST end
         # (which search reliably covers) and never the recent untriaged tickets we must catch.
-        r=requests.get(f"{BASE}/tickets",headers=HDR,
+        r=rget(f"{BASE}/tickets",
                        params={"updated_since":since,"order_by":"updated_at","order_type":"desc","per_page":100,"page":page},timeout=30)
-        if r.status_code==429: time.sleep(int(r.headers.get('Retry-After','3'))+1); continue
+        if r is None: break
         if r.status_code!=200:
             if page==1: print("list HTTP",r.status_code,r.text[:120],file=sys.stderr)
             break
@@ -150,8 +171,8 @@ def pull_open_list(days_back=4, max_pages=80):
 def last_public_msg(tid):
     """Return (direction, text, when) of the latest public (non-note) message; falls back to description."""
     try:
-        r=requests.get(f"{BASE}/tickets/{tid}",headers=HDR,params={"include":"conversations"},timeout=30)
-        if r.status_code!=200: return (None,'',None)
+        r=rget(f"{BASE}/tickets/{tid}",params={"include":"conversations"})
+        if r is None or r.status_code!=200: return (None,'',None)
         t=r.json(); convs=[c for c in (t.get('conversations') or []) if not c.get('private')]
         if convs:
             c=convs[-1]
@@ -166,8 +187,8 @@ def full_thread(tid, max_chars=6000, max_msgs=25):
     likely-reds (rules-proxy) so the judge sees the whole conversation, not just the latest
     message. Same single API call as last_public_msg. Returns (last_direction, thread_text, last_msg_ts)."""
     try:
-        r=requests.get(f"{BASE}/tickets/{tid}",headers=HDR,params={"include":"conversations"},timeout=30)
-        if r.status_code!=200: return (None,'',None)
+        r=rget(f"{BASE}/tickets/{tid}",params={"include":"conversations"})
+        if r is None or r.status_code!=200: return (None,'',None)
         t=r.json(); seq=[]; last_ts=t.get('created_at')
         desc=(t.get('description_text') or '').strip()
         if desc: seq.append(('customer',desc))
@@ -230,8 +251,8 @@ def cmd_summary():
     print(f"open={len(ts)}  RED {c['RED']}  AMBER {c['AMBER']}  GREEN {c['GREEN']}")
 
 def get_tags(tid):
-    r=requests.get(f"{BASE}/tickets/{tid}",headers=HDR,timeout=30)
-    if r.status_code!=200: return None
+    r=rget(f"{BASE}/tickets/{tid}")
+    if r is None or r.status_code!=200: return None
     return r.json().get('tags') or []
 
 def get_tags_status(tid):
@@ -239,8 +260,8 @@ def get_tags_status(tid):
     writing — closes the search-index-staleness race where a ticket resolved/closed by an
     agent between fetch and write could otherwise receive a write (and trip any reopen-on-
     update automation). Returns (None,None) on read failure."""
-    r=requests.get(f"{BASE}/tickets/{tid}",headers=HDR,timeout=30)
-    if r.status_code!=200: return (None,None)
+    r=rget(f"{BASE}/tickets/{tid}")
+    if r is None or r.status_code!=200: return (None,None)
     j=r.json(); return (j.get('tags') or [], j.get('status'))
 
 def put_ticket(tid,payload):
@@ -380,8 +401,8 @@ def cmd_assign(per,dry):
     # check current owners; keep tickets already held by a human, round-robin the rest
     load={a['fd']:0 for a in ROSTER}; assign_to={}; kept=[]; gone=set()
     for x in queue:
-        r=requests.get(f"{BASE}/tickets/{x['id']}",headers=HDR,timeout=30)
-        j=r.json() if r.status_code==200 else {}
+        r=rget(f"{BASE}/tickets/{x['id']}")
+        j=r.json() if (r is not None and r.status_code==200) else {}
         # Skip anything resolved/closed since fetch — never assign/write to a non-open ticket.
         if j.get('status') not in OPEN_STATUSES:
             gone.add(x['id']); time.sleep(0.1); continue
