@@ -127,7 +127,7 @@ td.zero{color:#d1d5db}
   <div class="topbar-controls">
     <select class="month-sel" id="month-sel" onchange="switchMonth(this.value)"></select>
     <span class="pill" title="Bookings come from Zoho CRM (deal Created date, excluding Cancel / Prospect / Enquiry / Estimate sent / Quoted by Sales). Refreshed daily; ↻ pulls live from Zoho now.">Zoho CRM · daily</span>
-    <button class="refresh-btn" id="refresh-btn" onclick="triggerRefresh()" title="Pulls the latest bookings live from Zoho CRM (~1 min), then reloads.">↻ Refresh from Zoho</button>
+    <button class="refresh-btn" id="refresh-btn" onclick="triggerRefresh()" title="Pulls the latest bookings live from Zoho CRM and recomputes website-lead CR (~1 min), then reloads.">↻ Refresh</button>
   </div>
 </div>
 
@@ -474,7 +474,7 @@ function renderTrend(){
   })
 }
 
-// ── Refresh: dispatch the Zoho fetch workflow via the storage-dispatch worker ──
+// ── Refresh: dispatch the fetch workflow via the storage-dispatch worker ──
 const GITHUB_REPO='Robbosd/storage-reporting', WORKFLOW_ID='fetch_sales_performance.yml'
 const DISPATCH='https://storage-dispatch.scottrobinson92.workers.dev'
 async function triggerRefresh(){
@@ -501,7 +501,7 @@ async function triggerRefresh(){
     }
     await new Promise(r=>setTimeout(r,3000)); location.reload()
   }catch(e){ alert('Refresh failed: '+e.message); console.error(e) }
-  finally{ btn.disabled=false; btn.innerHTML='↻ Refresh from Zoho' }
+  finally{ btn.disabled=false; btn.innerHTML='↻ Refresh' }
 }
 
 loadAll()
