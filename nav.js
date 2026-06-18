@@ -58,7 +58,9 @@
     { path:'/operations/storage-guides',              label:'How-To Guides',    icon:'📚', badge:'guide', hubCard:false,
       blurb:'Step-by-step team guides for running the day-to-day in Zoho — starting with one-click customer onboarding.' },
     { path:'/operations/sophie-hangups',              label:'Sophie Hang-ups',  icon:'📵', badge:'live', hubCard:false,
-      blurb:'Inbound AI voice agent (Sophie) — are customers hanging up prematurely, and is it rising? Weekly drop rate & "hung up while Sophie was talking" trend, with a drill-down of recent dropped calls.' }
+      blurb:'Inbound AI voice agent (Sophie) — are customers hanging up prematurely, and is it rising? Weekly drop rate & "hung up while Sophie was talking" trend, with a drill-down of recent dropped calls.' },
+    { path:'/operations/sophie-ai-performance',       label:'Sophie AI Perf.',  icon:'🤖', badge:'live', hubCard:false,
+      blurb:'Sophie AI agent performance across Calls / WhatsApp / Live Chat — Sophie share, escalation rate, containment, CSAT, and escalation cohorts by move-timing, days-to-pickup and move type. Official reporting marts.' }
   ];
 
   // expose for debugging / reuse
