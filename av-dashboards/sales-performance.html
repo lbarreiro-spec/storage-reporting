@@ -153,6 +153,21 @@ td.zero{color:#d1d5db}
   <div class="foot-note" id="webcr-note"></div>
 </div>
 
+<!-- ── ALL-LEAD CONVERSION ──────────────────────────────────────────── -->
+<div class="group-hdr">All-lead conversion</div>
+<div class="sec">
+  <div class="sec-lbl"><span>All UK-Storage leads → bookings — <span id="allcr-month"></span></span>
+    <span class="sec-note">whole HubSpot pipeline, by lead owner · vs Zoho bookings</span></div>
+  <div class="tbl-wrap">
+    <table id="allcr-table">
+      <thead><tr><th>Lead owner</th><th>Leads taken</th><th>Booked</th><th>CR</th></tr></thead>
+      <tbody id="allcr-body"><tr><td colspan="4" class="loading">Loading…</td></tr></tbody>
+      <tfoot id="allcr-foot"></tfoot>
+    </table>
+  </div>
+  <div class="foot-note" id="allcr-note"></div>
+</div>
+
 <!-- ── LEADERBOARD ──────────────────────────────────────────────────── -->
 <div class="group-hdr">Leaderboard</div>
 <div class="sec">
@@ -220,7 +235,14 @@ let ROWS = []                 // all sales_performance_daily rows
 let MONTHS = []               // distinct YYYY-MM, desc
 let SELECTED = null
 let WEB_CR = {}               // {YYYY-MM: [{owner_id, owner_name, leads, converted}]}
+let ALL_LEADS = {}            // {YYYY-MM: {hsOwnerName: leads}} — whole-pipeline HS leads taken
 let trendChart = null
+
+// HubSpot lead-owner label -> Zoho deal owner (the 5 reps that map across both systems)
+const HS_TO_ZOHO = {
+  'Andy N':'Andrew Njiokwuemegi', 'Dylan C':'Dylan Christian', 'Carla J':'Carla Jacobs',
+  'Michelle J':'Michelle Jemsana', 'Prosper M':'Prosper Mubata',
+}
 
 const todayStr = new Date().toISOString().slice(0,10)
 const curMonth = todayStr.slice(0,7)
@@ -272,7 +294,7 @@ async function loadAll(){
   SELECTED = MONTHS[0]
   const updated = ROWS.reduce((a,r)=> r.updated_at>a ? r.updated_at : a, '')?.slice(0,10) || ''
   document.getElementById('ph-sub').textContent = `Bookings from Zoho CRM · updated ${updated}`
-  await loadWebCR()
+  await Promise.all([ loadWebCR(), loadAllLeadCR() ])
   renderAll()
 }
 
@@ -283,6 +305,18 @@ async function loadWebCR(){
       .select('month,owner_id,owner_name,leads,converted')
     for(const r of (data||[])){ (WEB_CR[r.month] ||= []).push(r) }
   }catch(e){ console.warn('website-lead CR unavailable:', e) }
+}
+
+// All-lead CR denominator: whole UK-Storage HubSpot pipeline, leads taken per owner per day
+// (managed Snowflake query — same source as the HubSpot Pipeline board's Daily tab).
+async function loadAllLeadCR(){
+  try{
+    const res = await AVDashboard.runQuery('hs_storage_daily_owner', { freshness: 3600 })
+    for(const r of (res.rows || [])){
+      const m = (r.DAY||'').slice(0,7); if(!m) continue
+      ;(ALL_LEADS[m] ||= {})[r.OWNER_NAME] = (ALL_LEADS[m][r.OWNER_NAME] || 0) + Number(r.LEADS||0)
+    }
+  }catch(e){ console.warn('all-lead CR unavailable:', e) }
 }
 
 function switchMonth(m){ SELECTED = m; renderAll() }
@@ -311,6 +345,7 @@ function aggregateMonth(ym){
 function renderAll(){
   renderHeadline()
   renderWebCR()
+  renderAllLeadCR()
   renderLeaderboard()
   renderMatrix()
   renderTrend()
@@ -352,6 +387,49 @@ function renderWebCR(){
   note.textContent = SELECTED===curMonth
     ? 'Maturing cohort — this month’s leads keep booking after month-end, so the rate rises as it ages. Denominator = unique ‘Storage Lead’ website enquiries (excludes partner lead-gen & transport jobs); conversion = email match to a Zoho booking.'
     : 'Denominator = unique ‘Storage Lead’ website enquiries (excludes partner lead-gen & transport jobs); conversion = email match to a Zoho booking.'
+}
+
+// ── All-lead conversion (whole HubSpot pipeline leads taken → Zoho bookings) ──
+function renderAllLeadCR(){
+  const leadsMap = ALL_LEADS[SELECTED] || {}
+  document.getElementById('allcr-month').textContent = monthLabel(SELECTED)
+  const note = document.getElementById('allcr-note')
+  if(!Object.keys(leadsMap).length){
+    document.getElementById('allcr-body').innerHTML = '<tr><td colspan="4" class="loading">No HubSpot lead data for this month (query covers the last 3 months).</td></tr>'
+    document.getElementById('allcr-foot').innerHTML = ''
+    note.textContent = ''
+    return
+  }
+  // Zoho bookings per owner this month
+  const book = {}
+  for(const o of aggregateMonth(SELECTED)){ book[o.owner] = o.bookings }
+  const totBook = Object.values(book).reduce((a,b)=>a+b,0)
+  // 5 reps that map across both systems
+  const rows = []; let coreBook = 0
+  for(const [hsName, zName] of Object.entries(HS_TO_ZOHO)){
+    const booked = book[zName] || 0; coreBook += booked
+    rows.push({ name: zName, leads: leadsMap[hsName] || 0, booked })
+  }
+  rows.sort((a,b)=> b.leads - a.leads)
+  // everyone else (incl V4/onboarding) -> Other: HS 'Other' leads vs all non-core Zoho bookings
+  const otherLeads = leadsMap['Other'] || 0, otherBook = totBook - coreBook
+  if(otherLeads || otherBook) rows.push({ name:'Other', leads:otherLeads, booked:otherBook, isOther:true })
+
+  const crOf = r => r.leads ? r.booked/r.leads*100 : null
+  const leadVals = rows.map(r=>r.leads)
+  const crVals = rows.map(crOf).filter(v=>v!=null)
+  document.getElementById('allcr-body').innerHTML = rows.map((r,i)=>{
+    const cr = crOf(r)
+    return `<tr>
+      <td><span class="rank">${i+1}</span>${r.isOther ? r.name : disp(r.name)}</td>
+      <td style="${ragBg(r.leads,leadVals)}">${fN(r.leads)}</td>
+      <td>${fN(r.booked)}</td>
+      <td style="${cr==null?'':ragBg(cr,crVals)}">${cr==null?'—':fPct(cr)}</td>
+    </tr>`}).join('')
+  const tL = rows.reduce((a,r)=>a+r.leads,0)
+  document.getElementById('allcr-foot').innerHTML =
+    `<tr><td>Team total</td><td>${fN(tL)}</td><td>${fN(totBook)}</td><td>${tL?fPct(totBook/tL*100):'—'}</td></tr>`
+  note.textContent = 'Denominator = every UK-Storage HubSpot lead taken by the rep (whole pipeline, incl. transport & partner lead-gen pools); numerator = the rep’s Zoho bookings that month. Directional — broader and noisier than the website-lead view above.'
 }
 
 function renderHeadline(){
