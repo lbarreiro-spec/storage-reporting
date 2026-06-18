@@ -138,11 +138,26 @@ td.zero{color:#d1d5db}
   <div class="stat-row" id="headline-stats"><div class="loading">Loading…</div></div>
 </div>
 
+<!-- ── WEBSITE LEAD CONVERSION ──────────────────────────────────────── -->
+<div class="group-hdr">Website lead conversion</div>
+<div class="sec">
+  <div class="sec-lbl"><span>Storage website leads → bookings — <span id="webcr-month"></span></span>
+    <span class="sec-note">unique website enquiries, by lead owner · matched to Zoho bookings by email</span></div>
+  <div class="tbl-wrap">
+    <table id="webcr-table">
+      <thead><tr><th>Lead owner</th><th>Website leads</th><th>Booked</th><th>CR</th></tr></thead>
+      <tbody id="webcr-body"><tr><td colspan="4" class="loading">Loading…</td></tr></tbody>
+      <tfoot id="webcr-foot"></tfoot>
+    </table>
+  </div>
+  <div class="foot-note" id="webcr-note"></div>
+</div>
+
 <!-- ── LEADERBOARD ──────────────────────────────────────────────────── -->
 <div class="group-hdr">Leaderboard</div>
 <div class="sec">
   <div class="sec-lbl"><span>By person — <span id="lb-month"></span></span>
-    <span class="sec-note">green = top of team · grey CR = no HubSpot match</span></div>
+    <span class="sec-note">green = top of team</span></div>
   <div class="tbl-wrap">
     <table id="lb-table">
       <thead><tr>
@@ -154,13 +169,11 @@ td.zero{color:#d1d5db}
         <th>Avg £/wk</th>
         <th>Avg tenure (wks)</th>
         <th>APP attach</th>
-        <th>CR (HS→sale)</th>
       </tr></thead>
-      <tbody id="lb-body"><tr><td colspan="9" class="loading">Loading…</td></tr></tbody>
+      <tbody id="lb-body"><tr><td colspan="8" class="loading">Loading…</td></tr></tbody>
       <tfoot id="lb-foot"></tfoot>
     </table>
   </div>
-  <div class="foot-note" id="cr-note"></div>
 </div>
 
 <!-- ── DAILY MATRIX ─────────────────────────────────────────────────── -->
@@ -194,15 +207,6 @@ const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 
-// Zoho full name -> HubSpot owner display name (for CR matching). Only the 5 core reps map.
-const ZOHO_TO_HS = {
-  'Andrew Njiokwuemegi':'Andy N',
-  'Dylan Christian':'Dylan C',
-  'Carla Jacobs':'Carla J',
-  'Michelle Jemsana':'Michelle J',
-  'Prosper Mubata':'Prosper M',
-}
-
 const OWNER_COLORS = {
   'Theo J':'#1f1f1f','Dylan Christian':'#3b82f6','Andrew Njiokwuemegi':'#f59e0b',
   'Carla Jacobs':'#10b981','Michelle Jemsana':'#8b5cf6','Conni Tyabule':'#9ca3af',
@@ -215,7 +219,7 @@ const FALLBACK = ['#64748b','#0f766e','#7c3aed','#a16207','#0891b2','#9333ea']
 let ROWS = []                 // all sales_performance_daily rows
 let MONTHS = []               // distinct YYYY-MM, desc
 let SELECTED = null
-let HS_LEADS = {}             // {YYYY-MM: {hsName: leads}}
+let WEB_CR = {}               // {YYYY-MM: [{owner_id, owner_name, leads, converted}]}
 let trendChart = null
 
 const todayStr = new Date().toISOString().slice(0,10)
@@ -268,26 +272,17 @@ async function loadAll(){
   SELECTED = MONTHS[0]
   const updated = ROWS.reduce((a,r)=> r.updated_at>a ? r.updated_at : a, '')?.slice(0,10) || ''
   document.getElementById('ph-sub').textContent = `Bookings from Zoho CRM · updated ${updated}`
-  loadHubspot().finally(renderAll)
+  await loadWebCR()
+  renderAll()
 }
 
-// HubSpot leads per rep per month, via the managed Snowflake query used by the HS Pipeline board.
-async function loadHubspot(){
+// Website-lead CR per owner per cohort month (Supabase, email-matched HubSpot↔Zoho).
+async function loadWebCR(){
   try{
-    if(!window.AVDashboard) return
-    await AVDashboard.ensureAuthenticated()
-    const res = await AVDashboard.runQuery('hs_storage_daily_owner', { freshness: 3600 })
-    const rows = res.rows || res.data || []
-    // expected columns: DAY (date), OWNER (display name), LEADS/COUNT
-    for(const r of rows){
-      const day = String(r.DAY ?? r.day ?? r.d ?? '').slice(0,10)
-      const owner = r.OWNER ?? r.owner ?? r.OWNER_NAME ?? r.rep
-      const n = Number(r.LEADS ?? r.leads ?? r.COUNT ?? r.count ?? r.N ?? r.n ?? 0)
-      if(!day || !owner) continue
-      const ym = day.slice(0,7)
-      ;(HS_LEADS[ym] ||= {})[owner] = (HS_LEADS[ym][owner]||0) + n
-    }
-  }catch(e){ console.warn('HubSpot leads unavailable for CR:', e) }
+    const { data } = await db.from('website_lead_cr_monthly')
+      .select('month,owner_id,owner_name,leads,converted')
+    for(const r of (data||[])){ (WEB_CR[r.month] ||= []).push(r) }
+  }catch(e){ console.warn('website-lead CR unavailable:', e) }
 }
 
 function switchMonth(m){ SELECTED = m; renderAll() }
@@ -309,24 +304,54 @@ function aggregateMonth(ym){
     avg_price: o.n_price ? o.sum_price/o.n_price : null,
     avg_tenure: o.n_tenure ? o.sum_tenure/o.n_tenure : null,
     app_pct: o.bookings ? o.app_yes/o.bookings*100 : null,
-    cr: crFor(o.owner, ym, o.bookings),
   })).sort((a,b)=> b.bookings - a.bookings)
   return list
 }
 
-function crFor(owner, ym, sales){
-  const hsName = ZOHO_TO_HS[owner]
-  if(!hsName) return null
-  const leads = HS_LEADS[ym]?.[hsName]
-  if(!leads) return null
-  return sales/leads*100
-}
-
 function renderAll(){
   renderHeadline()
+  renderWebCR()
   renderLeaderboard()
   renderMatrix()
   renderTrend()
+}
+
+// ── Website lead conversion (email-matched, by HubSpot lead owner) ──
+function renderWebCR(){
+  const rows = WEB_CR[SELECTED] || []
+  document.getElementById('webcr-month').textContent = monthLabel(SELECTED)
+  const note = document.getElementById('webcr-note')
+  if(!rows.length){
+    document.getElementById('webcr-body').innerHTML = '<tr><td colspan="4" class="loading">No website-lead data for this month yet.</td></tr>'
+    document.getElementById('webcr-foot').innerHTML = ''
+    note.textContent = ''
+    return
+  }
+  const sorted = [...rows].sort((a,b)=> b.leads - a.leads)
+  const shown = sorted.filter(r=> r.leads >= 5)            // hide the 1–2 lead long tail
+  const tail  = sorted.filter(r=> r.leads < 5)
+  const disp  = shown.map(r=>({ name:r.owner_name, leads:r.leads, conv:r.converted }))
+  if(tail.length){
+    disp.push({ name:`Other (${tail.length} ${tail.length===1?'rep':'reps'})`,
+      leads: tail.reduce((a,r)=>a+r.leads,0), conv: tail.reduce((a,r)=>a+r.converted,0) })
+  }
+  const crOf = r => r.leads ? r.conv/r.leads*100 : null
+  const leadVals = disp.map(r=>r.leads)
+  const crVals = disp.map(crOf).filter(v=>v!=null)
+  document.getElementById('webcr-body').innerHTML = disp.map((r,i)=>{
+    const cr = crOf(r)
+    return `<tr>
+      <td><span class="rank">${i+1}</span>${r.name}</td>
+      <td style="${ragBg(r.leads,leadVals)}">${fN(r.leads)}</td>
+      <td>${fN(r.conv)}</td>
+      <td style="${cr==null?'':ragBg(cr,crVals)}">${cr==null?'—':fPct(cr)}</td>
+    </tr>`}).join('')
+  const tL = sorted.reduce((a,r)=>a+r.leads,0), tC = sorted.reduce((a,r)=>a+r.converted,0)
+  document.getElementById('webcr-foot').innerHTML =
+    `<tr><td>Team total</td><td>${fN(tL)}</td><td>${fN(tC)}</td><td>${tL?fPct(tC/tL*100):'—'}</td></tr>`
+  note.textContent = SELECTED===curMonth
+    ? 'Maturing cohort — this month’s leads keep booking after month-end, so the rate rises as it ages. Denominator = unique ‘Storage Lead’ website enquiries (excludes partner lead-gen & transport jobs); conversion = email match to a Zoho booking.'
+    : 'Denominator = unique ‘Storage Lead’ website enquiries (excludes partner lead-gen & transport jobs); conversion = email match to a Zoho booking.'
 }
 
 function renderHeadline(){
@@ -336,10 +361,9 @@ function renderHeadline(){
     app:a.app+o.app_yes,
   }), {bookings:0,sqft:0,forecast:0,app:0})
   const avgFc = tot.bookings ? tot.forecast/tot.bookings : 0
-  // team CR over the mapped core reps only
-  let crLeads=0, crSales=0
-  for(const o of list){ const hs=ZOHO_TO_HS[o.owner]; const l=HS_LEADS[SELECTED]?.[hs]; if(hs&&l){ crLeads+=l; crSales+=o.bookings } }
-  const teamCR = crLeads ? crSales/crLeads*100 : null
+  // team CR from the website-lead conversion table (email-matched HubSpot↔Zoho)
+  const wc = (WEB_CR[SELECTED]||[]).reduce((a,r)=>({l:a.l+r.leads,c:a.c+r.converted}),{l:0,c:0})
+  const webCR = wc.l ? wc.c/wc.l*100 : null
 
   document.getElementById('headline-lbl').textContent = monthLabel(SELECTED)
   // pace projection (current month only)
@@ -355,16 +379,16 @@ function renderHeadline(){
     <div class="stat"><div class="stat-lbl">Forecast revenue</div><div class="stat-val">${fGBPk(tot.forecast)}</div><div class="stat-sub">inc-VAT · tenure × agreed £/wk</div></div>
     <div class="stat"><div class="stat-lbl">Sq ft booked</div><div class="stat-val">${fN(Math.round(tot.sqft))}</div><div class="stat-sub">est. across bookings</div></div>
     <div class="stat"><div class="stat-lbl">Avg forecast / booking</div><div class="stat-val">${fGBP(avgFc)}</div><div class="stat-sub">deal value (inc-VAT)</div></div>
-    <div class="stat"><div class="stat-lbl">Conversion · core reps</div><div class="stat-val">${teamCR==null?'—':fPct(teamCR)}</div><div class="stat-sub">${teamCR==null?'awaiting HubSpot':crSales+' sales / '+crLeads+' HS leads'}</div></div>`
+    <div class="stat"><div class="stat-lbl">Conversion · web leads</div><div class="stat-val">${webCR==null?'—':fPct(webCR)}</div><div class="stat-sub">${webCR==null?'no website leads':wc.c+' booked / '+wc.l+' web leads'}</div></div>`
 }
 
 function renderLeaderboard(){
   const list = aggregateMonth(SELECTED)
   document.getElementById('lb-month').textContent = monthLabel(SELECTED)
-  if(!list.length){ document.getElementById('lb-body').innerHTML = '<tr><td colspan="9" class="loading">No bookings this month.</td></tr>'; return }
+  if(!list.length){ document.getElementById('lb-body').innerHTML = '<tr><td colspan="8" class="loading">No bookings this month.</td></tr>'; return }
   const col = k => list.map(o=>o[k]).filter(v=>v!=null)
   const cBook=col('bookings'),cFc=col('forecast_rev'),cSq=col('sqft'),cAvgSq=col('avg_sqft'),
-        cPr=col('avg_price'),cTen=col('avg_tenure'),cApp=col('app_pct'),cCr=col('cr')
+        cPr=col('avg_price'),cTen=col('avg_tenure'),cApp=col('app_pct')
   document.getElementById('lb-body').innerHTML = list.map((o,i)=>`
     <tr>
       <td><span class="rank">${i+1}</span>${disp(o.owner)}</td>
@@ -375,7 +399,6 @@ function renderLeaderboard(){
       <td style="${ragBg(o.avg_price,cPr)}">${o.avg_price==null?'—':'£'+f1(o.avg_price)}</td>
       <td style="${ragBg(o.avg_tenure,cTen)}">${o.avg_tenure==null?'—':f1(o.avg_tenure)}</td>
       <td style="${ragBg(o.app_pct,cApp)}">${o.app_pct==null?'—':fPct(o.app_pct)}</td>
-      <td style="${o.cr==null?'color:#c7cdd4':ragBg(o.cr,cCr)}">${o.cr==null?'—':fPct(o.cr)}</td>
     </tr>`).join('')
   // totals
   const sum = k => list.reduce((a,o)=>a+(o[k]||0),0)
@@ -386,11 +409,7 @@ function renderLeaderboard(){
     <td>${tBook?fN(Math.round(tSq/tBook)):'—'}</td>
     <td>${tPriceN?'£'+f1(tPriceS/tPriceN):'—'}</td>
     <td>${tTenN?f1(tTenS/tTenN):'—'}</td>
-    <td>${tBook?fPct(tApp/tBook*100):'—'}</td><td>—</td></tr>`
-  const haveHS = Object.keys(HS_LEADS).length>0
-  document.getElementById('cr-note').textContent = haveHS
-    ? 'CR = Zoho sales ÷ HubSpot leads for that rep that month. Only the 5 core reps (Andy N, Dylan C, Carla J, Michelle J, Prosper M) map across HubSpot & Zoho; others show —.'
-    : 'CR pending HubSpot connection (the live HS lead query loads when the board is opened on dashboards.anyvan.com).'
+    <td>${tBook?fPct(tApp/tBook*100):'—'}</td></tr>`
 }
 
 function renderMatrix(){
