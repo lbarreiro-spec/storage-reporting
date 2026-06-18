@@ -56,7 +56,9 @@
     { path:'/operations/storage-weekly-presentations',label:'Weekly Decks',     icon:'🗂️', badge:'deck',
       blurb:'Every weekly Storage presentation, archived as a branded deck — slides, commentary and type per screenshot.' },
     { path:'/operations/storage-guides',              label:'How-To Guides',    icon:'📚', badge:'guide', hubCard:false,
-      blurb:'Step-by-step team guides for running the day-to-day in Zoho — starting with one-click customer onboarding.' }
+      blurb:'Step-by-step team guides for running the day-to-day in Zoho — starting with one-click customer onboarding.' },
+    { path:'/operations/sophie-hangups',              label:'Sophie Hang-ups',  icon:'📵', badge:'live', hubCard:false,
+      blurb:'Inbound AI voice agent (Sophie) — are customers hanging up prematurely, and is it rising? Weekly drop rate & "hung up while Sophie was talking" trend, with a drill-down of recent dropped calls.' }
   ];
 
   // expose for debugging / reuse
