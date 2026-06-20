@@ -474,10 +474,20 @@ function renderRestricted(email){
      </div>`
 }
 
-/* Gate: only viewers + active reps (by their email in commission_reps) may see the data */
+/* Gate: only viewers + active reps (by their email in commission_reps) may see the data.
+   av-dashboard.js only sets up auth on DOMContentLoaded, so we init it ourselves first
+   (init loads the stored login token), authenticate, then read the signed-in user. */
+async function getSignedInEmail(){
+  if(!window.AVDashboard) return ''
+  const meta=document.querySelector('meta[name="av-dashboard-api"]')
+  const api=meta?meta.getAttribute('content'):null
+  try{ if(api) AVDashboard.init(api) }catch(e){}          // safe: warns if already initialised
+  try{ await AVDashboard.ensureAuthenticated() }catch(e){} // loads/validates token; redirects to login if none
+  try{ const u=await AVDashboard.getCurrentUser(); return ((u&&u.email)||'').toLowerCase() }catch(e){ return '' }
+}
 async function boot(){
   let email=''
-  try{ const u=await (window.AVDashboard&&AVDashboard.getCurrentUser?AVDashboard.getCurrentUser():null); email=((u&&u.email)||'').toLowerCase() }catch(e){}
+  try{ email=await getSignedInEmail() }catch(e){}
   try{ await loadReps() }catch(e){}
   const allow=new Set([...VIEWERS.map(e=>e.toLowerCase()),...REP_EMAILS])
   if(!email || !allow.has(email)){ renderRestricted(email); return }
