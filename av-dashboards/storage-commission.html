@@ -97,6 +97,13 @@ body{display:flex;height:100%;font-family:var(--sans);background:#f5f7fa;color:#
 .tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
 .t-search{margin-left:auto;font-family:var(--mono);font-size:12px;border:1px solid #e2e2e2;border-radius:7px;padding:6px 10px;outline:none;width:180px}
 .t-search:focus{border-color:var(--blue)}
+.mfilter{display:flex;align-items:center;gap:7px}
+.mfilter .rlbl{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;font-weight:700}
+.rsel{font-family:var(--mono);font-size:12px;color:#111827;background:#fff;border:1px solid #d7dde3;border-radius:7px;padding:6px 9px;cursor:pointer;outline:none}
+.rsel:hover{border-color:var(--blue)}
+td.mx-rep{text-align:left;font-family:var(--sans);color:#111827;font-weight:600}
+td.mx-tot,th.mx-tot{background:#f4f8fb;font-weight:700;color:var(--navy)}
+td.mx-zero{color:#d1d5db}
 table{border-collapse:collapse;width:100%;font-size:13px;background:#fff}
 thead th{position:sticky;top:0;background:#eef4f8;color:var(--navy);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;text-align:right;padding:9px 12px;border-bottom:1px solid #d8e6ef;white-space:nowrap}
 thead th.l{text-align:left}
@@ -139,6 +146,7 @@ tr.grp td{background:#f7fafc;font-weight:700;color:var(--navy)}
     <div class="ph-title">Commission Submissions</div>
   </div>
   <div class="topbar-spacer"></div>
+  <div class="mfilter"><span class="rlbl">Month</span><select class="rsel" id="month-filter" onchange="setMonth(this.value)"><option value="all">All months</option></select></div>
   <button class="btn" id="refresh-btn" onclick="loadAll()">↻ Refresh</button>
   <span class="topbar-meta" id="meta">Loading…</span>
 </div>
@@ -201,9 +209,10 @@ tr.grp td{background:#f7fafc;font-weight:700;color:var(--navy)}
     <!-- DATA -->
     <div>
       <div class="tabs">
-        <div class="tab active" data-view="recent" onclick="setView('recent')">Submissions</div>
+        <div class="tab active" data-view="matrix" onclick="setView('matrix')">Rep × Month</div>
         <div class="tab" data-view="rep" onclick="setView('rep')">By rep</div>
         <div class="tab" data-view="month" onclick="setView('month')">By month</div>
+        <div class="tab" data-view="recent" onclick="setView('recent')">Submissions</div>
         <input class="t-search" id="search" placeholder="filter…" oninput="renderData()">
       </div>
       <div class="tbl-wrap">
@@ -249,7 +258,7 @@ function monthsFor(weeks){
 function pctFor(months, tier){
   const idx = {25:0,50:1,75:2,100:3}[tier]
   if(idx===undefined || months<1) return 0
-  return 0.01 + (months-1)*0.001 + idx*0.005            // matrix grid, computed
+  return 0.015 + (months-1)*0.001 + idx*0.005           // LIVE matrix grid (Matrix P/Q, 1.5% base) — current scheme
 }
 function calc(weeks, weekly, fee){
   const months = monthsFor(weeks)
@@ -330,8 +339,13 @@ async function voidRow(id, label){
 
 /* ================= Data ================= */
 let ROWS=[]
-let VIEW='recent'
+let VIEW='matrix'        // default: per-rep, per-month money grid
+let MONTHF='all'         // month filter (scopes tiles, By rep, Submissions)
 function setView(v){ VIEW=v; document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.view===v)); renderData() }
+function setMonth(v){ MONTHF=v; renderTiles(); renderData() }
+
+const MN={january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12}
+function monthOrd(s){ const p=String(s).trim().split(/\s+/); return (parseInt(p[1])||0)*100 + (MN[(p[0]||'').toLowerCase()]||0) }
 
 async function loadAll(){
   const btn=document.getElementById('refresh-btn'); btn.disabled=true
@@ -342,40 +356,75 @@ async function loadAll(){
   }catch(e){
     document.getElementById('data').innerHTML='<div class="empty-state">Failed to load: '+(e.message||e)+'</div>'
   }finally{ btn.disabled=false }
+  // populate month filter (newest first)
+  const months=[...new Set(activeRows().map(r=>r.month_booked||'').filter(Boolean))].sort((a,b)=>monthOrd(b)-monthOrd(a))
+  const sel=document.getElementById('month-filter')
+  sel.innerHTML='<option value="all">All months</option>'+months.map(m=>`<option>${esc(m)}</option>`).join('')
+  if(MONTHF!=='all' && !months.includes(MONTHF)) MONTHF='all'
+  sel.value=MONTHF
   renderTiles(); renderData()
 }
 
 function activeRows(){ return ROWS.filter(r=>r.status!=='void') }
+function inMonth(r){ return MONTHF==='all' || (r.month_booked||'')===MONTHF }
+function scopeRows(){ return activeRows().filter(inMonth) }
 
 function renderTiles(){
-  const a=activeRows()
+  const a=scopeRows()
   const totR=a.reduce((s,r)=>s+(+r.collective_payout_zar||0),0)
   const totGbp=a.reduce((s,r)=>s+(+r.contract_value_gbp||0),0)
   const reps=new Set(a.map(r=>r.rep)).size
-  // current month label
-  const now=new Date(), curLabel=now.toLocaleDateString('en-GB',{month:'long'})+' '+now.getFullYear()
-  const curR=a.filter(r=>r.month_booked===curLabel).reduce((s,r)=>s+(+r.collective_payout_zar||0),0)
+  const label = MONTHF==='all' ? 'All-time' : MONTHF
   const t=[
-    ['Total payout', fmtR0(totR), a.length+' bookings'],
+    [label+' payout', fmtR0(totR), a.length+' bookings'],
     ['Contract value', fmtGbp(totGbp), 'inc-VAT'],
-    ['Active reps', reps, 'submitting'],
-    [curLabel+' payout', fmtR0(curR), 'this month']
+    ['Reps in view', reps, MONTHF==='all'?'all months':MONTHF],
+    ['Avg / booking', fmtR0(a.length?totR/a.length:0), 'per booking']
   ]
   document.getElementById('tiles').innerHTML = t.map(x=>
     `<div class="tile"><div class="t-lbl">${x[0]}</div><div class="t-val">${x[1]}</div><div class="t-sub">${x[2]}</div></div>`).join('')
-  document.getElementById('meta').textContent = a.length+' bookings · '+fmtR0(totR)+' · updated '+new Date().toLocaleDateString('en-GB')
+  const all=activeRows()
+  const allR=all.reduce((s,r)=>s+(+r.collective_payout_zar||0),0)
+  document.getElementById('meta').textContent = all.length+' bookings · '+fmtR0(allR)+' all-time · updated '+new Date().toLocaleDateString('en-GB')
 }
 
-function renderData(){
-  const q=(document.getElementById('search').value||'').toLowerCase()
-  const el=document.getElementById('data')
-  let rows=ROWS.slice()
-  if(q) rows=rows.filter(r=>[r.rep,r.listing_id,r.month_booked,r.warehouse].join(' ').toLowerCase().includes(q))
-  if(!rows.length){ el.innerHTML='<div class="empty-state">No submissions yet. Add one with the form →</div>'; return }
+function emptyState(el,msg){ el.innerHTML='<div class="empty-state">'+(msg||'Nothing to show for this filter.')+'</div>' }
 
-  if(VIEW==='recent') return renderRecent(rows, el)
-  if(VIEW==='rep')    return renderGrouped(rows, el, 'rep', 'Rep')
-  if(VIEW==='month')  return renderGrouped(rows, el, 'month_booked', 'Month booked')
+function renderData(){
+  const el=document.getElementById('data')
+  if(VIEW==='matrix') return renderMatrix(el)
+  const q=(document.getElementById('search').value||'').toLowerCase()
+  const matchQ = r => !q || [r.rep,r.listing_id,r.month_booked,r.warehouse].join(' ').toLowerCase().includes(q)
+  if(VIEW==='recent'){
+    const rows=ROWS.filter(r=>inMonth(r)&&matchQ(r))     // incl voids (struck through)
+    return rows.length?renderRecent(rows,el):emptyState(el,'No submissions for this month.')
+  }
+  if(VIEW==='rep'){
+    const rows=scopeRows().filter(matchQ)
+    return rows.length?renderGrouped(rows,el,'rep','Rep'):emptyState(el)
+  }
+  if(VIEW==='month'){
+    const rows=activeRows().filter(matchQ)               // by-month ignores the month filter (it's the overview)
+    return rows.length?renderGrouped(rows,el,'month_booked','Month booked'):emptyState(el)
+  }
+}
+
+/* Rep (rows) × Month (columns) payout grid — the headline "money per month per rep" view */
+function renderMatrix(el){
+  const act=activeRows()
+  if(!act.length) return emptyState(el,'No submissions yet. Add one with the form →')
+  const months=[...new Set(act.map(r=>r.month_booked||'—'))].sort((a,b)=>monthOrd(a)-monthOrd(b))
+  const M={}, repTot={}, monTot={}; let grand=0
+  act.forEach(r=>{ const rp=r.rep, mo=r.month_booked||'—', v=+r.collective_payout_zar||0
+    ;(M[rp]=M[rp]||{}); M[rp][mo]=(M[rp][mo]||0)+v; repTot[rp]=(repTot[rp]||0)+v; monTot[mo]=(monTot[mo]||0)+v; grand+=v })
+  const reps=Object.keys(repTot).sort((a,b)=>repTot[b]-repTot[a])
+  const head=`<thead><tr><th class="l">Rep</th>${months.map(m=>`<th>${esc(m)}</th>`).join('')}<th class="mx-tot">Total</th></tr></thead>`
+  const body=reps.map(rp=>{
+    const cells=months.map(m=>{ const v=M[rp][m]; return `<td class="${v?'pay':'mx-zero'}">${v?fmtR0(v):'—'}</td>` }).join('')
+    return `<tr><td class="mx-rep">${esc(rp)}</td>${cells}<td class="mx-tot pay">${fmtR0(repTot[rp])}</td></tr>`
+  }).join('')
+  const foot=`<tr class="grp"><td class="l">TOTAL</td>${months.map(m=>`<td>${fmtR0(monTot[m])}</td>`).join('')}<td class="mx-tot">${fmtR0(grand)}</td></tr>`
+  el.innerHTML=`<table>${head}<tbody>${body}${foot}</tbody></table>`
 }
 
 function renderRecent(rows, el){
