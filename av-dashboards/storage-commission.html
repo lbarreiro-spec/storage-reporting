@@ -209,6 +209,10 @@ const SUPABASE_ANON_KEY='sb_publishable_QWQOo0CWifid4QyyRzRYvQ_P5DP8ecZ'
 const TABLE='commission_submissions', REPS_TABLE='commission_reps'
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)
 
+/* ================= Access control ================= */
+/* Viewers (managers). Reps are allowed automatically via their email in commission_reps. */
+const VIEWERS=['scott@anyvan.com','l.barreiro@anyvan.com']
+
 /* ================= Config ================= */
 const FX=20, AV_FEE_RATE=0.05, MONTH_CAP=9
 const PALETTE=['#41a5dd','#002333','#ffc907','#16a34a','#9333ea','#ef4444','#0891b2','#f59e0b','#64748b','#db2777']
@@ -234,7 +238,7 @@ function monthOrd(s){const p=String(s).trim().split(/\s+/);return (parseInt(p[1]
 function monthShort(s){const p=String(s).trim().split(/\s+/);const m=Object.keys(MN).find(k=>MN[k]===MN[(p[0]||'').toLowerCase()]);return (p[0]||'').slice(0,3)+(p[1]?" '"+String(p[1]).slice(2):'')}
 
 /* ================= Form ================= */
-let REPS=[]
+let REPS=[], REP_EMAILS=[]
 function num(id){const v=parseFloat(String(document.getElementById(id).value).replace(/[£,\s]/g,''));return isNaN(v)?0:v}
 function updatePreview(){
   const c=calc(num('f-weeks'),num('f-weekly'),num('f-fee'))
@@ -249,8 +253,9 @@ function updatePreview(){
 ['f-weeks','f-weekly','f-fee'].forEach(id=>document.addEventListener('input',e=>{if(e.target.id===id)updatePreview()}))
 
 async function loadReps(){
-  const {data}=await db.from(REPS_TABLE).select('name').eq('active',true).order('sort_order')
+  const {data}=await db.from(REPS_TABLE).select('name,email').eq('active',true).order('sort_order')
   REPS=(data||[]).map(r=>r.name)
+  REP_EMAILS=(data||[]).map(r=>(r.email||'').toLowerCase()).filter(Boolean)
   const sel=document.getElementById('f-rep'), cur=sel.value
   sel.innerHTML=REPS.map(r=>`<option>${esc(r)}</option>`).join('')
   if(cur && REPS.includes(cur)) sel.value=cur
@@ -259,8 +264,10 @@ async function addRep(){
   const name=(prompt('New rep full name (as it should appear on payouts):')||'').trim()
   if(!name) return
   if(REPS.includes(name)){ alert('That rep already exists.'); return }
+  const email=(prompt('Their @anyvan.com email (so they can access this board):')||'').trim().toLowerCase()
+  if(!email||!/.+@.+\..+/.test(email)){ alert('A valid email is required so the rep can access the board.'); return }
   const next=(REPS.length+1)*10+10
-  const {error}=await db.from(REPS_TABLE).upsert({name,active:true,sort_order:next},{onConflict:'name'})
+  const {error}=await db.from(REPS_TABLE).upsert({name,active:true,sort_order:next,email},{onConflict:'name'})
   if(error){ alert('Failed to add rep: '+(error.message||error)); return }
   await loadReps(); document.getElementById('f-rep').value=name
 }
@@ -455,7 +462,28 @@ function initMonths(){
   for(let i=0;i<13;i++){const d=new Date(now.getFullYear(),now.getMonth()-i,1);out.push(d.toLocaleDateString('en-GB',{month:'long'})+' '+d.getFullYear())}
   document.getElementById('f-month').innerHTML=out.map((m,i)=>`<option ${i===0?'selected':''}>${m}</option>`).join('')
 }
-initMonths(); updatePreview(); loadAll()
+
+function renderRestricted(email){
+  document.querySelector('.main-wrap').innerHTML=
+    `<div style="flex:1;display:flex;align-items:center;justify-content:center;padding:40px">
+       <div style="text-align:center;max-width:460px">
+         <div style="font-size:42px;margin-bottom:14px">🔒</div>
+         <div style="font-size:21px;font-weight:700;color:var(--navy);margin-bottom:10px">Restricted</div>
+         <div style="font-size:14px;color:#6b7280;line-height:1.6">This board contains individual commission data and is limited to authorised users.${email?'<br><br>Signed in as <b>'+esc(email)+'</b> — not on the access list.':'<br><br>Could not confirm your sign-in.'}<br><br>If you need access, contact Scott.</div>
+       </div>
+     </div>`
+}
+
+/* Gate: only viewers + active reps (by their email in commission_reps) may see the data */
+async function boot(){
+  let email=''
+  try{ const u=await (window.AVDashboard&&AVDashboard.getCurrentUser?AVDashboard.getCurrentUser():null); email=((u&&u.email)||'').toLowerCase() }catch(e){}
+  try{ await loadReps() }catch(e){}
+  const allow=new Set([...VIEWERS.map(e=>e.toLowerCase()),...REP_EMAILS])
+  if(!email || !allow.has(email)){ renderRestricted(email); return }
+  initMonths(); updatePreview(); loadAll()
+}
+boot()
 </script>
 <script src="https://robbosd.github.io/storage-reporting/nav.js"></script>
 </body>
