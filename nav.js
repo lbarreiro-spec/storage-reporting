@@ -55,7 +55,7 @@
       blurb:'Overdue balance, recovery, debt segmentation, customer risk tiers, collection curve & cohorts.' },
     { path:'/operations/storage-weekly-presentations',label:'Weekly Decks',     icon:'🗂️', badge:'deck',
       blurb:'Every weekly Storage presentation, archived as a branded deck — slides, commentary and type per screenshot.' },
-    { path:'/operations/storage-team',                label:'Team & Roles',     icon:'👥', badge:'guide',
+    { path:'/operations/storage-team',                label:'Ops Team & Roles', icon:'👥', badge:'guide',
       blurb:'Who does what on the Storage team — every owner\'s activities, cadence, SLA and escalation in one place. The day-to-day operating manual for the four-person team.' },
     { path:'/operations/storage-guides',              label:'How-To Guides',    icon:'📚', badge:'guide', hubCard:false,
       blurb:'Step-by-step team guides for running the day-to-day in Zoho — starting with one-click customer onboarding.' },
