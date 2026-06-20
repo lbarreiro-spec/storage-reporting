@@ -48,10 +48,11 @@ body{display:flex;height:100%;font-family:var(--sans);background:#f5f7fa;color:#
 .btn.primary:hover:not(:disabled){background:#013049}
 .linkbtn{background:none;border:none;color:var(--link);font-size:12px;cursor:pointer;padding:0;font-family:var(--sans)}
 .linkbtn:hover{text-decoration:underline}
-.mfilter{display:flex;align-items:center;gap:7px}
-.mfilter .rlbl{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;font-weight:700}
-.rsel{font-family:var(--mono);font-size:12px;color:#111827;background:#fff;border:1px solid #d7dde3;border-radius:7px;padding:6px 9px;cursor:pointer;outline:none}
-.rsel:hover{border-color:var(--blue)}
+.mstep{display:flex;align-items:center;gap:4px}
+.mnav{font-size:13px;font-family:var(--mono);color:#6b7280;background:#fff;border:1px solid #d7dde3;border-radius:7px;padding:6px 11px;cursor:pointer;transition:.12s}
+.mnav:hover:not(:disabled){color:var(--link);border-color:var(--blue)}
+.mnav:disabled{opacity:.35;cursor:default}
+.mlabel{min-width:118px;text-align:center;font-family:var(--mono);font-size:13px;font-weight:700;color:var(--navy)}
 
 .scroll{flex:1;overflow-y:auto;padding:24px 28px 60px}
 .layout{display:grid;grid-template-columns:360px 1fr;gap:24px;align-items:start;max-width:1500px}
@@ -142,7 +143,11 @@ tr.grp td{background:#f4f8fb;font-weight:700;color:var(--navy)}
 <div class="topbar">
   <div><div class="ph-lbl">Storage · Sales</div><div class="ph-title">Commission</div></div>
   <div class="topbar-spacer"></div>
-  <div class="mfilter"><span class="rlbl">Month</span><select class="rsel" id="month-filter" onchange="setMonth(this.value)"><option value="all">All months</option></select></div>
+  <div class="mstep">
+    <button class="mnav" id="m-prev" onclick="stepMonth(-1)" title="Previous month">◀</button>
+    <span class="mlabel" id="m-label">—</span>
+    <button class="mnav" id="m-next" onclick="stepMonth(1)" title="Next month">▶</button>
+  </div>
   <button class="btn" id="refresh-btn" onclick="loadAll()">↻ Refresh</button>
   <span class="topbar-meta" id="meta">Loading…</span>
 </div>
@@ -298,14 +303,25 @@ async function voidRow(id,label){
 }
 
 /* ================= State / load ================= */
-let ROWS=[], VIEW='board', MONTHF='all'
+let ROWS=[], VIEW='board'
+let MNAV=[], mIdx=0          // month stepper: MNAV = chronological months, mIdx = selected
 let chartMain=null, chartTrend=null
+function curMonth(){ return MNAV[mIdx]||'' }
 function setView(v){ VIEW=v; document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.view===v)); document.getElementById('search').style.visibility=(v==='recent')?'visible':'hidden'; renderData() }
-function setMonth(v){ MONTHF=v; renderTiles(); renderData() }
+function stepMonth(d){ const n=mIdx+d; if(n<0||n>=MNAV.length) return; mIdx=n; updateStepper(); renderTiles(); renderData() }
+function updateStepper(){ document.getElementById('m-label').textContent=curMonth()||'—'; document.getElementById('m-prev').disabled=mIdx<=0; document.getElementById('m-next').disabled=mIdx>=MNAV.length-1 }
 function activeRows(){ return ROWS.filter(r=>r.status!=='void') }
-function inMonth(r){ return MONTHF==='all'||(r.month_booked||'')===MONTHF }
+function inMonth(r){ return (r.month_booked||'')===curMonth() }
 function scopeRows(){ return activeRows().filter(inMonth) }
 function months(){ return [...new Set(activeRows().map(r=>r.month_booked||'').filter(Boolean))].sort((a,b)=>monthOrd(a)-monthOrd(b)) }
+/* months from earliest submission → current calendar month (so July appears the moment it starts) */
+function buildMonthNav(){
+  const ms=months(), now=new Date(), curOrd=now.getFullYear()*100+(now.getMonth()+1)
+  const startOrd=ms.length?Math.min(monthOrd(ms[0]),curOrd):curOrd
+  const out=[]; let y=Math.floor(startOrd/100), m=startOrd%100
+  while(y*100+m<=curOrd){ out.push(new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'long'})+' '+y); m++; if(m>12){m=1;y++} }
+  return out
+}
 const sumPay=g=>g.reduce((s,r)=>s+(+r.collective_payout_zar||0),0)
 
 async function loadAll(){
@@ -317,14 +333,12 @@ async function loadAll(){
   }catch(e){ document.getElementById('data').innerHTML='<div class="empty-state">Failed to load: '+(e.message||e)+'</div>' }
   finally{ btn.disabled=false }
   await loadReps()
-  const ms=months(), sel=document.getElementById('month-filter')
-  const prev=MONTHF
-  sel.innerHTML='<option value="all">All months</option>'+ms.slice().reverse().map(m=>`<option>${esc(m)}</option>`).join('')
-  // default to the latest month so reps land on "this month"
-  if(prev==='all' && !sel.dataset.touched && ms.length){ MONTHF=ms[ms.length-1] }
-  if(MONTHF!=='all' && !ms.includes(MONTHF)) MONTHF='all'
-  sel.value=MONTHF
-  sel.addEventListener('change',()=>{sel.dataset.touched='1'},{once:true})
+  const prevLabel=MNAV.length?curMonth():null
+  MNAV=buildMonthNav()
+  // keep the user on the same month across refresh; otherwise land on the latest (current) month
+  const keep=prevLabel?MNAV.indexOf(prevLabel):-1
+  mIdx=keep>=0?keep:MNAV.length-1
+  updateStepper()
   renderTiles(); renderData()
 }
 
@@ -332,12 +346,12 @@ function renderTiles(){
   const a=scopeRows()
   const totR=sumPay(a), totGbp=a.reduce((s,r)=>s+(+r.contract_value_gbp||0),0)
   const reps=new Set(a.map(r=>r.rep)).size
-  const label=MONTHF==='all'?'All-time':MONTHF
+  const label=curMonth()
   const top=[...a.reduce((m,r)=>m.set(r.rep,(m.get(r.rep)||0)+(+r.collective_payout_zar||0)),new Map())].sort((x,y)=>y[1]-x[1])[0]
   const t=[
     [label+' payout',fmtR0(totR),a.length+' bookings'],
     ['Top earner',top?top[0].split(' ')[0]:'—',top?fmtR0(top[1]):''],
-    ['Reps in view',reps,MONTHF==='all'?'all months':MONTHF],
+    ['Reps in view',reps,label],
     ['Avg / booking',fmtR0(a.length?totR/a.length:0),'per booking']
   ]
   document.getElementById('tiles').innerHTML=t.map(x=>`<div class="tile"><div class="t-lbl">${x[0]}</div><div class="t-val">${x[1]}</div><div class="t-sub">${x[2]}</div></div>`).join('')
@@ -358,7 +372,7 @@ function renderData(){
 
 /* ---------- LEADERBOARD (month-scoped: ranked bars + table) ---------- */
 function renderBoard(el){
-  const scopeLabel=MONTHF==='all'?'All months':MONTHF
+  const scopeLabel=curMonth()
   const a=scopeRows()
   // every active rep appears (even at 0), so new reps show immediately
   const map=new Map(REPS.map(r=>[r,{rep:r,n:0,pay:0,gbp:0}]))
