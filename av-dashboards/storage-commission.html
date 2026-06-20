@@ -176,8 +176,6 @@ tr.grp td{background:#f4f8fb;font-weight:700;color:var(--navy)}
           <div class="field"><label>Weekly invoice <span class="hint">£ /wk</span></label><input id="f-weekly" inputmode="decimal" placeholder="e.g. 47.98" autocomplete="off"></div>
           <div class="field"><label>AnyVan fee <span class="hint">£ inc-VAT</span></label><input id="f-fee" inputmode="decimal" placeholder="e.g. 595.00" autocomplete="off"></div>
         </div>
-        <div class="field"><label>Warehouse / facility <span class="hint">optional</span></label><input id="f-warehouse" placeholder="e.g. Access Self Storage – Catford" autocomplete="off"></div>
-
         <div class="preview">
           <div class="pv-row"><span>Months in storage <span class="hint">(cap 9)</span></span><span class="v" id="pv-months">—</span></div>
           <div class="pv-row"><span>Invoice cap tier</span><span class="v" id="pv-tier">—</span></div>
@@ -273,7 +271,6 @@ async function submitRow(){
   const listing=document.getElementById('f-listing').value.trim()
   const month=document.getElementById('f-month').value
   const weeks=num('f-weeks'),weekly=num('f-weekly'),fee=num('f-fee')
-  const warehouse=document.getElementById('f-warehouse').value.trim()
   const fail=t=>{msg.className='form-msg err';msg.textContent=t}
   if(!rep) return fail('Pick a rep')
   if(!listing) return fail('Enter a Listing ID')
@@ -284,12 +281,12 @@ async function submitRow(){
   const btn=document.getElementById('submit-btn'); btn.disabled=true; btn.innerHTML='<span class="spin">↻</span> Saving…'
   try{
     const {error}=await db.from(TABLE).insert({listing_id:listing,month_booked:month,weeks,weekly_invoice:weekly,av_fee:fee,rep,
-      warehouse:warehouse||null,months_in_storage:c.months,invoice_cap:c.tier,match_key:c.matchKey,invoice_pct:c.pct,
+      months_in_storage:c.months,invoice_cap:c.tier,match_key:c.matchKey,invoice_pct:c.pct,
       av_fee_payout_zar:round2(c.feePayout),invoice_payout_zar:round2(c.invPayout),collective_payout_zar:round2(c.collective),
       contract_value_gbp:round2(c.contractGbp),fx_rate:FX,status:'active'})
     if(error) throw error
     msg.className='form-msg ok'; msg.textContent='✓ Saved — '+fmtR(c.collective)+' to '+rep
-    ;['f-listing','f-weeks','f-weekly','f-fee','f-warehouse'].forEach(id=>document.getElementById(id).value='')
+    ;['f-listing','f-weeks','f-weekly','f-fee'].forEach(id=>document.getElementById(id).value='')
     updatePreview(); await loadAll()
   }catch(e){ msg.className='form-msg err'; msg.textContent='Save failed: '+(e.message||e) }
   finally{ btn.disabled=false; btn.textContent='Submit booking' }
