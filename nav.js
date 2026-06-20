@@ -33,8 +33,7 @@
       blurb:'Storage sales ranking by agent — bookings & revenue, updated live from the team sheet.' },
     { path:'/operations/storage-sales-performance',   label:'Sales Performance',icon:'🧑‍💼', badge:'live',
       blurb:'Bookings per day per person from Zoho CRM — forecast revenue (tenure × agreed £/wk), booked sq ft, APP attach, booking quality and conversion (HubSpot leads → sale), with a RAG leaderboard.' },
-    { path:'/operations/storage-commission',          label:'Commission',       icon:'💰', badge:'tool',
-      blurb:'Sales team commission — reps submit each storage booking and the payout is auto-calculated (tenure × invoice-cap matrix, AnyVan-fee 5%, ×20 ZAR). Live per-rep & per-month totals. Replaces the old Slack-form gsheet.' },
+    // storage-commission: intentionally NOT in the shared nav — restricted board (Scott + Liam.b only). Direct-URL access; no hub card / sidebar link.
     { path:'/operations/storage-calculator',          label:'Storage Pricing',  icon:'🧮', badge:'tool',
       blurb:'Agent pricing tool — Sq Ft / M² sizing plus price-match for Access, Non-Access & BlueSpace (Spain): full price, discount ladder and a 15% margin floor. Live from the price sheet.' },
     { path:'/operations/storage-placement-map',       label:'Placement Map',    icon:'🗺️', badge:'tool',
