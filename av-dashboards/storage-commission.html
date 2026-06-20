@@ -197,7 +197,6 @@ tr.grp td{background:#f4f8fb;font-weight:700;color:var(--navy)}
         <div class="tab active" data-view="board" onclick="setView('board')">Leaderboard</div>
         <div class="tab" data-view="trends" onclick="setView('trends')">Trends</div>
         <div class="tab" data-view="recent" onclick="setView('recent')">Submissions</div>
-        <input class="t-search" id="search" placeholder="filter submissions…" oninput="if(VIEW==='recent')renderData()">
       </div>
       <div id="data"></div>
     </div>
@@ -307,7 +306,7 @@ let ROWS=[], VIEW='board'
 let MNAV=[], mIdx=0          // month stepper: MNAV = chronological months, mIdx = selected
 let chartMain=null, chartTrend=null
 function curMonth(){ return MNAV[mIdx]||'' }
-function setView(v){ VIEW=v; document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.view===v)); document.getElementById('search').style.visibility=(v==='recent')?'visible':'hidden'; renderData() }
+function setView(v){ VIEW=v; document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.view===v)); renderData() }
 function stepMonth(d){ const n=mIdx+d; if(n<0||n>=MNAV.length) return; mIdx=n; updateStepper(); renderTiles(); renderData() }
 function updateStepper(){ document.getElementById('m-label').textContent=curMonth()||'—'; document.getElementById('m-prev').disabled=mIdx<=0; document.getElementById('m-next').disabled=mIdx>=MNAV.length-1 }
 function activeRows(){ return ROWS.filter(r=>r.status!=='void') }
@@ -440,9 +439,8 @@ function renderTrends(el){
 
 /* ---------- SUBMISSIONS (raw list, month + search scoped) ---------- */
 function renderRecent(el){
-  const q=(document.getElementById('search').value||'').toLowerCase()
-  const rows=ROWS.filter(r=>inMonth(r) && (!q||[r.rep,r.listing_id,r.month_booked,r.warehouse].join(' ').toLowerCase().includes(q)))
-  if(!rows.length) return emptyState(el,'No submissions for this filter.')
+  const rows=ROWS.filter(inMonth)
+  if(!rows.length) return emptyState(el,'No submissions for this month.')
   el.innerHTML=`<div class="tbl-wrap"><table>
     <thead><tr><th class="l">Date</th><th class="l">Rep</th><th class="l">Listing</th><th class="l">Month</th><th>Wks</th><th>£/wk</th><th>Fee £</th><th>Mo</th><th>Tier</th><th>Rate</th><th>Payout</th><th></th></tr></thead>
     <tbody>${rows.map(r=>{const d=(r.submitted_at||'').slice(0,10);const lbl=`${r.rep} · ${r.listing_id} · ${fmtR(+r.collective_payout_zar)}`;return `<tr class="${r.status==='void'?'void':''}">
