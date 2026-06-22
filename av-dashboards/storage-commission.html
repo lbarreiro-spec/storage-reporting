@@ -72,6 +72,11 @@ body{display:flex;height:100%;font-family:var(--sans);background:#f5f7fa;color:#
 .rep-row{display:flex;align-items:center;gap:8px}
 .rep-row select{flex:1}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:16px}
+.seg-btn{font-size:12px;font-family:var(--mono);color:#6b7280;background:#fff;border:1px solid #d7dde3;border-radius:8px;padding:9px 8px;cursor:pointer;transition:.12s;font-weight:700}
+.seg-btn:hover{border-color:var(--blue);color:var(--link)}
+.seg-btn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.pill.rem{background:#fff4d6;color:#8a6d00}
 
 .preview{margin-top:4px;background:#f7fafc;border:1px solid #e7ebef;border-radius:10px;padding:14px 16px}
 .pv-row{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;padding:3px 0;color:#6b7280}
@@ -158,8 +163,12 @@ tr.grp td{background:#f4f8fb;font-weight:700;color:var(--navy)}
   <div class="layout">
     <!-- FORM -->
     <div class="card" id="form-card">
-      <div class="card-hd"><h2>New submission</h2><span class="sub">payout auto-calculated</span></div>
+      <div class="card-hd"><h2>New submission</h2><span class="sub" id="form-sub">payout auto-calculated</span></div>
       <div class="card-bd">
+        <div class="seg" id="kind-seg">
+          <button class="seg-btn active" data-kind="storage" onclick="setKind('storage')">Storage booking</button>
+          <button class="seg-btn" data-kind="rem" onclick="setKind('rem')">Removal (REM)</button>
+        </div>
         <div class="field">
           <label>Submitted by</label>
           <div class="rep-row">
@@ -168,21 +177,27 @@ tr.grp td{background:#f4f8fb;font-weight:700;color:var(--navy)}
           </div>
         </div>
         <div class="field"><label>Listing ID</label><input id="f-listing" inputmode="numeric" placeholder="e.g. 9242767" autocomplete="off"></div>
-        <div class="row2">
-          <div class="field"><label>Month booked</label><select id="f-month"></select></div>
-          <div class="field"><label>Length <span class="hint">weeks</span></label><input id="f-weeks" inputmode="decimal" placeholder="e.g. 12" autocomplete="off"></div>
+        <div class="field"><label>Month booked</label><select id="f-month"></select></div>
+        <div id="storage-fields">
+          <div class="row2">
+            <div class="field"><label>Length <span class="hint">weeks</span></label><input id="f-weeks" inputmode="decimal" placeholder="e.g. 12" autocomplete="off"></div>
+            <div class="field"><label>Weekly invoice <span class="hint">£ /wk</span></label><input id="f-weekly" inputmode="decimal" placeholder="e.g. 47.98" autocomplete="off"></div>
+          </div>
         </div>
-        <div class="row2">
-          <div class="field"><label>Weekly invoice <span class="hint">£ /wk</span></label><input id="f-weekly" inputmode="decimal" placeholder="e.g. 47.98" autocomplete="off"></div>
-          <div class="field"><label>AnyVan fee <span class="hint">£ inc-VAT</span></label><input id="f-fee" inputmode="decimal" placeholder="e.g. 595.00" autocomplete="off"></div>
-        </div>
-        <div class="preview">
+        <div class="field"><label>AnyVan fee <span class="hint" id="fee-hint">£ inc-VAT</span></label><input id="f-fee" inputmode="decimal" placeholder="e.g. 595.00" autocomplete="off"></div>
+        <div class="preview" id="pv-storage">
           <div class="pv-row"><span>Months in storage <span class="hint">(cap 9)</span></span><span class="v" id="pv-months">—</span></div>
           <div class="pv-row"><span>Invoice cap tier</span><span class="v" id="pv-tier">—</span></div>
           <div class="pv-row"><span>Payout rate</span><span class="v" id="pv-pct">—</span></div>
           <div class="pv-row"><span>AnyVan-fee payout</span><span class="v" id="pv-feepay">—</span></div>
           <div class="pv-row"><span>Invoice payout</span><span class="v" id="pv-invpay">—</span></div>
           <div class="pv-total"><span class="lbl">Collective payout</span><span><span class="v" id="pv-total">R0.00</span><br><span class="gbp" id="pv-gbp"></span></span></div>
+        </div>
+        <div class="preview" id="pv-rem" style="display:none">
+          <div class="pv-row"><span>Commission rate</span><span class="v">2.5%</span></div>
+          <div class="pv-row"><span>AnyVan fee</span><span class="v" id="pvr-fee">—</span></div>
+          <div class="pv-row"><span>FX <span class="hint">ZAR/£</span></span><span class="v" id="pvr-fx">×20</span></div>
+          <div class="pv-total"><span class="lbl">REM payout</span><span><span class="v" id="pvr-total">R0.00</span><br><span class="gbp" id="pvr-gbp"></span></span></div>
         </div>
         <button class="btn primary" id="submit-btn" style="width:100%;margin-top:14px;padding:10px" onclick="submitRow()">Submit booking</button>
         <div class="form-msg" id="form-msg"></div>
@@ -214,7 +229,7 @@ const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)
 const VIEWERS=['scott@anyvan.com','l.barreiro@anyvan.com']
 
 /* ================= Config ================= */
-const FX=20, AV_FEE_RATE=0.05, MONTH_CAP=9
+const FX=20, AV_FEE_RATE=0.05, MONTH_CAP=9, REM_RATE=0.025
 const PALETTE=['#41a5dd','#002333','#ffc907','#16a34a','#9333ea','#ef4444','#0891b2','#f59e0b','#64748b','#db2777']
 
 /* ================= Commission maths (live = 1.5%-base matrix; bugs fixed) ================= */
@@ -227,6 +242,7 @@ function calc(weeks,weekly,fee){
   const feeP=((fee||0)/1.2)*AV_FEE_RATE*FX, invP=pct*capInv*FX
   return {months:m,tier:t,pct,matchKey:mk,cappedInvoice:capInv,feePayout:feeP,invPayout:invP,collective:invP+feeP,contractGbp:(weeks||0)*(weekly||0)+(fee||0)}
 }
+function remCalc(fee){ const pay=(fee||0)*REM_RATE*FX; return {gbp:(fee||0)*REM_RATE, payout:pay} }
 const round2=n=>Math.round((n||0)*100)/100
 const fmtR=n=>'R'+(n||0).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2})
 const fmtR0=n=>'R'+Math.round(n||0).toLocaleString('en-GB')
@@ -238,9 +254,28 @@ function monthOrd(s){const p=String(s).trim().split(/\s+/);return (parseInt(p[1]
 function monthShort(s){const p=String(s).trim().split(/\s+/);const m=Object.keys(MN).find(k=>MN[k]===MN[(p[0]||'').toLowerCase()]);return (p[0]||'').slice(0,3)+(p[1]?" '"+String(p[1]).slice(2):'')}
 
 /* ================= Form ================= */
-let REPS=[], REP_EMAILS=[]
+let REPS=[], REP_EMAILS=[], KIND='storage'
 function num(id){const v=parseFloat(String(document.getElementById(id).value).replace(/[£,\s]/g,''));return isNaN(v)?0:v}
+function setKind(k){
+  KIND=k
+  document.querySelectorAll('#kind-seg .seg-btn').forEach(b=>b.classList.toggle('active',b.dataset.kind===k))
+  const rem=k==='rem'
+  document.getElementById('storage-fields').style.display=rem?'none':''
+  document.getElementById('pv-storage').style.display=rem?'none':''
+  document.getElementById('pv-rem').style.display=rem?'':'none'
+  document.getElementById('fee-hint').textContent=rem?'£':'£ inc-VAT'
+  document.getElementById('form-sub').textContent=rem?'removal · fee × 2.5% × 20':'payout auto-calculated'
+  document.getElementById('submit-btn').textContent=rem?'Submit removal':'Submit booking'
+  updatePreview()
+}
 function updatePreview(){
+  if(KIND==='rem'){
+    const fee=num('f-fee'), r=remCalc(fee)
+    document.getElementById('pvr-fee').textContent=fmtGbp(fee)
+    document.getElementById('pvr-total').textContent=fmtR(r.payout)
+    document.getElementById('pvr-gbp').textContent=fee?'= '+fmtGbp(r.gbp)+' commission':''
+    return
+  }
   const c=calc(num('f-weeks'),num('f-weekly'),num('f-fee'))
   document.getElementById('pv-months').textContent=c.months||'—'
   document.getElementById('pv-tier').textContent=c.tier?c.tier+(c.tier===100?'+':''):'—'
@@ -281,22 +316,33 @@ async function submitRow(){
   const fail=t=>{msg.className='form-msg err';msg.textContent=t}
   if(!rep) return fail('Pick a rep')
   if(!listing) return fail('Enter a Listing ID')
-  if(!(weeks>0)) return fail('Enter the length in weeks')
-  if(!(weekly>0)) return fail('Enter the weekly invoice cost')
   if(!(fee>0)) return fail('Enter the AnyVan fee')
-  const c=calc(weeks,weekly,fee)
-  const btn=document.getElementById('submit-btn'); btn.disabled=true; btn.innerHTML='<span class="spin">↻</span> Saving…'
-  try{
-    const {error}=await db.from(TABLE).insert({listing_id:listing,month_booked:month,weeks,weekly_invoice:weekly,av_fee:fee,rep,
+  const btn=document.getElementById('submit-btn'); const restore=KIND==='rem'?'Submit removal':'Submit booking'
+  let row, payout
+  if(KIND==='rem'){
+    const r=remCalc(fee); payout=r.payout
+    row={kind:'rem',listing_id:listing,month_booked:month,weeks:0,weekly_invoice:0,av_fee:fee,rep,
+      months_in_storage:null,invoice_cap:null,match_key:null,invoice_pct:REM_RATE,
+      av_fee_payout_zar:0,invoice_payout_zar:0,collective_payout_zar:round2(r.payout),
+      contract_value_gbp:0,fx_rate:FX,status:'active'}
+  }else{
+    if(!(weeks>0)) return fail('Enter the length in weeks')
+    if(!(weekly>0)) return fail('Enter the weekly invoice cost')
+    const c=calc(weeks,weekly,fee); payout=c.collective
+    row={kind:'storage',listing_id:listing,month_booked:month,weeks,weekly_invoice:weekly,av_fee:fee,rep,
       months_in_storage:c.months,invoice_cap:c.tier,match_key:c.matchKey,invoice_pct:c.pct,
       av_fee_payout_zar:round2(c.feePayout),invoice_payout_zar:round2(c.invPayout),collective_payout_zar:round2(c.collective),
-      contract_value_gbp:round2(c.contractGbp),fx_rate:FX,status:'active'})
+      contract_value_gbp:round2(c.contractGbp),fx_rate:FX,status:'active'}
+  }
+  btn.disabled=true; btn.innerHTML='<span class="spin">↻</span> Saving…'
+  try{
+    const {error}=await db.from(TABLE).insert(row)
     if(error) throw error
-    msg.className='form-msg ok'; msg.textContent='✓ Saved — '+fmtR(c.collective)+' to '+rep
+    msg.className='form-msg ok'; msg.textContent='✓ Saved — '+fmtR(payout)+' to '+rep
     ;['f-listing','f-weeks','f-weekly','f-fee'].forEach(id=>document.getElementById(id).value='')
     updatePreview(); await loadAll()
   }catch(e){ msg.className='form-msg err'; msg.textContent='Save failed: '+(e.message||e) }
-  finally{ btn.disabled=false; btn.textContent='Submit booking' }
+  finally{ btn.disabled=false; btn.textContent=restore }
 }
 async function voidRow(id,label){
   if(!confirm('Void this submission?\n\n'+label+'\n\nExcluded from all totals (kept for audit).')) return
@@ -378,8 +424,8 @@ function renderBoard(el){
   const scopeLabel=curMonth()
   const a=scopeRows()
   // every active rep appears (even at 0), so new reps show immediately
-  const map=new Map(REPS.map(r=>[r,{rep:r,n:0,pay:0,gbp:0}]))
-  a.forEach(r=>{ if(!map.has(r.rep)) map.set(r.rep,{rep:r.rep,n:0,pay:0,gbp:0}); const o=map.get(r.rep); o.n++; o.pay+=+r.collective_payout_zar||0; o.gbp+=+r.contract_value_gbp||0 })
+  const map=new Map(REPS.map(r=>[r,{rep:r,n:0,pay:0,gbp:0,rem:0}]))
+  a.forEach(r=>{ if(!map.has(r.rep)) map.set(r.rep,{rep:r.rep,n:0,pay:0,gbp:0,rem:0}); const o=map.get(r.rep); o.n++; o.pay+=+r.collective_payout_zar||0; o.gbp+=+r.contract_value_gbp||0; if(r.kind==='rem') o.rem+=+r.collective_payout_zar||0 })
   const ranked=[...map.values()].sort((x,y)=>y.pay-x.pay)
   el.innerHTML=`
     <div class="panel">
@@ -387,15 +433,16 @@ function renderBoard(el){
       <div class="chart-box" style="height:${Math.max(160,ranked.length*46)}px"><canvas id="cMain"></canvas></div>
     </div>
     <div class="tbl-wrap"><table>
-      <thead><tr><th class="l">#</th><th class="l">Rep</th><th>Bookings</th><th>Contract £</th><th>Avg / booking</th><th>Payout</th></tr></thead>
+      <thead><tr><th class="l">#</th><th class="l">Rep</th><th>Bookings</th><th>Contract £</th><th>of which REM</th><th>Avg / booking</th><th>Payout</th></tr></thead>
       <tbody>${ranked.map((o,i)=>`<tr>
         <td class="l"><span class="rank r${i+1}">${i+1}</span></td>
         <td class="l">${esc(o.rep)}</td>
         <td>${o.n}</td>
         <td>${fmtGbp(o.gbp)}</td>
+        <td>${o.rem?fmtR(o.rem):'—'}</td>
         <td>${o.n?fmtR(o.pay/o.n):'—'}</td>
         <td class="pay">${fmtR(o.pay)}</td></tr>`).join('')}
-        <tr class="grp"><td></td><td class="l">TOTAL</td><td>${ranked.reduce((s,o)=>s+o.n,0)}</td><td>${fmtGbp(ranked.reduce((s,o)=>s+o.gbp,0))}</td><td></td><td>${fmtR(ranked.reduce((s,o)=>s+o.pay,0))}</td></tr>
+        <tr class="grp"><td></td><td class="l">TOTAL</td><td>${ranked.reduce((s,o)=>s+o.n,0)}</td><td>${fmtGbp(ranked.reduce((s,o)=>s+o.gbp,0))}</td><td>${fmtR(ranked.reduce((s,o)=>s+o.rem,0))}</td><td></td><td>${fmtR(ranked.reduce((s,o)=>s+o.pay,0))}</td></tr>
       </tbody></table></div>`
   const ctx=document.getElementById('cMain')
   chartMain=new Chart(ctx,{type:'bar',data:{labels:ranked.map(o=>o.rep),datasets:[{data:ranked.map(o=>Math.round(o.pay)),backgroundColor:ranked.map((o,i)=>i===0?'#ffc907':'#41a5dd'),borderRadius:5,barThickness:24}]},
@@ -446,11 +493,12 @@ function renderRecent(el){
   const rows=ROWS.filter(inMonth)
   if(!rows.length) return emptyState(el,'No submissions for this month.')
   el.innerHTML=`<div class="tbl-wrap"><table>
-    <thead><tr><th class="l">Date</th><th class="l">Rep</th><th class="l">Listing</th><th class="l">Month</th><th>Wks</th><th>£/wk</th><th>Fee £</th><th>Mo</th><th>Tier</th><th>Rate</th><th>Payout</th><th></th></tr></thead>
-    <tbody>${rows.map(r=>{const d=(r.submitted_at||'').slice(0,10);const lbl=`${r.rep} · ${r.listing_id} · ${fmtR(+r.collective_payout_zar)}`;return `<tr class="${r.status==='void'?'void':''}">
-      <td class="l">${d}</td><td class="l">${esc(r.rep)}</td><td class="l"><span class="pill">${esc(r.listing_id)}</span></td><td class="l">${esc(r.month_booked||'')}</td>
-      <td>${(+r.weeks)%1?(+r.weeks).toFixed(2):+r.weeks}</td><td>${fmtGbp(+r.weekly_invoice)}</td><td>${fmtGbp(+r.av_fee)}</td>
-      <td>${r.months_in_storage??''}</td><td>${r.invoice_cap??''}${r.invoice_cap===100?'+':''}</td><td>${r.invoice_pct?(r.invoice_pct*100).toFixed(1)+'%':''}</td>
+    <thead><tr><th class="l">Date</th><th class="l">Rep</th><th class="l">Listing</th><th class="l">Type</th><th class="l">Month</th><th>Wks</th><th>£/wk</th><th>Fee £</th><th>Mo</th><th>Tier</th><th>Rate</th><th>Payout</th><th></th></tr></thead>
+    <tbody>${rows.map(r=>{const d=(r.submitted_at||'').slice(0,10);const rem=r.kind==='rem';const lbl=`${r.rep} · ${r.listing_id} · ${fmtR(+r.collective_payout_zar)}`;return `<tr class="${r.status==='void'?'void':''}">
+      <td class="l">${d}</td><td class="l">${esc(r.rep)}</td><td class="l"><span class="pill">${esc(r.listing_id)}</span></td>
+      <td class="l">${rem?'<span class="pill rem">REM</span>':'<span class="pill">Storage</span>'}</td><td class="l">${esc(r.month_booked||'')}</td>
+      <td>${rem?'—':((+r.weeks)%1?(+r.weeks).toFixed(2):+r.weeks)}</td><td>${rem?'—':fmtGbp(+r.weekly_invoice)}</td><td>${fmtGbp(+r.av_fee)}</td>
+      <td>${rem?'—':(r.months_in_storage??'')}</td><td>${rem?'—':((r.invoice_cap??'')+(r.invoice_cap===100?'+':''))}</td><td>${rem?'2.5%':(r.invoice_pct?(r.invoice_pct*100).toFixed(1)+'%':'')}</td>
       <td class="pay">${fmtR(+r.collective_payout_zar)}</td>
       <td>${r.status==='void'?'':`<span class="row-act" title="Void" onclick="voidRow('${r.id}','${esc(lbl).replace(/'/g,'&#39;')}')">✕</span>`}</td></tr>`}).join('')}
     </tbody></table></div>`
