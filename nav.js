@@ -34,10 +34,10 @@
       blurb:'Storage sales ranking by agent — bookings & revenue, updated live from the team sheet.' },
     { path:'/operations/storage-sales-performance',   label:'Sales Performance',icon:'🧑‍💼', badge:'live',
       blurb:'Bookings per day per person from Zoho CRM — forecast revenue (tenure × agreed £/wk), booked sq ft, APP attach, booking quality and conversion (HubSpot leads → sale), with a RAG leaderboard.' },
-    // storage-commission: RESTRICTED. The HUB CARD is injected inline by the hub HTML (proven getCurrentUser
-    // pattern, independent of this file). Here we only add a gated SIDEBAR link (hubCard:false) for the allowlist.
+    // storage-commission: PUBLIC. The HUB CARD is injected inline by the hub HTML (so hubCard:false here
+    // to avoid a duplicate). This entry provides the SIDEBAR link, now ungated. The board's own data gate
+    // (renderRestricted) still protects the actual commission figures regardless of who sees the link.
     { path:'/operations/storage-commission',          label:'Sales Commission', icon:'💰', badge:'tool', hubCard:false,
-      restricted:['scott@anyvan.com','l.barreiro@anyvan.com','liam.jooste@anyvan.com','dylan.christian@anyvan.com','carla.jacobs@anyvan.com','andy.n@anyvan.com','prosper.m@anyvan.com','michelle.j@anyvan.com','mike.k@anyvan.com','alec.christian@anyvan.com'],
       blurb:'Submit storage sales commissions and track live per-rep & per-month payouts — tenure × invoice-cap matrix plus the AnyVan-fee share. Replaces the old Slack form.' },
     { path:'/operations/storage-calculator',          label:'Storage Pricing',  icon:'🧮', badge:'tool',
       blurb:'Agent pricing tool — Sq Ft / M² sizing plus price-match for Access, Non-Access & BlueSpace (Spain): full price, discount ladder and a 15% margin floor. Live from the price sheet.' },
