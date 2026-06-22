@@ -34,8 +34,9 @@
       blurb:'Storage sales ranking by agent — bookings & revenue, updated live from the team sheet.' },
     { path:'/operations/storage-sales-performance',   label:'Sales Performance',icon:'🧑‍💼', badge:'live',
       blurb:'Bookings per day per person from Zoho CRM — forecast revenue (tenure × agreed £/wk), booked sq ft, APP attach, booking quality and conversion (HubSpot leads → sale), with a RAG leaderboard.' },
-    // storage-commission: RESTRICTED card — only renders (hub + sidebar) for the allowlist below. Board has its own client-side data gate too.
-    { path:'/operations/storage-commission',          label:'Sales Commission', icon:'💰', badge:'tool',
+    // storage-commission: RESTRICTED. The HUB CARD is injected inline by the hub HTML (proven getCurrentUser
+    // pattern, independent of this file). Here we only add a gated SIDEBAR link (hubCard:false) for the allowlist.
+    { path:'/operations/storage-commission',          label:'Sales Commission', icon:'💰', badge:'tool', hubCard:false,
       restricted:['scott@anyvan.com','l.barreiro@anyvan.com','liam.jooste@anyvan.com','dylan.christian@anyvan.com','carla.jacobs@anyvan.com','andy.n@anyvan.com','prosper.m@anyvan.com','michelle.j@anyvan.com','mike.k@anyvan.com','alec.christian@anyvan.com'],
       blurb:'Submit storage sales commissions and track live per-rep & per-month payouts — tenure × invoice-cap matrix plus the AnyVan-fee share. Replaces the old Slack form.' },
     { path:'/operations/storage-calculator',          label:'Storage Pricing',  icon:'🧮', badge:'tool',
@@ -82,17 +83,13 @@
     if(!b.restricted) return true;
     return SIGNED_IN && b.restricted.indexOf(SIGNED_IN) !== -1;
   }
-  // Resolve the signed-in email to gate restricted cards. Mirrors the proven pattern already used
-  // on the hub: try getCurrentUser first; only if that's empty fall back to ensureAuthenticated then
-  // retry. The whole site is behind SSO, so ensureAuthenticated validates an existing session rather
-  // than forcing a fresh login, and it only fires where the token wasn't already loaded. Any failure
-  // resolves to '' -> restricted cards stay hidden (safe default).
+  // Resolve the signed-in email to gate the restricted SIDEBAR link. Mirrors the exact pattern the hub
+  // already uses successfully: getCurrentUser first, and only if empty fall back to ensureAuthenticated
+  // then retry. NO explicit init() — av-dashboard.js auto-inits, and a second init() can clear the
+  // cached user. Any failure resolves to '' -> restricted links stay hidden (safe default).
   function getSignedInEmail(){
     if(!window.AVDashboard || !AVDashboard.getCurrentUser) return Promise.resolve('');
     try{
-      var meta = document.querySelector('meta[name="av-dashboard-api"]');
-      var api  = meta ? meta.getAttribute('content') : null;
-      if(api){ try{ AVDashboard.init(api); }catch(e){} }
       var email = function(u){ return ((u && u.email) || '').toLowerCase(); };
       return Promise.resolve(AVDashboard.getCurrentUser()).then(function(u){
         if(email(u)) return email(u);
@@ -142,11 +139,13 @@
 
   function go(){
     try{ renderSidebar(); renderHub(); }catch(e){ if(window.console) console.warn('[av-nav]', e); }
-    // Resolve signed-in user, then re-render so any restricted cards/links appear for allowed users.
+    // Resolve signed-in user, then re-render the SIDEBAR ONLY so restricted links appear for allowed users.
+    // Deliberately NOT re-rendering the hub grid: that uses innerHTML and would wipe inline-injected cards
+    // (the hub's private Ops Comms card + the inline commission card). The hub card is handled inline.
     getSignedInEmail().then(function(email){
       if(!email || email === SIGNED_IN) return;
       SIGNED_IN = email;
-      try{ renderSidebar(); renderHub(); }catch(e){ if(window.console) console.warn('[av-nav]', e); }
+      try{ renderSidebar(); }catch(e){ if(window.console) console.warn('[av-nav]', e); }
     });
   }
   if(document.readyState !== 'loading') go();
