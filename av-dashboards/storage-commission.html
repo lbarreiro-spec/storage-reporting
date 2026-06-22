@@ -352,11 +352,12 @@ async function voidRow(id,label){
 }
 
 /* ================= State / load ================= */
-let ROWS=[], VIEW='board'
+let ROWS=[], VIEW='board', recentRep='all'
 let MNAV=[], mIdx=0          // month stepper: MNAV = chronological months, mIdx = selected
 let chartMain=null, chartTrend=null
 function curMonth(){ return MNAV[mIdx]||'' }
 function setView(v){ VIEW=v; document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.view===v)); renderData() }
+function setRecentRep(v){ recentRep=v; renderData() }
 function stepMonth(d){ const n=mIdx+d; if(n<0||n>=MNAV.length) return; mIdx=n; updateStepper(); renderTiles(); renderData() }
 function updateStepper(){ document.getElementById('m-label').textContent=curMonth()||'—'; document.getElementById('m-prev').disabled=mIdx<=0; document.getElementById('m-next').disabled=mIdx>=MNAV.length-1 }
 function activeRows(){ return ROWS.filter(r=>r.status!=='void') }
@@ -488,11 +489,24 @@ function renderTrends(el){
       scales:{y:{ticks:{callback:v=>'R'+(v/1000)+'k',font:{family:"'SF Mono',monospace",size:10},color:'#9ca3af'},grid:{color:'#f0f0f0'}},x:{ticks:{font:{size:11},color:'#374151'},grid:{display:false}}}}})
 }
 
-/* ---------- SUBMISSIONS (raw list, month + search scoped) ---------- */
+/* ---------- SUBMISSIONS (raw list, month + rep scoped) ---------- */
 function renderRecent(el){
-  const rows=ROWS.filter(inMonth)
-  if(!rows.length) return emptyState(el,'No submissions for this month.')
-  el.innerHTML=`<div class="tbl-wrap"><table>
+  const monthRows=ROWS.filter(inMonth)
+  // rep dropdown: every rep with a row this month (+ keep current pick even if it has none)
+  const repsHere=[...new Set(monthRows.map(r=>r.rep))].sort((a,b)=>a.localeCompare(b))
+  if(recentRep!=='all' && !repsHere.includes(recentRep)) recentRep='all'
+  const rows=recentRep==='all'?monthRows:monthRows.filter(r=>r.rep===recentRep)
+  const filterBar=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+    <label style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6b7280">Filter by rep</label>
+    <select onchange="setRecentRep(this.value)" style="font-family:var(--sans);font-size:13px;color:#111827;background:#fff;border:1px solid #d7dde3;border-radius:8px;padding:7px 11px;outline:none;min-width:180px">
+      <option value="all"${recentRep==='all'?' selected':''}>All reps</option>
+      ${repsHere.map(r=>`<option value="${esc(r)}"${recentRep===r?' selected':''}>${esc(r)}</option>`).join('')}
+    </select>
+    <span style="font-size:12px;color:#9ca3af;font-family:var(--mono)">${rows.length} submission${rows.length===1?'':'s'}${recentRep==='all'?'':' · '+fmtR(rows.reduce((s,r)=>s+(r.status!=='void'?+r.collective_payout_zar||0:0),0))}</span>
+  </div>`
+  if(!monthRows.length) return el.innerHTML=filterBar+'<div class="panel"><div class="empty-state">No submissions for this month.</div></div>'
+  if(!rows.length) return el.innerHTML=filterBar+'<div class="panel"><div class="empty-state">No submissions for '+esc(recentRep)+' this month.</div></div>'
+  el.innerHTML=filterBar+`<div class="tbl-wrap"><table>
     <thead><tr><th class="l">Date</th><th class="l">Rep</th><th class="l">Listing</th><th class="l">Type</th><th class="l">Month</th><th>Wks</th><th>£/wk</th><th>Fee £</th><th>Mo</th><th>Tier</th><th>Rate</th><th>Payout</th><th></th></tr></thead>
     <tbody>${rows.map(r=>{const d=(r.submitted_at||'').slice(0,10);const rem=r.kind==='rem';const lbl=`${r.rep} · ${r.listing_id} · ${fmtR(+r.collective_payout_zar)}`;return `<tr class="${r.status==='void'?'void':''}">
       <td class="l">${d}</td><td class="l">${esc(r.rep)}</td><td class="l"><span class="pill">${esc(r.listing_id)}</span></td>
