@@ -17,6 +17,7 @@
   // hero:true  -> the hub renders this as the big hero (kept hardcoded in the hub), so it is NOT added to the card grid.
   // sidebar:false -> excluded from the left sidebar.
   // hubCard:false -> excluded from the hub card grid (still shows in the sidebar).
+  // restricted:[emails] -> card + sidebar link only render for these signed-in emails (gate is the CARD's visibility; the board has its own data gate too).
   // badge: 'live' | 'manual' | 'deck' | 'tool' | 'guide'
   var AV_STORAGE_BOARDS = [
     { path:'/operations/storage-mtd',                 label:'MTD Revenue',      icon:'💷', badge:'live',   hero:true,
@@ -33,7 +34,10 @@
       blurb:'Storage sales ranking by agent — bookings & revenue, updated live from the team sheet.' },
     { path:'/operations/storage-sales-performance',   label:'Sales Performance',icon:'🧑‍💼', badge:'live',
       blurb:'Bookings per day per person from Zoho CRM — forecast revenue (tenure × agreed £/wk), booked sq ft, APP attach, booking quality and conversion (HubSpot leads → sale), with a RAG leaderboard.' },
-    // storage-commission: intentionally NOT in the shared nav — restricted board (Scott + Liam.b only). Direct-URL access; no hub card / sidebar link.
+    // storage-commission: RESTRICTED card — only renders (hub + sidebar) for the allowlist below. Board has its own client-side data gate too.
+    { path:'/operations/storage-commission',          label:'Sales Commission', icon:'💰', badge:'tool',
+      restricted:['scott@anyvan.com','l.barreiro@anyvan.com','liam.jooste@anyvan.com','dylan.christian@anyvan.com','carla.jacobs@anyvan.com','andy.n@anyvan.com','prosper.m@anyvan.com','michelle.j@anyvan.com','mike.k@anyvan.com','alec.christian@anyvan.com'],
+      blurb:'Submit storage sales commissions and track live per-rep & per-month payouts — tenure × invoice-cap matrix plus the AnyVan-fee share. Replaces the old Slack form.' },
     { path:'/operations/storage-calculator',          label:'Storage Pricing',  icon:'🧮', badge:'tool',
       blurb:'Agent pricing tool — Sq Ft / M² sizing plus price-match for Access, Non-Access & BlueSpace (Spain): full price, discount ladder and a 15% margin floor. Live from the price sheet.' },
     { path:'/operations/storage-placement-map',       label:'Placement Map',    icon:'🗺️', badge:'tool',
@@ -72,6 +76,34 @@
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function curPath(){ return location.pathname.replace(/\/+$/,''); }
 
+  // Signed-in email for restricted-card gating. Default '' = restricted cards hidden (safe).
+  var SIGNED_IN = '';
+  function allowed(b){
+    if(!b.restricted) return true;
+    return SIGNED_IN && b.restricted.indexOf(SIGNED_IN) !== -1;
+  }
+  // Resolve the signed-in email to gate restricted cards. Mirrors the proven pattern already used
+  // on the hub: try getCurrentUser first; only if that's empty fall back to ensureAuthenticated then
+  // retry. The whole site is behind SSO, so ensureAuthenticated validates an existing session rather
+  // than forcing a fresh login, and it only fires where the token wasn't already loaded. Any failure
+  // resolves to '' -> restricted cards stay hidden (safe default).
+  function getSignedInEmail(){
+    if(!window.AVDashboard || !AVDashboard.getCurrentUser) return Promise.resolve('');
+    try{
+      var meta = document.querySelector('meta[name="av-dashboard-api"]');
+      var api  = meta ? meta.getAttribute('content') : null;
+      if(api){ try{ AVDashboard.init(api); }catch(e){} }
+      var email = function(u){ return ((u && u.email) || '').toLowerCase(); };
+      return Promise.resolve(AVDashboard.getCurrentUser()).then(function(u){
+        if(email(u)) return email(u);
+        if(!AVDashboard.ensureAuthenticated) return '';
+        return Promise.resolve(AVDashboard.ensureAuthenticated())
+          .then(function(){ return Promise.resolve(AVDashboard.getCurrentUser()); })
+          .then(email).catch(function(){ return ''; });
+      }).catch(function(){ return ''; });
+    }catch(e){ return Promise.resolve(''); }
+  }
+
   function renderSidebar(){
     var sb = document.querySelector('nav.sidebar') || document.querySelector('.sidebar');
     if(!sb) return false;
@@ -79,7 +111,7 @@
     // wipe any hardcoded / drifted links
     var links = sb.querySelectorAll('a.nav-link');
     for(var i=0;i<links.length;i++) links[i].parentNode.removeChild(links[i]);
-    var html = AV_STORAGE_BOARDS.filter(function(b){ return b.sidebar !== false; }).map(function(b){
+    var html = AV_STORAGE_BOARDS.filter(function(b){ return b.sidebar !== false && allowed(b); }).map(function(b){
       var active = (here === b.path.replace(/\/+$/,''));
       return '<a class="nav-link'+(active?' active':'')+'" href="'+b.path+'">'+esc(b.label)+'</a>';
     }).join('');
@@ -96,7 +128,7 @@
     var grid = document.getElementById('av-hub-grid');
     if(!grid) return false;
     var here = curPath();
-    grid.innerHTML = AV_STORAGE_BOARDS.filter(function(b){ return !b.hero && b.hubCard !== false; }).map(function(b){
+    grid.innerHTML = AV_STORAGE_BOARDS.filter(function(b){ return !b.hero && b.hubCard !== false && allowed(b); }).map(function(b){
       var badge = b.badge || 'live';
       var btxt  = badge==='deck' ? 'Decks' : badge==='manual' ? 'Manual' : badge==='tool' ? 'Tool' : badge==='guide' ? 'Guides' : 'Live';
       var self  = (here === b.path.replace(/\/+$/,''));
@@ -108,7 +140,15 @@
     return true;
   }
 
-  function go(){ try{ renderSidebar(); renderHub(); }catch(e){ if(window.console) console.warn('[av-nav]', e); } }
+  function go(){
+    try{ renderSidebar(); renderHub(); }catch(e){ if(window.console) console.warn('[av-nav]', e); }
+    // Resolve signed-in user, then re-render so any restricted cards/links appear for allowed users.
+    getSignedInEmail().then(function(email){
+      if(!email || email === SIGNED_IN) return;
+      SIGNED_IN = email;
+      try{ renderSidebar(); renderHub(); }catch(e){ if(window.console) console.warn('[av-nav]', e); }
+    });
+  }
   if(document.readyState !== 'loading') go();
   else document.addEventListener('DOMContentLoaded', go);
 })();
