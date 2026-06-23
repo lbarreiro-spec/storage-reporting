@@ -101,6 +101,14 @@ body{display:flex;height:100%;font-family:var(--sans);background:#f5f7fa;color:#
 .tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
 .t-search{margin-left:auto;font-family:var(--mono);font-size:12px;border:1px solid #e2e2e2;border-radius:7px;padding:6px 10px;outline:none;width:180px}
 .t-search:focus{border-color:var(--blue)}
+.datebar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.datebar .dlbl{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6b7280;margin-right:2px}
+.dchip{font-size:12px;font-family:var(--mono);color:#6b7280;background:#fff;border:1px solid #d7dde3;border-radius:7px;padding:5px 9px;cursor:pointer;transition:.12s;line-height:1;white-space:nowrap}
+.dchip:hover{border-color:var(--blue);color:var(--link)}
+.dchip.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.dchip.all.active{background:var(--blue);border-color:var(--blue)}
+.dchip .dow{opacity:.55;font-size:10px}
+.dchip.active .dow{opacity:.8}
 
 .panel{background:#fff;border:1px solid #e7ebef;border-radius:12px;padding:18px 20px;margin-bottom:20px}
 .panel-hd{display:flex;align-items:baseline;gap:10px;margin-bottom:14px}
@@ -352,13 +360,15 @@ async function voidRow(id,label){
 }
 
 /* ================= State / load ================= */
-let ROWS=[], VIEW='board', recentRep='all'
+let ROWS=[], VIEW='board', recentRep='all', recentDates=new Set()  // recentDates empty => all days (Submissions tab only)
 let MNAV=[], mIdx=0          // month stepper: MNAV = chronological months, mIdx = selected
 let chartMain=null, chartTrend=null
 function curMonth(){ return MNAV[mIdx]||'' }
 function setView(v){ VIEW=v; document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.view===v)); renderData() }
 function setRecentRep(v){ recentRep=v; renderData() }
-function stepMonth(d){ const n=mIdx+d; if(n<0||n>=MNAV.length) return; mIdx=n; updateStepper(); renderTiles(); renderData() }
+function toggleRecentDate(d){ if(recentDates.has(d)) recentDates.delete(d); else recentDates.add(d); renderData() }
+function clearRecentDates(){ recentDates=new Set(); renderData() }
+function stepMonth(d){ const n=mIdx+d; if(n<0||n>=MNAV.length) return; mIdx=n; recentDates=new Set(); updateStepper(); renderTiles(); renderData() }
 function updateStepper(){ document.getElementById('m-label').textContent=curMonth()||'—'; document.getElementById('m-prev').disabled=mIdx<=0; document.getElementById('m-next').disabled=mIdx>=MNAV.length-1 }
 function activeRows(){ return ROWS.filter(r=>r.status!=='void') }
 function inMonth(r){ return (r.month_booked||'')===curMonth() }
@@ -489,24 +499,43 @@ function renderTrends(el){
       scales:{y:{ticks:{callback:v=>'R'+(v/1000)+'k',font:{family:"'SF Mono',monospace",size:10},color:'#9ca3af'},grid:{color:'#f0f0f0'}},x:{ticks:{font:{size:11},color:'#374151'},grid:{display:false}}}}})
 }
 
-/* ---------- SUBMISSIONS (raw list, month + rep scoped) ---------- */
+/* ---------- SUBMISSIONS (raw list, month + rep + day scoped) ---------- */
+const rowDate=r=>(r.submitted_at||'').slice(0,10)
+function dayChip(d){
+  const dt=new Date(d+'T00:00:00')
+  const dow=isNaN(dt)?'':dt.toLocaleDateString('en-GB',{weekday:'short'})
+  return {dow,dom:d.slice(8,10).replace(/^0/,'')}
+}
 function renderRecent(el){
   const monthRows=ROWS.filter(inMonth)
+  // distinct submission dates this month → toggleable day chips
+  const datesHere=[...new Set(monthRows.map(rowDate).filter(Boolean))].sort()
+  // forget any selected days that no longer exist (after void/refresh/month change)
+  ;[...recentDates].forEach(d=>{ if(!datesHere.includes(d)) recentDates.delete(d) })
+  const dateBar = datesHere.length>1 ? `<div class="datebar">
+      <span class="dlbl">Days</span>
+      <span class="dchip all${recentDates.size===0?' active':''}" onclick="clearRecentDates()" title="Show all days">All</span>
+      ${datesHere.map(d=>{const {dow,dom}=dayChip(d);return `<span class="dchip${recentDates.has(d)?' active':''}" onclick="toggleRecentDate('${d}')" title="${d}"><span class="dow">${dow}</span> ${dom}</span>`}).join('')}
+    </div>` : ''
   // rep dropdown: every rep with a row this month (+ keep current pick even if it has none)
   const repsHere=[...new Set(monthRows.map(r=>r.rep))].sort((a,b)=>a.localeCompare(b))
   if(recentRep!=='all' && !repsHere.includes(recentRep)) recentRep='all'
-  const rows=recentRep==='all'?monthRows:monthRows.filter(r=>r.rep===recentRep)
+  let rows=recentRep==='all'?monthRows:monthRows.filter(r=>r.rep===recentRep)
+  if(recentDates.size) rows=rows.filter(r=>recentDates.has(rowDate(r)))
+  const filtered=recentRep!=='all'||recentDates.size>0
+  const dayNote=recentDates.size?' · '+recentDates.size+' day'+(recentDates.size===1?'':'s'):''
   const filterBar=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
     <label style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6b7280">Filter by rep</label>
     <select onchange="setRecentRep(this.value)" style="font-family:var(--sans);font-size:13px;color:#111827;background:#fff;border:1px solid #d7dde3;border-radius:8px;padding:7px 11px;outline:none;min-width:180px">
       <option value="all"${recentRep==='all'?' selected':''}>All reps</option>
       ${repsHere.map(r=>`<option value="${esc(r)}"${recentRep===r?' selected':''}>${esc(r)}</option>`).join('')}
     </select>
-    <span style="font-size:12px;color:#9ca3af;font-family:var(--mono)">${rows.length} submission${rows.length===1?'':'s'}${recentRep==='all'?'':' · '+fmtR(rows.reduce((s,r)=>s+(r.status!=='void'?+r.collective_payout_zar||0:0),0))}</span>
+    <span style="font-size:12px;color:#9ca3af;font-family:var(--mono)">${rows.length} submission${rows.length===1?'':'s'}${dayNote}${filtered?' · '+fmtR(rows.reduce((s,r)=>s+(r.status!=='void'?+r.collective_payout_zar||0:0),0)):''}</span>
   </div>`
-  if(!monthRows.length) return el.innerHTML=filterBar+'<div class="panel"><div class="empty-state">No submissions for this month.</div></div>'
-  if(!rows.length) return el.innerHTML=filterBar+'<div class="panel"><div class="empty-state">No submissions for '+esc(recentRep)+' this month.</div></div>'
-  el.innerHTML=filterBar+`<div class="tbl-wrap"><table>
+  const controls=dateBar+filterBar
+  if(!monthRows.length) return el.innerHTML=controls+'<div class="panel"><div class="empty-state">No submissions for this month.</div></div>'
+  if(!rows.length) return el.innerHTML=controls+'<div class="panel"><div class="empty-state">No submissions for the selected '+(recentRep==='all'?'days':'rep / days')+'.</div></div>'
+  el.innerHTML=controls+`<div class="tbl-wrap"><table>
     <thead><tr><th class="l">Date</th><th class="l">Rep</th><th class="l">Listing</th><th class="l">Type</th><th class="l">Month</th><th>Wks</th><th>£/wk</th><th>Fee £</th><th>Mo</th><th>Tier</th><th>Rate</th><th>Payout</th><th></th></tr></thead>
     <tbody>${rows.map(r=>{const d=(r.submitted_at||'').slice(0,10);const rem=r.kind==='rem';const lbl=`${r.rep} · ${r.listing_id} · ${fmtR(+r.collective_payout_zar)}`;return `<tr class="${r.status==='void'?'void':''}">
       <td class="l">${d}</td><td class="l">${esc(r.rep)}</td><td class="l"><span class="pill">${esc(r.listing_id)}</span></td>
