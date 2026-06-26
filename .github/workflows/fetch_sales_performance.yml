@@ -23,7 +23,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests python-dotenv
+        run: pip install requests python-dotenv snowflake-connector-python
 
       - name: Write .env
         run: |
@@ -32,13 +32,25 @@ jobs:
           ZOHO_CLIENT_SECRET=${{ secrets.ZOHO_CLIENT_SECRET }}
           ZOHO_REFRESH_TOKEN=${{ secrets.ZOHO_REFRESH_TOKEN }}
           ZOHO_REGION=eu
-          HUBSPOT_TOKEN=${{ secrets.HUBSPOT_TOKEN }}
           SUPABASE_URL=${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+          SNOWFLAKE_ACCOUNT=${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER=${{ secrets.SNOWFLAKE_USER }}
+          EOF
+
+      # Website-lead CR reads the HubSpot lead set from the managed Snowflake
+      # warehouse (no HubSpot REST API / no HUBSPOT_TOKEN). Same PAT pattern as
+      # fetch_rcs_jobs.yml.
+      - name: Write Snowflake config
+        run: |
+          mkdir -p ~/.snowflake
+          cat > ~/.snowflake/connections.toml << 'EOF'
+          [connections.default]
+          token = "${{ secrets.SNOWFLAKE_PAT }}"
           EOF
 
       - name: Run fetch (default window — current + previous month)
         run: python3 scripts/fetch_sales_performance.py
 
-      - name: Run website-lead CR fetch (email-match HubSpot leads ↔ Zoho bookings)
+      - name: Run website-lead CR fetch (Snowflake HubSpot leads ↔ Zoho bookings)
         run: python3 scripts/fetch_website_lead_cr.py
