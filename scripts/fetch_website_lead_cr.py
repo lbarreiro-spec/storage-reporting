@@ -10,14 +10,24 @@ WHY THIS EXISTS
   AVC-UK-STORAGE pipeline (694358880). But that pipeline is ~80% non-website
   noise: 'Removals -' / 'Furniture -' transport jobs, bought 'Pinlocal Lead' /
   'Stashbee Lead' partner lead-gen, 'Competitor Storage -' scrapes. Only the
-  'Storage Lead - <id>' deals are genuine inbound storage WEBSITE enquiries.
+  genuine inbound storage WEBSITE enquiries should count.
 
   A website lead also doesn't get marked "won" in HubSpot when it books — the
   booking/onboarding lives in Zoho. So conversion is established by matching the
   lead's email to a Zoho qualifying booking.
 
+SOURCE (changed 2026-06-26)
+  The HubSpot lead set now comes from the managed Snowflake warehouse
+  (HARMONISED.PRODUCTION.HUBSPOT_DEAL), NOT the HubSpot REST API. The old API
+  path identified a website enquiry by deal name ('Storage Lead - <id>'); the
+  Snowflake table carries no deal name, but it DOES carry PROPERTY_CATEGORY_NAME,
+  and category='storage' with no partner reproduces that population exactly
+  (validated 2026-06-26: May 2026 = 709 leads via both the API and Snowflake).
+  This removes the HUBSPOT_TOKEN dependency that previously broke this job
+  (the token/secret went missing on 18 Jun 2026 and froze the website-lead CR).
+
 DEFINITION
-  Denominator : unique 'Storage Lead' website-enquiry customers (by email),
+  Denominator : unique storage WEBSITE-enquiry customers (by email),
                 bucketed into the cohort month of the HubSpot createdate,
                 attributed to the HubSpot lead OWNER.
   Numerator   : those whose email appears on a Zoho qualifying booking
@@ -35,7 +45,8 @@ WINDOW (delete-then-insert each run, so re-runs correct earlier months):
   --since YYYY-MM-DD : custom start
   --dry-run          : compute + print, write nothing
 
-Requires: HUBSPOT_TOKEN, ZOHO_CLIENT_ID/SECRET, ZOHO_(CRM_)REFRESH_TOKEN,
+Requires: SNOWFLAKE_ACCOUNT, SNOWFLAKE_USER, ~/.snowflake/connections.toml (PAT),
+          ZOHO_CLIENT_ID/SECRET, ZOHO_(CRM_)REFRESH_TOKEN,
           SUPABASE_URL, SUPABASE_ANON_KEY  (.env then ~/.anyvan/config.txt).
 """
 
@@ -44,15 +55,16 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
+import snowflake.connector
+
 # ── config ──────────────────────────────────────────────────────────────────
 AUTH_URL       = "https://accounts.zoho.eu/oauth/v2/token"
 CRM_BASE       = "https://www.zohoapis.eu/crm/v3"
-HS_SEARCH      = "https://api.hubapi.com/crm/v3/objects/deals/search"
-HS_OWNERS      = "https://api.hubapi.com/crm/v3/owners"
-HS_PIPELINE_ID = "694358880"            # AVC - UK - STORAGE
-LEAD_NAME_TOKEN = "Storage Lead"        # 'Storage Lead - <id>' = website enquiry
+STORAGE_PIPELINE_LABEL = "AVC - UK - STORAGE"
 EXCLUDE_STAGES = {"Cancel", "Prospect", "Enquiry", "Estimate sent", "Quoted by Sales"}
 TABLE          = "website_lead_cr_monthly"
+SNOWFLAKE_WH   = "MART_SALES_OPS_WH"
+SNOWFLAKE_ROLE = "MART_SALES_OPS_GROUP"
 
 DRY  = "--dry-run" in sys.argv
 FULL = "--full"    in sys.argv
@@ -73,12 +85,13 @@ def _load_kvfile(path):
 _load_kvfile(Path(__file__).parent.parent / ".env")
 _load_kvfile(Path.home() / ".anyvan" / "config.txt")
 
-SUPA_URL      = os.environ["SUPABASE_URL"]
-SUPA_KEY      = os.environ["SUPABASE_ANON_KEY"]
-HUBSPOT_TOKEN = os.environ["HUBSPOT_TOKEN"]
-CLIENT_ID     = os.environ["ZOHO_CLIENT_ID"]
-CLIENT_SECRET = os.environ["ZOHO_CLIENT_SECRET"]
-REFRESH_TOKEN = os.getenv("ZOHO_CRM_REFRESH_TOKEN") or os.environ["ZOHO_REFRESH_TOKEN"]
+SUPA_URL          = os.environ["SUPABASE_URL"]
+SUPA_KEY          = os.environ["SUPABASE_ANON_KEY"]
+CLIENT_ID         = os.environ["ZOHO_CLIENT_ID"]
+CLIENT_SECRET     = os.environ["ZOHO_CLIENT_SECRET"]
+REFRESH_TOKEN     = os.getenv("ZOHO_CRM_REFRESH_TOKEN") or os.environ["ZOHO_REFRESH_TOKEN"]
+SNOWFLAKE_ACCOUNT = os.environ["SNOWFLAKE_ACCOUNT"]
+SNOWFLAKE_USER    = os.environ["SNOWFLAKE_USER"]
 
 
 def _arg(flag, default=None):
@@ -93,10 +106,6 @@ def norm(e):
     return (e or "").strip().lower()
 
 
-def ms(d: date) -> int:
-    return int(datetime(d.year, d.month, d.day, tzinfo=timezone.utc).timestamp() * 1000)
-
-
 def supa_headers(extra=None):
     h = {"apikey": SUPA_KEY, "Authorization": f"Bearer {SUPA_KEY}",
          "Content-Type": "application/json"}
@@ -105,55 +114,89 @@ def supa_headers(extra=None):
     return h
 
 
-# ── HubSpot ───────────────────────────────────────────────────────────────────
-def hs_headers():
-    return {"Authorization": f"Bearer {HUBSPOT_TOKEN}", "Content-Type": "application/json"}
+# ── HubSpot (via managed Snowflake warehouse, no REST API / no token) ──────────
+def get_sf_token():
+    toml = open(os.path.expanduser("~/.snowflake/connections.toml")).read()
+    return toml.split('token = "')[1].split('"')[0]
+
+
+# One row per unique (cohort-month, customer email) storage WEBSITE enquiry,
+# attributed to the most-recent lead owner. category='storage' + no partner is the
+# Snowflake equivalent of the old 'Storage Lead - <id>' dealname filter; the
+# current-stage-in-storage-pipeline join keeps it to genuine storage deals.
+WEBSITE_LEAD_SQL = """
+WITH storage_stages AS (
+  SELECT s.STAGE_ID
+  FROM HARMONISED.PRODUCTION.HUBSPOT_DEAL_PIPELINE_STAGE s
+  JOIN HARMONISED.PRODUCTION.HUBSPOT_DEAL_PIPELINE p ON s.PIPELINE_ID = p.PIPELINE_ID
+  WHERE p.LABEL = %(pipeline)s
+),
+rd AS (
+  SELECT DEAL_ID,
+         LOWER(NULLIF(TRIM(PROPERTY_EMAIL), '')) AS email,
+         OWNER_ID,
+         PROPERTY_CREATEDATE,
+         TO_CHAR(DATE_TRUNC('month', PROPERTY_CREATEDATE), 'YYYY-MM') AS month
+  FROM HARMONISED.PRODUCTION.HUBSPOT_DEAL
+  WHERE PROPERTY_CREATEDATE >= %(start)s
+    AND PROPERTY_CREATEDATE <  %(end_excl)s
+    AND LOWER(TRIM(PROPERTY_CATEGORY_NAME)) = 'storage'
+    AND COALESCE(TRIM(PROPERTY_PARTNER_NAME), '') = ''
+    AND PROPERTY_EMAIL IS NOT NULL AND TRIM(PROPERTY_EMAIL) <> ''
+),
+hist AS (
+  SELECT s.DEAL_ID, s.VALUE AS STAGE_ID,
+         ROW_NUMBER() OVER (PARTITION BY s.DEAL_ID ORDER BY s.DATE_ENTERED DESC) rn
+  FROM HARMONISED.PRODUCTION.HUBSPOT_DEAL_STAGE s
+  JOIN rd r ON s.DEAL_ID = r.DEAL_ID
+),
+cs AS (
+  SELECT h.DEAL_ID
+  FROM hist h JOIN storage_stages ss ON h.STAGE_ID = ss.STAGE_ID
+  WHERE h.rn = 1
+),
+dedup AS (
+  SELECT rd.month, rd.email, rd.OWNER_ID,
+         ROW_NUMBER() OVER (PARTITION BY rd.month, rd.email
+                            ORDER BY rd.PROPERTY_CREATEDATE DESC) rk
+  FROM cs JOIN rd ON cs.DEAL_ID = rd.DEAL_ID
+)
+SELECT d.month                              AS MONTH,
+       d.email                              AS EMAIL,
+       TO_VARCHAR(d.OWNER_ID)               AS OWNER_ID,
+       COALESCE(NULLIF(TRIM(o.FIRST_NAME || ' ' || o.LAST_NAME), ''),
+                'Owner ' || TO_VARCHAR(d.OWNER_ID)) AS OWNER_NAME
+FROM dedup d
+LEFT JOIN HARMONISED.PRODUCTION.HUBSPOT_OWNER o ON o.OWNER_ID = d.OWNER_ID
+WHERE d.rk = 1
+"""
 
 
 def fetch_website_leads(start: date, end_excl: date):
-    """All 'Storage Lead' deals created in [start, end_excl). Most-recent first."""
-    body = {
-        "filterGroups": [{"filters": [
-            {"propertyName": "pipeline",   "operator": "EQ",  "value": HS_PIPELINE_ID},
-            {"propertyName": "createdate", "operator": "GTE", "value": str(ms(start))},
-            {"propertyName": "createdate", "operator": "LT",  "value": str(ms(end_excl))},
-            {"propertyName": "dealname",   "operator": "CONTAINS_TOKEN", "value": LEAD_NAME_TOKEN},
-        ]}],
-        "properties": ["email", "hubspot_owner_id", "createdate"],
-        "sorts": [{"propertyName": "createdate", "direction": "DESCENDING"}],
-        "limit": 200,
-    }
-    out, after = [], None
-    while True:
-        if after:
-            body["after"] = after
-        r = requests.post(HS_SEARCH, headers=hs_headers(), json=body, timeout=30)
-        r.raise_for_status()
-        data = r.json()
-        out.extend(data.get("results", []))
-        after = data.get("paging", {}).get("next", {}).get("after")
-        if not after:
-            break
-    return out
+    """Deduped storage-website-enquiry rows in [start, end_excl) from Snowflake.
 
-
-def fetch_owner_names(owner_ids):
-    """id -> 'First Last' for the owner ids we saw (paginate the owners list)."""
-    names, after = {}, None
-    while True:
-        params = {"limit": 500}
-        if after:
-            params["after"] = after
-        r = requests.get(HS_OWNERS, headers=hs_headers(), params=params, timeout=30)
-        r.raise_for_status()
-        data = r.json()
-        for o in data.get("results", []):
-            full = " ".join(x for x in [o.get("firstName"), o.get("lastName")] if x).strip()
-            names[str(o.get("id"))] = full or (o.get("email") or f"Owner {o.get('id')}")
-        after = data.get("paging", {}).get("next", {}).get("after")
-        if not after:
-            break
-    return {oid: names.get(oid, f"Owner {oid}") for oid in owner_ids}
+    Returns dicts: MONTH (YYYY-MM), EMAIL (lower), OWNER_ID (str|None), OWNER_NAME.
+    """
+    conn = snowflake.connector.connect(
+        account=SNOWFLAKE_ACCOUNT,
+        user=SNOWFLAKE_USER,
+        authenticator="programmatic_access_token",
+        token=get_sf_token(),
+        warehouse=SNOWFLAKE_WH,
+        role=SNOWFLAKE_ROLE,
+    )
+    try:
+        cur = conn.cursor()
+        cur.execute(WEBSITE_LEAD_SQL, {
+            "pipeline": STORAGE_PIPELINE_LABEL,
+            "start":    start.isoformat(),
+            "end_excl": end_excl.isoformat(),
+        })
+        cols = [c[0] for c in cur.description]
+        rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+    finally:
+        conn.close()
+    return rows
 
 
 # ── Zoho ────────────────────────────────────────────────────────────────────
@@ -214,50 +257,36 @@ def main():
     print(f"Window: leads created {start} → {today} (cohort by createdate month)")
 
     leads = fetch_website_leads(start, end_excl)
-    print(f"  HubSpot 'Storage Lead' deal rows: {len(leads)}")
+    print(f"  Snowflake storage website-lead rows (deduped): {len(leads)}")
 
     bookings = fetch_booking_emails(start, today)
-    print(f"  Zoho qualifying booking emails:   {len(bookings)}")
+    print(f"  Zoho qualifying booking emails:                {len(bookings)}")
 
-    # Dedupe to unique customer per cohort month (most-recent owner wins — list is DESC).
-    seen = set()                                  # (month, email)
-    owner_of = {}                                 # (month, email) -> owner_id
-    months_present = set()
-    for d in leads:
-        p = d.get("properties", {})
-        email = norm(p.get("email"))
-        cd = p.get("createdate") or ""
-        if not email or not cd:
-            continue
-        try:
-            month = datetime.fromtimestamp(int(cd) / 1000, tz=timezone.utc).strftime("%Y-%m")
-        except (ValueError, TypeError):
-            month = cd[:7]
-        key = (month, email)
-        if key in seen:
-            continue
-        seen.add(key)
-        owner_of[key] = str(p.get("hubspot_owner_id") or "")
-        months_present.add(month)
-
-    # Aggregate per (month, owner).
+    # Rows are already unique per (month, email) from SQL — aggregate per (month, owner).
     agg = defaultdict(lambda: {"leads": 0, "converted": 0})
-    for (month, email), owner_id in owner_of.items():
+    owner_name_of = {}
+    months_present = set()
+    for r in leads:
+        email = norm(r.get("EMAIL"))
+        month = r.get("MONTH")
+        if not email or not month:
+            continue
+        owner_id = "" if r.get("OWNER_ID") in (None, "") else str(r.get("OWNER_ID"))
+        owner_name_of[owner_id] = r.get("OWNER_NAME") or "Unassigned"
         a = agg[(month, owner_id)]
         a["leads"] += 1
         if email in bookings:
             a["converted"] += 1
+        months_present.add(month)
 
-    owner_ids = {oid for (_m, oid) in agg.keys() if oid}
-    names = fetch_owner_names(owner_ids)
-    names[""] = "Unassigned"
+    owner_name_of.setdefault("", "Unassigned")
 
     now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     rows = []
     for (month, owner_id), m in sorted(agg.items()):
         rows.append({
             "month": month, "owner_id": owner_id or "",
-            "owner_name": names.get(owner_id, f"Owner {owner_id}"),
+            "owner_name": owner_name_of.get(owner_id, f"Owner {owner_id}"),
             "leads": m["leads"], "converted": m["converted"], "updated_at": now_iso,
         })
 
