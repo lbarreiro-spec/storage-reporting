@@ -1,6 +1,11 @@
 name: Fetch Sales Performance
 
 # Manual-trigger only (per the automation policy — no schedule added).
+# Refreshes Zoho CRM bookings into Supabase (sales_performance_daily).
+# NOTE: the board's "Website lead conversion" no longer runs here — it is now a
+# managed Snowflake query (hs_storage_website_lead_cr) the board reads live in
+# the browser. GitHub Actions runners can't reach Snowflake (network policy), so
+# all HubSpot/Snowflake reads are done client-side via AVDashboard.runQuery.
 on:
   workflow_dispatch:
 
@@ -23,7 +28,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests python-dotenv snowflake-connector-python
+        run: pip install requests python-dotenv
 
       - name: Write .env
         run: |
@@ -34,23 +39,7 @@ jobs:
           ZOHO_REGION=eu
           SUPABASE_URL=${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
-          SNOWFLAKE_ACCOUNT=${{ secrets.SNOWFLAKE_ACCOUNT }}
-          SNOWFLAKE_USER=${{ secrets.SNOWFLAKE_USER }}
           EOF
 
-      # Website-lead CR reads the HubSpot lead set from the managed Snowflake
-      # warehouse (no HubSpot REST API / no HUBSPOT_TOKEN). Same PAT pattern as
-      # fetch_rcs_jobs.yml.
-      - name: Write Snowflake config
-        run: |
-          mkdir -p ~/.snowflake
-          cat > ~/.snowflake/connections.toml << 'EOF'
-          [connections.default]
-          token = "${{ secrets.SNOWFLAKE_PAT }}"
-          EOF
-
-      - name: Run fetch (default window — current + previous month)
+      - name: Run fetch (bookings — current + previous month)
         run: python3 scripts/fetch_sales_performance.py
-
-      - name: Run website-lead CR fetch (Snowflake HubSpot leads ↔ Zoho bookings)
-        run: python3 scripts/fetch_website_lead_cr.py
