@@ -34,6 +34,10 @@
       blurb:'Storage sales ranking by agent — bookings & revenue, updated live from the team sheet.' },
     { path:'/operations/storage-sales-performance',   label:'Sales Performance',icon:'🧑‍💼', badge:'live',
       blurb:'Bookings per day per person from Zoho CRM — forecast revenue (tenure × agreed £/wk), booked sq ft, APP attach, booking quality and conversion (HubSpot leads → sale), with a RAG leaderboard.' },
+    { path:'/operations/storage-sales-arena',         label:'Sales Arena',      icon:'🏟️', badge:'live',
+      blurb:'Gamified incentives arcade for the Storage sales team — concurrent games & leagues (sq ft, forecast £, conversion, speed-to-lead, speed-to-deal) with live Zoho data, RAG pace-to-target, podiums and rank movement.' },
+    { path:'/operations/storage-sales-prizes',        label:'Sales Prizes',     icon:'🎁', badge:'tool',
+      blurb:'Rewards store for the Sales Arena — spend earned coins on prizes by category, track balances and stock, and submit redemptions for manager approval.' },
     // storage-commission: PUBLIC. The HUB CARD is injected inline by the hub HTML (so hubCard:false here
     // to avoid a duplicate). This entry provides the SIDEBAR link, now ungated. The board's own data gate
     // (renderRestricted) still protects the actual commission figures regardless of who sees the link.
