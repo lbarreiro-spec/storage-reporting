@@ -125,14 +125,6 @@ tr.current-month td:first-child{color:#1f1f1f;font-weight:700}
   font-family:var(--mono);font-size:14px;color:#111827;outline:none;cursor:pointer;
 }
 
-.refresh-btn{
-  background:#fff;border:1px solid #e2e2e2;border-radius:7px;padding:5px 12px;
-  font-family:var(--sans);font-size:13px;color:#6b7280;cursor:pointer;transition:all .12s;
-}
-.refresh-btn:hover:not(:disabled){border-color:#41a5dd;color:#106799}
-.refresh-btn:disabled{opacity:0.5;cursor:default}
-.spin{display:inline-block;animation:spin 1s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
 
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -187,8 +179,7 @@ tr.current-month td:first-child{color:#1f1f1f;font-weight:700}
   </div>
   <div class="topbar-controls">
     <select class="month-sel" id="month-sel" onchange="switchMonth(this.value)"></select>
-    <span class="refresh-note" title="Data updates daily. ↻ Refresh runs the full Zoho + Snowflake rebuild (~25 min) then reloads." style="display:inline-flex;align-items:center;font-size:11px;font-weight:600;border-radius:20px;padding:4px 10px;white-space:nowrap;background:#fffbeb;color:#b45309;border:1px solid #fcd34d">Updates daily · ~25 min rebuild</span>
-    <button class="refresh-btn" id="refresh-btn" onclick="triggerRefresh()" title="Triggers the full Zoho + CRM + Snowflake rebuild (~25 min). The page reloads automatically when it finishes.">↻ Rebuild data (~25m)</button>
+    <span class="refresh-note" title="Data is rebuilt automatically each morning from Zoho Books, Zoho CRM and Snowflake." style="display:inline-flex;align-items:center;font-size:11px;font-weight:600;border-radius:20px;padding:4px 10px;white-space:nowrap;background:#fffbeb;color:#b45309;border:1px solid #fcd34d">Updates daily</span>
   </div>
 </div>
 
@@ -856,60 +847,6 @@ function renderHistory(){
       <td>${app ? fmtRev2(app.books_revenue) : '—'}</td>
     </tr>`
   }).join('')
-}
-
-const GITHUB_PAT  = 'worker-handles-auth'
-const GITHUB_REPO = 'Robbosd/storage-reporting'
-const WORKFLOW_ID = 'fetch_mtd.yml'
-
-async function triggerRefresh(){
-  const btn = document.getElementById('refresh-btn')
-  btn.disabled = true
-  const startTs = Date.now()
-  const elapsed = () => {
-    const s = Math.floor((Date.now()-startTs)/1000)
-    return s < 60 ? `${s}s` : `${Math.floor(s/60)}m${s%60}s`
-  }
-  btn.innerHTML = '<span class="spin">↻</span> Refreshing…'
-  try{
-    const dispatch = await fetch(
-      `https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/dispatches`,
-      {method:'POST',headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify({ref:'main'})}
-    )
-    if(!dispatch.ok) throw new Error(`Dispatch failed: ${dispatch.status}`)
-    await new Promise(r=>setTimeout(r,5000))
-    let runId = null
-    for(let i=0;i<12;i++){
-      const runs = await fetch(`https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/runs?per_page=1`,
-        {headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json'}})
-      const d = await runs.json()
-      if(d.workflow_runs?.[0]){runId=d.workflow_runs[0].id;break}
-      await new Promise(r=>setTimeout(r,3000))
-    }
-    if(!runId) throw new Error('Could not find workflow run')
-    let completed = false
-    for(let i=0;i<400;i++){
-      await new Promise(r=>setTimeout(r,6000))
-      btn.innerHTML = `<span class="spin">↻</span> Running… ${elapsed()}`
-      const check = await fetch(`https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/runs/${runId}`,
-        {headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json'}})
-      const run = await check.json()
-      if(run.status==='completed'){
-        if(run.conclusion!=='success') throw new Error(`Workflow ${run.conclusion}`)
-        completed = true
-        break
-      }
-    }
-    if(!completed) throw new Error('Workflow timed out after 40 minutes — check GitHub Actions')
-    await new Promise(r=>setTimeout(r,12000))
-    location.reload()
-  }catch(e){
-    alert('Refresh failed: '+e.message)
-    console.error(e)
-  }finally{
-    btn.disabled = false
-    btn.innerHTML = '↻ Rebuild data (~25m)'
-  }
 }
 
 loadAll()
