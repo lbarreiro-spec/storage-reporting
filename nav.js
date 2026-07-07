@@ -59,6 +59,8 @@
       blurb:'Sales effectiveness — per-agent outbound reach & connect rate (v1 proxy from voice activity), building toward a Lead→Onboarded→Signed→Paid conversion funnel.' },
     { path:'/operations/storage-sales-performance',   label:'Sales Performance',  icon:'🧑‍💼', badge:'live', section:2,
       blurb:'Bookings per day per person from Zoho CRM — forecast revenue (tenure × agreed £/wk), booked sq ft, APP attach, booking quality and conversion (HubSpot leads → sale), with a RAG leaderboard.' },
+    { path:'/operations/storage-cr',                  label:'Conversion (CR)',    icon:'🎯', badge:'live', section:2,
+      blurb:'The single source of truth for Storage conversion — CR by rep (throughput), website-lead conversion (cohort), and lead→booking CR by source (Overall / Website / Removals / Furniture / Lead Gen) plus by source × rep.' },
     { path:'/operations/storage-sales-arena',         label:'Sales Arena',        icon:'🏟️', badge:'live', section:2,
       blurb:'Gamified incentives arcade for the Storage sales team — concurrent games & leagues (sq ft, forecast £, conversion, speed-to-lead, speed-to-deal) with live Zoho data, RAG pace-to-target, podiums and rank movement.' },
     { path:'/operations/storage-sales-prizes',        label:'Sales Prizes',       icon:'🎁', badge:'tool', section:2,
