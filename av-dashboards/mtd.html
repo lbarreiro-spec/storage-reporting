@@ -70,16 +70,24 @@ body{display:flex;height:100%;font-family:var(--sans);background:#f5f7fa}
 
 /* YOY GRID */
 .yoy-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.yoy-card{background:#f4f4f4;border:1px solid #e2e2e2;border-radius:12px;padding:20px 22px}
-.yoy-title{font-size:15px;font-weight:600;color:#111827;margin-bottom:16px}
+.yoy-card{background:#f4f4f4;border:1px solid #e2e2e2;border-radius:12px;padding:20px 24px}
+.yoy-title{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#111827;margin-bottom:4px}
+/* legacy row layout (used by non-current-month fallbacks) */
 .yoy-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #e2e2e2}
 .yoy-row:last-child{border-bottom:none}
 .yoy-lbl{font-size:14px;color:#6b7280}
 .yoy-vals{display:flex;align-items:center;gap:10px}
 .yoy-num{font-family:var(--mono);font-size:16px;color:#111827}
-.badge-up{font-size:12px;letter-spacing:.06em;padding:2px 7px;border-radius:4px;font-weight:600;background:#f0fdf4;color:#16a34a}
-.badge-dn{font-size:12px;letter-spacing:.06em;padding:2px 7px;border-radius:4px;font-weight:600;background:#fef2f2;color:#dc2626}
-.badge-fl{font-size:12px;letter-spacing:.06em;padding:2px 7px;border-radius:4px;font-weight:600;background:#f4f4f4;color:#6b7280}
+/* metric blocks — number is the hero */
+.yoy-metric{padding:15px 0;border-bottom:1px solid #e2e2e2}
+.yoy-metric:last-child{border-bottom:none;padding-bottom:2px}
+.yoy-mlbl{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#6b7280;margin-bottom:9px}
+.yoy-mtop{display:flex;align-items:baseline;gap:12px}
+.yoy-mnum{font-family:var(--mono);font-size:27px;font-weight:500;line-height:1;letter-spacing:-.02em;color:#111827}
+.yoy-msub{font-size:13px;color:#9ca3af;margin-top:7px}
+.badge-up{font-size:13px;letter-spacing:.02em;padding:3px 9px;border-radius:6px;font-weight:600;background:#f0fdf4;color:#16a34a}
+.badge-dn{font-size:13px;letter-spacing:.02em;padding:3px 9px;border-radius:6px;font-weight:600;background:#fef2f2;color:#dc2626}
+.badge-fl{font-size:13px;letter-spacing:.02em;padding:3px 9px;border-radius:6px;font-weight:600;background:#ececed;color:#6b7280}
 
 /* TRANSPORT */
 .transport-grid{display:grid;grid-template-columns:1fr;gap:12px}
@@ -125,6 +133,14 @@ tr.current-month td:first-child{color:#1f1f1f;font-weight:700}
   font-family:var(--mono);font-size:14px;color:#111827;outline:none;cursor:pointer;
 }
 
+.refresh-btn{
+  background:#fff;border:1px solid #e2e2e2;border-radius:7px;padding:5px 12px;
+  font-family:var(--sans);font-size:13px;color:#6b7280;cursor:pointer;transition:all .12s;
+}
+.refresh-btn:hover:not(:disabled){border-color:#41a5dd;color:#106799}
+.refresh-btn:disabled{opacity:0.5;cursor:default}
+.spin{display:inline-block;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -157,6 +173,7 @@ tr.current-month td:first-child{color:#1f1f1f;font-weight:700}
   </div>
   <a class="nav-link active" href="/operations/storage-mtd">MTD Revenue</a>
   <a class="nav-link" href="/operations/storage-monthly">Monthly Trends</a>
+  <a class="nav-link" href="/operations/storage-weekly">Weekly KPI</a>
   <a class="nav-link" href="/operations/storage-voice-activity">Voice Activity</a>
   <a class="nav-link" href="/operations/storage-daily-activity">Daily Activity</a>
   <a class="nav-link" href="/operations/storage-whatsapp">WhatsApp</a>
@@ -179,7 +196,8 @@ tr.current-month td:first-child{color:#1f1f1f;font-weight:700}
   </div>
   <div class="topbar-controls">
     <select class="month-sel" id="month-sel" onchange="switchMonth(this.value)"></select>
-    <span class="refresh-note" title="Data is rebuilt automatically each morning from Zoho Books, Zoho CRM and Snowflake." style="display:inline-flex;align-items:center;font-size:11px;font-weight:600;border-radius:20px;padding:4px 10px;white-space:nowrap;background:#fffbeb;color:#b45309;border:1px solid #fcd34d">Updates daily</span>
+    <span class="refresh-note" title="Data updates daily. ↻ Refresh runs the full Zoho rebuild then reloads. Transport is live from Snowflake." style="display:inline-flex;align-items:center;font-size:11px;font-weight:600;border-radius:20px;padding:4px 10px;white-space:nowrap;background:#fffbeb;color:#b45309;border:1px solid #fcd34d">Updates daily · ~25 min rebuild</span>
+    <button class="refresh-btn" id="refresh-btn" onclick="triggerRefresh()" title="Triggers the full Zoho + CRM rebuild (~25 min). Transport is already live from Snowflake. The page reloads automatically when it finishes.">↻ Rebuild data (~25m)</button>
   </div>
 </div>
 
@@ -204,6 +222,13 @@ tr.current-month td:first-child{color:#1f1f1f;font-weight:700}
 <div class="sec" id="daily-chart-sec" style="display:none">
   <div class="sec-lbl" id="daily-chart-lbl">Daily invoiced revenue</div>
   <canvas id="daily-chart" height="80"></canvas>
+</div>
+
+<!-- DAILY TRANSPORT REVENUE CHART (by pickup date) -->
+<div class="sec" id="transport-daily-sec" style="display:none">
+  <div class="sec-lbl" id="transport-daily-lbl">Daily transport revenue — by pickup date</div>
+  <canvas id="transport-daily-chart" height="80"></canvas>
+  <div class="chart-caption" id="transport-daily-caption"></div>
 </div>
 
 <!-- YOY + COMBINED merged -->
@@ -306,6 +331,44 @@ const SUPABASE_ANON_KEY = 'sb_publishable_QWQOo0CWifid4QyyRzRYvQ_P5DP8ecZ'
 const { createClient } = window.supabase
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
+// ── AnyVan Dashboards managed-query layer (server-side Snowflake, no personal PAT) ──
+// Transport is read live from the platform's managed Snowflake connection via
+// AVDashboard.runQuery, replacing the old GitHub-Action → Supabase path that
+// depended on Scott's personal PAT (broke under the Snowflake network-policy rule).
+const AV_API = 'https://63g6ly45b0.execute-api.eu-west-1.amazonaws.com/production'
+async function ensureAVReady(){
+  try{
+    if(window.AVDashboard){
+      if(AVDashboard.init) AVDashboard.init(AV_API)
+      if(AVDashboard.ensureAuthenticated) await AVDashboard.ensureAuthenticated()
+    }
+  }catch(e){ console.warn('AVDashboard init failed:', e) }
+}
+async function avRows(name){
+  const res = await AVDashboard.runQuery(name, { freshness: 3600 })
+  return Array.isArray(res) ? res : (res.rows || res.data || res.results || [])
+}
+function _lc(row){ const o={}; for(const k in row) o[k.toLowerCase()] = row[k]; return o }
+async function runTransportMonthly(){
+  try{ return (await avRows('storage_transport_monthly')).map(_lc) }
+  catch(e){ console.warn('storage_transport_monthly failed:', e); return [] }
+}
+async function runTransportDaily(){
+  try{ return (await avRows('storage_transport_daily')).map(_lc) }
+  catch(e){ console.warn('storage_transport_daily failed:', e); return [] }
+}
+async function runTransportYoy(){
+  try{
+    const rows = await avRows('storage_transport_yoy_mtd')
+    if(!rows[0]) return null
+    const r = _lc(rows[0])
+    return {
+      coll_av_fee: r.coll_av_fee, coll_av_fee_prior_year: r.coll_av_fee_prior_year, coll_yoy_pct: r.coll_yoy_pct,
+      redel_av_fee: r.redel_av_fee, redel_av_fee_prior_year: r.redel_av_fee_prior_year, redel_yoy_pct: r.redel_yoy_pct,
+    }
+  }catch(e){ console.warn('storage_transport_yoy_mtd failed:', e); return null }
+}
+
 const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
 let ALL_MONTHLY = []
@@ -315,7 +378,9 @@ let ALL_APP = []
 let ALL_BOOKINGS = []
 let YOY = null
 let DAILY = []
+let TRANSPORT_DAILY = []
 let dailyChart = null
+let transportDailyChart = null
 let revSnapChart = null
 let SELECTED_MONTH = null
 
@@ -323,6 +388,13 @@ function fmt(n){ if(n==null||n===undefined) return '—'; return '£'+Number(n).
 function fmtN(n){ if(n==null||n===undefined) return '—'; return Number(n).toLocaleString('en-GB') }
 function fmtPct(n){ if(n==null||n===undefined) return '—'; return (n>0?'+':'')+Number(n).toFixed(1)+'%' }
 function monthLabel(s){ if(!s) return ''; const [y,m]=s.split('-'); return MO[parseInt(m)-1]+' '+y }
+// Last-updated date + TIME (rendered in the viewer's local timezone, e.g. London).
+function fmtUpdated(iso){
+  if(!iso) return null
+  const d = new Date(iso)
+  if(isNaN(d.getTime())) return null
+  return d.toLocaleString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})
+}
 
 function yoyBadge(pct){
   if(pct==null) return '<span class="badge-fl">—</span>'
@@ -331,25 +403,40 @@ function yoyBadge(pct){
   return '<span class="badge-fl">0%</span>'
 }
 
+function yoyMetric(label, numStr, pyStr, badgeHtml){
+  return `<div class="yoy-metric">
+        <div class="yoy-mlbl">${label}</div>
+        <div class="yoy-mtop"><span class="yoy-mnum">${numStr}</span>${badgeHtml}</div>
+        <div class="yoy-msub">vs ${pyStr} prior year</div>
+      </div>`
+}
+
 async function loadAll(){
   const curLabel = new Date().toISOString().slice(0, 7)
-  const [mRes, tRes, fRes, yRes, dRes, aRes, bRes] = await Promise.all([
+  const [mRes, fRes, yRes, dRes, aRes, bRes, transMonthly, transYoy, transDaily] = await Promise.all([
     db.from('mtd_monthly').select('*').order('label', { ascending: false }),
-    db.from('mtd_transport_monthly').select('*').order('label', { ascending: false }),
     db.from('mtd_fees_monthly').select('*').order('label', { ascending: false }),
     db.from('mtd_yoy').select('*').eq('id', 1).single(),
-    db.from('mtd_daily_revenue').select('*').eq('label', curLabel).order('day'),
+    db.from('mtd_daily_revenue').select('*').order('label', { ascending: true }).order('day'),
     db.from('app_monthly').select('label,crm_count,books_revenue').order('label', { ascending: false }),
     db.from('bookings_monthly').select('label,total').order('label', { ascending: false }),
+    runTransportMonthly(),
+    runTransportYoy(),
+    runTransportDaily(),
   ])
 
   ALL_MONTHLY   = mRes.data || []
-  ALL_TRANSPORT = tRes.data || []
+  ALL_TRANSPORT = transMonthly || []
   ALL_FEES      = fRes.data || []
   ALL_APP       = aRes.data || []
   ALL_BOOKINGS  = bRes.data || []
   YOY           = yRes.data || null
   DAILY         = dRes.data || []
+  TRANSPORT_DAILY = transDaily || []
+
+  // Transport YoY (current month, same days vs prior year) now comes live from
+  // Snowflake — overlay it onto the Zoho-sourced YoY row.
+  if (transYoy) { YOY = Object.assign(YOY || {}, transYoy) }
 
   if(!ALL_MONTHLY.length){
     document.getElementById('ph-sub').textContent = 'No data loaded yet — run the fetch script to populate.'
@@ -384,12 +471,17 @@ function renderAll(){
   const f  = ALL_FEES.find(x => x.label === SELECTED_MONTH) || {}
   const isLatest = SELECTED_MONTH === ALL_MONTHLY[0]?.label
 
-  document.getElementById('ph-sub').textContent =
-    `${monthLabel(SELECTED_MONTH)}${isLatest && YOY ? ` · Day ${YOY.days_elapsed} of ${YOY.days_in_month} · as of ${YOY.as_of}` : ''}`
+  // Last updated: prefer the full timestamp stamped by the Zoho rebuild; fall back to the as_of date.
+  const updTime = (isLatest && YOY) ? fmtUpdated(YOY.updated_at) : null
+  const freshness = (isLatest && YOY)
+    ? ` · Day ${YOY.days_elapsed} of ${YOY.days_in_month} · last updated ${updTime || YOY.as_of}`
+    : ''
+  document.getElementById('ph-sub').textContent = `${monthLabel(SELECTED_MONTH)}${freshness}`
 
   renderHeadline(m)
   renderRevenueSnap(m, t)
   renderDailyChart(isLatest)
+  renderTransportDailyChart(isLatest)
   renderCombined(m, t, isLatest)
   renderYoy(m, isLatest)
   renderTransport(t, isLatest)
@@ -468,7 +560,8 @@ function renderRevenueSnap(m, t){
 
 function renderDailyChart(isLatest){
   const sec = document.getElementById('daily-chart-sec')
-  if (!isLatest || !DAILY.length){ sec.style.display='none'; return }
+  const rows = DAILY.filter(d => d.label === SELECTED_MONTH)
+  if (!isLatest || !rows.length){ sec.style.display='none'; return }
   sec.style.display = ''
 
   const yr    = parseInt(SELECTED_MONTH.split('-')[0])
@@ -476,10 +569,10 @@ function renderDailyChart(isLatest){
   document.getElementById('daily-chart-lbl').textContent =
     `Daily invoiced revenue — ${mo} ${yr} vs ${mo} ${yr-1}`
 
-  const labels   = DAILY.map(d => d.day)
-  const dayNames = DAILY.map(d => d.day_name)
-  const pyData   = DAILY.map(d => d.py_revenue ?? null)
-  const cyData   = DAILY.map(d => (d.cy_revenue > 0 ? d.cy_revenue : null))
+  const labels   = rows.map(d => d.day)
+  const dayNames = rows.map(d => d.day_name)
+  const pyData   = rows.map(d => d.py_revenue ?? null)
+  const cyData   = rows.map(d => (d.cy_revenue > 0 ? d.cy_revenue : null))
 
   if(dailyChart){ dailyChart.destroy(); dailyChart=null }
 
@@ -553,6 +646,101 @@ function renderDailyChart(isLatest){
   })
 }
 
+// Daily transport AV fee (Collections + Re-Deliveries) by PICKUP DATE for the
+// current month vs prior-year same month. Because pickups are scheduled ahead,
+// future-dated days already carry booked revenue — these are drawn as a dashed
+// "booked ahead" segment so they're not read as completed actuals.
+function renderTransportDailyChart(isLatest){
+  const sec = document.getElementById('transport-daily-sec')
+  if (!isLatest || !TRANSPORT_DAILY.length){ sec.style.display='none'; return }
+  sec.style.display = ''
+
+  const yr = parseInt(SELECTED_MONTH.split('-')[0])
+  const mo = MO[parseInt(SELECTED_MONTH.split('-')[1])-1]
+  document.getElementById('transport-daily-lbl').textContent =
+    `Daily transport revenue (by pickup date) — ${mo} ${yr} vs ${mo} ${yr-1}`
+
+  const labels   = TRANSPORT_DAILY.map(d => d.day)
+  const dayNames = TRANSPORT_DAILY.map(d => d.day_name)
+  const pyData   = TRANSPORT_DAILY.map(d => d.py_revenue ?? null)
+
+  // Pure MTD: cap the current-year line at yesterday. The query is anchored on
+  // yesterday, so future-dated (booked-ahead) pickups are excluded from the line.
+  const today     = new Date()
+  const yest      = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1)
+  const selM      = parseInt(SELECTED_MONTH.split('-')[1])
+  const daysInSel = new Date(yr, selM, 0).getDate()
+  let yDOM
+  if (yest.getFullYear() === yr && (yest.getMonth() + 1) === selM) {
+    yDOM = yest.getDate()            // live current month -> cap at yesterday
+  } else if (new Date(yr, selM - 1, 1) > yest) {
+    yDOM = 0                         // selected month is entirely in the future
+  } else {
+    yDOM = daysInSel                 // selected month already complete -> show all its days
+  }
+  const cyData   = TRANSPORT_DAILY.map(d => d.day <= yDOM ? (d.cy_revenue ?? null) : null)
+
+  if(transportDailyChart){ transportDailyChart.destroy(); transportDailyChart=null }
+
+  const datasets = [
+    {
+      label: `${mo} ${yr-1}`,
+      data: pyData,
+      borderColor: '#9ca3af', pointBackgroundColor: '#9ca3af',
+      borderWidth: 1.5, pointRadius: 2.5, pointHoverRadius: 4,
+      tension: 0.25, fill: false, spanGaps: false,
+    },
+    {
+      label: `${mo} ${yr}`,
+      data: cyData,
+      borderColor: '#1f1f1f', pointBackgroundColor: '#1f1f1f',
+      borderWidth: 2.5, pointRadius: 3, pointHoverRadius: 5,
+      tension: 0.25, fill: false, spanGaps: false,
+    }
+  ]
+
+  const ctx = document.getElementById('transport-daily-chart').getContext('2d')
+  transportDailyChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { font: { size: 12, family: '-apple-system,BlinkMacSystemFont,Helvetica Neue,Arial,sans-serif' }, boxWidth: 14, padding: 16 }
+        },
+        tooltip: {
+          callbacks: {
+            title: items => `${dayNames[items[0].dataIndex]} ${items[0].label} ${mo}`,
+            label: item => item.raw == null ? null :
+              ` ${item.dataset.label}: £${Number(item.raw).toLocaleString('en-GB',{minimumFractionDigits:0,maximumFractionDigits:0})}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: '#f0f0f0' },
+          ticks: { font: { size: 11 }, color: '#6b7280',
+            callback: (val, i) => labels[i]
+          }
+        },
+        y: {
+          grid: { color: '#f0f0f0' },
+          ticks: {
+            font: { size: 11 }, color: '#6b7280',
+            callback: v => '£'+Number(v).toLocaleString('en-GB',{minimumFractionDigits:0,maximumFractionDigits:0})
+          }
+        }
+      }
+    }
+  })
+
+  document.getElementById('transport-daily-caption').textContent =
+    'Transport AV fee (Collections + Re-Deliveries) by pickup date, to yesterday.'
+}
+
 function renderCombined(m, t, isLatest){
   const tFee    = (t.coll_av_fee||0) + (t.redel_av_fee||0)
   const cyInvT  = (m.invoiced_revenue||0) + tFee
@@ -587,41 +775,13 @@ function renderCombined(m, t, isLatest){
   document.getElementById('combined-section').innerHTML = `
     <div class="yoy-card">
       <div class="yoy-title">Invoiced + Transport</div>
-      <div class="yoy-row">
-        <span class="yoy-lbl">Actual vs prior year same days</span>
-        <div class="yoy-vals">
-          <span class="yoy-num">${fmt(cyInvT)}</span>
-          <span style="font-size:13px;color:#6b7280">vs ${fmt(pyInvTSameDay)}</span>
-          ${yoyBadge(yoyCalc(cyInvT, pyInvTSameDay))}
-        </div>
-      </div>
-      <div class="yoy-row">
-        <span class="yoy-lbl">Forecast vs prior year full month</span>
-        <div class="yoy-vals">
-          <span class="yoy-num">${fmt(cyInvTForecast)}</span>
-          <span style="font-size:13px;color:#6b7280">vs ${fmt(pyInvTFull)}</span>
-          ${yoyBadge(yoyCalc(cyInvTForecast, pyInvTFull))}
-        </div>
-      </div>
+      ${yoyMetric('Actual · prior-year same days', fmt(cyInvT), fmt(pyInvTSameDay), yoyBadge(yoyCalc(cyInvT, pyInvTSameDay)))}
+      ${yoyMetric('Forecast · prior-year full month', fmt(cyInvTForecast), fmt(pyInvTFull), yoyBadge(yoyCalc(cyInvTForecast, pyInvTFull)))}
     </div>
     <div class="yoy-card">
       <div class="yoy-title">Paid + Transport</div>
-      <div class="yoy-row">
-        <span class="yoy-lbl">Actual vs prior year same days</span>
-        <div class="yoy-vals">
-          <span class="yoy-num">${fmt(cyPaidT)}</span>
-          <span style="font-size:13px;color:#6b7280">vs ${fmt(pyPaidTSameDay)}</span>
-          ${yoyBadge(yoyCalc(cyPaidT, pyPaidTSameDay))}
-        </div>
-      </div>
-      <div class="yoy-row">
-        <span class="yoy-lbl">Forecast vs prior year full month</span>
-        <div class="yoy-vals">
-          <span class="yoy-num">${fmt(cyPaidTForecast)}</span>
-          <span style="font-size:13px;color:#6b7280">vs ${fmt(pyPaidTFull)}</span>
-          ${yoyBadge(yoyCalc(cyPaidTForecast, pyPaidTFull))}
-        </div>
-      </div>
+      ${yoyMetric('Actual · prior-year same days', fmt(cyPaidT), fmt(pyPaidTSameDay), yoyBadge(yoyCalc(cyPaidT, pyPaidTSameDay)))}
+      ${yoyMetric('Forecast · prior-year full month', fmt(cyPaidTForecast), fmt(pyPaidTFull), yoyBadge(yoyCalc(cyPaidTForecast, pyPaidTFull)))}
     </div>`
 }
 
@@ -667,79 +827,23 @@ function renderYoy(m, isLatest){
   document.getElementById('yoy-section').innerHTML = `
     <div class="yoy-card">
       <div class="yoy-title">Invoiced revenue</div>
-      <div class="yoy-row">
-        <span class="yoy-lbl">Actual vs prior year same days</span>
-        <div class="yoy-vals">
-          <span class="yoy-num">${fmt(y.cy_invoiced)}</span>
-          <span style="font-size:12px;color:#6b7280">vs ${fmt(y.py_invoiced_same_days)}</span>
-          ${yoyBadge(y.invoiced_actual_yoy_pct)}
-        </div>
-      </div>
-      <div class="yoy-row">
-        <span class="yoy-lbl">Forecast vs prior year full month</span>
-        <div class="yoy-vals">
-          <span class="yoy-num">${fmt(y.cy_invoiced_forecast)}</span>
-          <span style="font-size:12px;color:#6b7280">vs ${fmt(y.py_invoiced_full_month)}</span>
-          ${yoyBadge(y.invoiced_forecast_yoy_pct)}
-        </div>
-      </div>
+      ${yoyMetric('Actual · prior-year same days', fmt(y.cy_invoiced), fmt(y.py_invoiced_same_days), yoyBadge(y.invoiced_actual_yoy_pct))}
+      ${yoyMetric('Forecast · prior-year full month', fmt(y.cy_invoiced_forecast), fmt(y.py_invoiced_full_month), yoyBadge(y.invoiced_forecast_yoy_pct))}
     </div>
     <div class="yoy-card">
       <div class="yoy-title">Paid revenue</div>
-      <div class="yoy-row">
-        <span class="yoy-lbl">Actual vs prior year same days</span>
-        <div class="yoy-vals">
-          <span class="yoy-num">${fmt(y.cy_paid)}</span>
-          <span style="font-size:12px;color:#6b7280">vs ${fmt(y.py_paid_same_days)}</span>
-          ${yoyBadge(y.paid_actual_yoy_pct)}
-        </div>
-      </div>
-      <div class="yoy-row">
-        <span class="yoy-lbl">Forecast vs prior year full month</span>
-        <div class="yoy-vals">
-          <span class="yoy-num">${fmt(y.cy_paid_forecast)}</span>
-          <span style="font-size:12px;color:#6b7280">vs ${fmt(y.py_paid_full_month)}</span>
-          ${yoyBadge(y.paid_forecast_yoy_pct)}
-        </div>
-      </div>
+      ${yoyMetric('Actual · prior-year same days', fmt(y.cy_paid), fmt(y.py_paid_same_days), yoyBadge(y.paid_actual_yoy_pct))}
+      ${yoyMetric('Forecast · prior-year full month', fmt(y.cy_paid_forecast), fmt(y.py_paid_full_month), yoyBadge(y.paid_forecast_yoy_pct))}
     </div>
     <div class="yoy-card">
       <div class="yoy-title">Unique customers</div>
-      <div class="yoy-row">
-        <span class="yoy-lbl">Actual vs prior year same days</span>
-        <div class="yoy-vals">
-          <span class="yoy-num">${fmtN(y.cy_unique_customers)}</span>
-          <span style="font-size:12px;color:#6b7280">vs ${fmtN(y.py_unique_customers_same_days)}</span>
-          ${yoyBadge(y.customers_actual_yoy_pct)}
-        </div>
-      </div>
-      <div class="yoy-row">
-        <span class="yoy-lbl">Forecast vs prior year full month</span>
-        <div class="yoy-vals">
-          <span class="yoy-num">${fmtN(y.cy_customers_forecast)}</span>
-          <span style="font-size:12px;color:#6b7280">vs ${fmtN(y.py_customers_full_month)}</span>
-          ${yoyBadge(y.customers_forecast_yoy_pct)}
-        </div>
-      </div>
+      ${yoyMetric('Actual · prior-year same days', fmtN(y.cy_unique_customers), fmtN(y.py_unique_customers_same_days), yoyBadge(y.customers_actual_yoy_pct))}
+      ${yoyMetric('Forecast · prior-year full month', fmtN(y.cy_customers_forecast), fmtN(y.py_customers_full_month), yoyBadge(y.customers_forecast_yoy_pct))}
     </div>
     <div class="yoy-card">
       <div class="yoy-title">Transport YoY</div>
-      <div class="yoy-row">
-        <span class="yoy-lbl">Collections AV fee</span>
-        <div class="yoy-vals">
-          <span class="yoy-num">${fmt(y.coll_av_fee)}</span>
-          <span style="font-size:12px;color:#6b7280">vs ${fmt(y.coll_av_fee_prior_year)}</span>
-          ${yoyBadge(y.coll_yoy_pct)}
-        </div>
-      </div>
-      <div class="yoy-row">
-        <span class="yoy-lbl">Redeliveries AV fee</span>
-        <div class="yoy-vals">
-          <span class="yoy-num">${fmt(y.redel_av_fee)}</span>
-          <span style="font-size:12px;color:#6b7280">vs ${fmt(y.redel_av_fee_prior_year)}</span>
-          ${yoyBadge(y.redel_yoy_pct)}
-        </div>
-      </div>
+      ${yoyMetric('Collections AV fee', fmt(y.coll_av_fee), fmt(y.coll_av_fee_prior_year), yoyBadge(y.coll_yoy_pct))}
+      ${yoyMetric('Redeliveries AV fee', fmt(y.redel_av_fee), fmt(y.redel_av_fee_prior_year), yoyBadge(y.redel_yoy_pct))}
     </div>`
 }
 
@@ -849,7 +953,64 @@ function renderHistory(){
   }).join('')
 }
 
-loadAll()
+// Refresh proxy: Supabase edge function `github-dispatch` holds the GitHub
+// token server-side and triggers/polls the fetch_mtd.yml workflow. Called
+// with the board's anon key — no token ever touches the browser.
+const FN_URL = `${SUPABASE_URL}/functions/v1/github-dispatch`
+async function ghProxy(op, extra){
+  const r = await fetch(FN_URL, {
+    method:'POST',
+    headers:{'Authorization':`Bearer ${SUPABASE_ANON_KEY}`,'apikey':SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+    body:JSON.stringify({op, ...(extra||{})})
+  })
+  if(!r.ok) throw new Error(`${op} failed: ${r.status}`)
+  return r.json()
+}
+
+async function triggerRefresh(){
+  const btn = document.getElementById('refresh-btn')
+  btn.disabled = true
+  const startTs = Date.now()
+  const elapsed = () => {
+    const s = Math.floor((Date.now()-startTs)/1000)
+    return s < 60 ? `${s}s` : `${Math.floor(s/60)}m${s%60}s`
+  }
+  btn.innerHTML = '<span class="spin">↻</span> Refreshing…'
+  try{
+    // Baseline the current run so we can detect the NEW one we trigger.
+    const before = (await ghProxy('latest_run')).id
+    await ghProxy('dispatch')
+    let runId = null
+    for(let i=0;i<20;i++){
+      await new Promise(r=>setTimeout(r,3000))
+      const d = await ghProxy('latest_run')
+      if(d.id && d.id!==before){runId=d.id;break}
+    }
+    if(!runId) throw new Error('Could not find the new workflow run')
+    let completed = false
+    for(let i=0;i<400;i++){
+      await new Promise(r=>setTimeout(r,6000))
+      btn.innerHTML = `<span class="spin">↻</span> Running… ${elapsed()}`
+      const run = await ghProxy('run_status',{runId})
+      if(run.status==='completed'){
+        if(run.conclusion!=='success') throw new Error(`Workflow ${run.conclusion}`)
+        completed = true
+        break
+      }
+    }
+    if(!completed) throw new Error('Workflow timed out after 40 minutes — check GitHub Actions')
+    await new Promise(r=>setTimeout(r,12000))
+    location.reload()
+  }catch(e){
+    alert('Refresh failed: '+e.message)
+    console.error(e)
+  }finally{
+    btn.disabled = false
+    btn.innerHTML = '↻ Rebuild data (~25m)'
+  }
+}
+
+ensureAVReady().then(loadAll)
 loadBookings()
 loadEntering()
 loadApp()
@@ -935,7 +1096,7 @@ async function loadBookings(){
     if(!data) return
     _sqftBooked = data.sqft
     renderTeamChart(data, 'bookings-team-chart', 'bookings-caption', 'bookings', teamBookingsChart,
-      c => { teamBookingsChart = c })
+      c => { teamBookingsChart = c }, true)
     renderAgentChart(data, 'bookings-agent-chart', agentBookingsChart,
       c => { agentBookingsChart = c })
     document.getElementById('pipeline-charts-sec').style.display = ''
@@ -960,7 +1121,7 @@ async function loadApp(){
   // APP data now displayed in the Fees card via renderSqftFees — nothing to do here
 }
 
-function renderTeamChart(data, canvasId, captionId, unit, existingChart, setChart){
+function renderTeamChart(data, canvasId, captionId, unit, existingChart, setChart, showForecast = false){
   const months = data.months
   const total  = data.total
   const values = months.map(m => total[m] || 0)
@@ -970,6 +1131,23 @@ function renderTeamChart(data, canvasId, captionId, unit, existingChart, setChar
     const s = `${MO_S[+mo-1]} '${y.slice(2)}`
     return m === THIS_MONTH ? s+'*' : s
   })
+
+  // Forecast for the current MTD month, projected from the run-rate so far.
+  let forecastVal = null, forecastIdx = -1
+  if(showForecast){
+    forecastIdx = months.indexOf(THIS_MONTH)
+    if(forecastIdx >= 0){
+      const mtd = values[forecastIdx] || 0
+      const now = new Date()
+      const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate()
+      // align elapsed days with the data's actual coverage where possible
+      let elapsed = (data.updated && data.updated.slice(0,7) === THIS_MONTH)
+        ? +data.updated.slice(8,10) : now.getDate()
+      if(!elapsed || elapsed > daysInMonth) elapsed = daysInMonth
+      if(mtd > 0 && elapsed > 0) forecastVal = Math.round(mtd / elapsed * daysInMonth)
+    }
+  }
+  const axisMax = Math.max(...values, forecastVal || 0)
 
   const labelsPlugin = {
     id: `labels-${canvasId}`,
@@ -1002,6 +1180,32 @@ function renderTeamChart(data, canvasId, captionId, unit, existingChart, setChar
         }
         ctx2.restore()
       })
+
+      // Forecast run-rate overlay on the current MTD bar (actual stays solid below).
+      if(showForecast && forecastVal != null && forecastIdx >= 0){
+        const bar = meta.data[forecastIdx]
+        if(bar){
+          const yAct = bar.y
+          const yFc  = chart.scales.y.getPixelForValue(forecastVal)
+          const half = (bar.width || 18) / 2
+          const left = bar.x - half, right = bar.x + half
+          ctx2.save()
+          // faded projected extension: actual top → forecast
+          ctx2.fillStyle = 'rgba(31,31,31,0.16)'
+          ctx2.fillRect(left, yFc, right - left, yAct - yFc)
+          // dashed forecast cap line
+          ctx2.strokeStyle = '#1f1f1f'
+          ctx2.setLineDash([4,3]); ctx2.lineWidth = 1.5
+          ctx2.beginPath(); ctx2.moveTo(left - 5, yFc); ctx2.lineTo(right + 5, yFc); ctx2.stroke()
+          ctx2.setLineDash([])
+          // forecast value label
+          ctx2.fillStyle = '#1f1f1f'
+          ctx2.font = 'bold 10px system-ui,sans-serif'
+          ctx2.textAlign = 'center'; ctx2.textBaseline = 'bottom'
+          ctx2.fillText('fc ' + forecastVal, bar.x, yFc - 3)
+          ctx2.restore()
+        }
+      }
     }
   }
 
@@ -1043,13 +1247,17 @@ function renderTeamChart(data, canvasId, captionId, unit, existingChart, setChar
           grid:{ display: false },
           ticks:{ font:{ size:11 }, color: c => months[c.index]?.startsWith('2026') ? '#111827' : '#6b7280' }
         },
-        y:{ grid:{ color:'#f0f0f0' }, ticks:{ font:{ size:11 }, color:'#6b7280' } }
+        y:{ suggestedMax: forecastVal ? Math.ceil(axisMax * 1.12) : undefined, grid:{ color:'#f0f0f0' }, ticks:{ font:{ size:11 }, color:'#6b7280' } }
       }
     }
   })
   setChart(chart)
   const cap = document.getElementById(captionId)
-  if(cap) cap.textContent = `* ${MO_S[+THIS_MONTH.slice(5)-1]} ${THIS_MONTH.slice(0,4)} is month-to-date · Updated ${data.updated}`
+  if(cap){
+    let capTxt = `* ${MO_S[+THIS_MONTH.slice(5)-1]} ${THIS_MONTH.slice(0,4)} is month-to-date · Updated ${data.updated}`
+    if(showForecast && forecastVal != null) capTxt += ` · Forecast run-rate ${forecastVal}`
+    cap.textContent = capTxt
+  }
 }
 
 function renderAgentChart(data, canvasId, existingChart, setChart){
@@ -1099,5 +1307,6 @@ function renderAgentChart(data, canvasId, existingChart, setChart){
   setChart(chart)
 }
 </script>
+<script src="https://robbosd.github.io/storage-reporting/nav.js"></script>
 </body>
 </html>
