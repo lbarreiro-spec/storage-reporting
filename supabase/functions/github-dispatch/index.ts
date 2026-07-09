@@ -15,7 +15,10 @@
 //   { op: 'run_status', runId: N }   -> { status, conclusion }
 
 const REPO = "Robbosd/storage-reporting";
-const WORKFLOW = "fetch_mtd.yml";
+const DEFAULT_WORKFLOW = "fetch_mtd.yml";
+// Only workflows explicitly allow-listed here can be dispatched. Keeps this
+// public-anon-key proxy from being able to trigger arbitrary Actions.
+const ALLOWED_WORKFLOWS = new Set(["fetch_mtd.yml", "fetch_debt.yml"]);
 const GH_API = "https://api.github.com";
 
 const cors = {
@@ -49,7 +52,7 @@ Deno.serve(async (req: Request) => {
   const token = Deno.env.get("GH_DISPATCH_TOKEN");
   if (!token) return json({ error: "GH_DISPATCH_TOKEN not configured" }, 500);
 
-  let body: { op?: string; runId?: number };
+  let body: { op?: string; runId?: number; workflow?: string };
   try {
     body = await req.json();
   } catch {
@@ -57,10 +60,14 @@ Deno.serve(async (req: Request) => {
   }
 
   const op = body.op;
+  const workflow = body.workflow ?? DEFAULT_WORKFLOW;
+  if (!ALLOWED_WORKFLOWS.has(workflow)) {
+    return json({ error: `workflow not allowed: ${workflow}` }, 400);
+  }
   try {
     if (op === "dispatch") {
       const r = await fetch(
-        `${GH_API}/repos/${REPO}/actions/workflows/${WORKFLOW}/dispatches`,
+        `${GH_API}/repos/${REPO}/actions/workflows/${workflow}/dispatches`,
         {
           method: "POST",
           headers: { ...ghHeaders(token), "Content-Type": "application/json" },
@@ -75,7 +82,7 @@ Deno.serve(async (req: Request) => {
 
     if (op === "latest_run") {
       const r = await fetch(
-        `${GH_API}/repos/${REPO}/actions/workflows/${WORKFLOW}/runs?per_page=1`,
+        `${GH_API}/repos/${REPO}/actions/workflows/${workflow}/runs?per_page=1`,
         { headers: ghHeaders(token) },
       );
       if (!r.ok) return json({ error: `runs failed: ${r.status}` }, 502);

@@ -168,6 +168,7 @@ tbody tr:hover td{background:#fafafa}
   </div>
   <a class="nav-link" href="/operations/storage-mtd">MTD Revenue</a>
   <a class="nav-link" href="/operations/storage-monthly">Monthly Trends</a>
+  <a class="nav-link" href="/operations/storage-weekly">Weekly KPI</a>
   <a class="nav-link" href="/operations/storage-voice-activity">Voice Activity</a>
   <a class="nav-link" href="/operations/storage-daily-activity">Daily Activity</a>
   <a class="nav-link" href="/operations/storage-whatsapp">WhatsApp</a>
@@ -469,9 +470,25 @@ function render(d) {
   </div>`;
 }
 
-const GITHUB_PAT  = 'worker-handles-auth'
-const GITHUB_REPO = 'Robbosd/storage-reporting'
-const WORKFLOW_ID = 'fetch_debt.yml'
+// Refresh proxy: Supabase edge function `github-dispatch` holds the GitHub
+// token server-side and triggers/polls the fetch_debt.yml workflow, called
+// with the board's anon key — no token ever touches the browser. Replaces the
+// retired Cloudflare Worker (storage-dispatch.*.workers.dev) whose PAT was
+// revoked by GitHub secret-scanning, which is what caused the 401 on refresh.
+const SUPABASE_URL      = 'https://loyvicdabsncwhssjkxy.supabase.co'
+const SUPABASE_ANON_KEY = 'sb_publishable_QWQOo0CWifid4QyyRzRYvQ_P5DP8ecZ'
+const FN_URL            = `${SUPABASE_URL}/functions/v1/github-dispatch`
+const WORKFLOW          = 'fetch_debt.yml'
+
+async function ghProxy(op, extra) {
+  const r = await fetch(FN_URL, {
+    method:'POST',
+    headers:{'Authorization':`Bearer ${SUPABASE_ANON_KEY}`,'apikey':SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+    body:JSON.stringify({op, workflow:WORKFLOW, ...(extra||{})})
+  })
+  if (!r.ok) throw new Error(`${op} failed: ${r.status}`)
+  return r.json()
+}
 
 async function triggerRefresh() {
   const btn = document.getElementById('refresh-btn')
@@ -485,32 +502,21 @@ async function triggerRefresh() {
   const prevTs = await fetch(DATA_URL + '?_=' + Date.now())
     .then(r => r.json()).then(j => j.generated_at).catch(() => null)
   try {
-    const dispatch = await fetch(
-      `https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/dispatches`,
-      {method:'POST',headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify({ref:'main'})}
-    )
-    if (!dispatch.ok) throw new Error(`Dispatch failed: ${dispatch.status}`)
-    await new Promise(r => setTimeout(r, 5000))
+    // Baseline the current run so we can detect the NEW one we trigger.
+    const before = (await ghProxy('latest_run')).id
+    await ghProxy('dispatch')
     let runId = null
-    for (let i = 0; i < 12; i++) {
-      const runs = await fetch(
-        `https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/runs?per_page=1`,
-        {headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json'}}
-      )
-      const d = await runs.json()
-      if (d.workflow_runs?.[0]) { runId = d.workflow_runs[0].id; break }
+    for (let i = 0; i < 20; i++) {
       await new Promise(r => setTimeout(r, 3000))
+      const d = await ghProxy('latest_run')
+      if (d.id && d.id !== before) { runId = d.id; break }
     }
-    if (!runId) throw new Error('Could not find workflow run')
+    if (!runId) throw new Error('Could not find the new workflow run')
     let completed = false
     for (let i = 0; i < 400; i++) {
       await new Promise(r => setTimeout(r, 6000))
       btn.innerHTML = `<span class="spin">↻</span> Running… ${elapsed()}`
-      const check = await fetch(
-        `https://storage-dispatch.scottrobinson92.workers.dev/repos/${GITHUB_REPO}/actions/runs/${runId}`,
-        {headers:{'Authorization':`Bearer ${GITHUB_PAT}`,'Accept':'application/vnd.github.v3+json'}}
-      )
-      const run = await check.json()
+      const run = await ghProxy('run_status', {runId})
       if (run.status === 'completed') {
         if (run.conclusion !== 'success') throw new Error(`Workflow ${run.conclusion}`)
         completed = true
@@ -553,5 +559,6 @@ async function load() {
 
 load();
 </script>
+<script src="https://robbosd.github.io/storage-reporting/nav.js"></script>
 </body>
 </html>
