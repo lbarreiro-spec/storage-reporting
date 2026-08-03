@@ -18,9 +18,15 @@ Incremental run (default):
 Full run:
   python3 scripts/fetch_bookings.py --full
   Seeds/overwrites all months Jan 2025 → present.
+
+Finalise a completed month (after the calendar has rolled over):
+  python3 scripts/fetch_bookings.py --month 2026-07
+  Treats that month as "current" so bookings, entering and APP are all re-fetched
+  for it — a normal run only ever refreshes the real current month, so a just-ended
+  month otherwise keeps whatever partial figures its last in-month run captured.
 """
 
-import os, sys, calendar, warnings, requests, time
+import os, re, sys, calendar, warnings, requests, time
 warnings.filterwarnings("ignore")
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -34,6 +40,31 @@ AUTH_URL       = "https://accounts.zoho.eu/oauth/v2/token"
 CRM_BASE       = "https://www.zohoapis.eu/crm/v3"
 BOOKS_BASE     = "https://www.zohoapis.eu/books/v3"
 FULL_MODE      = "--full" in sys.argv
+
+
+def _resolve_month_arg():
+    """Return the last day of the month given by `--month YYYY-MM`, else None.
+
+    Everything in main() keys off `today`, so pinning `today` to a completed month's
+    last day makes that month the "current" month again and every metric — including
+    APP, which only ever fetches the current month — gets recomputed for it.
+    """
+    vals = [sys.argv[i + 1] for i, a in enumerate(sys.argv)
+            if a == "--month" and i + 1 < len(sys.argv)]
+    vals += [a.split("=", 1)[1] for a in sys.argv if a.startswith("--month=")]
+    if not vals:
+        return None
+    val = vals[0]
+    if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", val):
+        sys.exit(f"❌ --month expects YYYY-MM, got {val!r}")
+    year, month = int(val[:4]), int(val[5:7])
+    end = date(year, month, calendar.monthrange(year, month)[1])
+    if end >= date.today():
+        sys.exit(f"❌ {val} is not a completed month (ends {end}) — just run normally.")
+    return end
+
+
+MONTH_END = _resolve_month_arg()
 
 
 def _load_kvfile(path):
@@ -230,12 +261,16 @@ def fetch_app_books_revenue(year: int, month: int):
     invoice_ids, page = [], 1
     while True:
         for attempt in range(4):
-            resp = requests.get(f"{BOOKS_BASE}/invoices", headers=books_headers(), params={
-                "organization_id": BOOKS_ORG_ID,
-                "date_start": f"{year}-{month:02d}-01",
-                "date_end":   f"{year}-{month:02d}-{last_day:02d}",
-                "per_page": 200, "page": page,
-            }, timeout=30)
+            try:
+                resp = requests.get(f"{BOOKS_BASE}/invoices", headers=books_headers(), params={
+                    "organization_id": BOOKS_ORG_ID,
+                    "date_start": f"{year}-{month:02d}-01",
+                    "date_end":   f"{year}-{month:02d}-{last_day:02d}",
+                    "per_page": 200, "page": page,
+                }, timeout=30)
+            except (requests.ConnectionError, requests.Timeout):
+                time.sleep(2 ** attempt)
+                continue
             if resp.status_code == 429:
                 time.sleep(2 ** attempt)
                 continue
@@ -255,9 +290,16 @@ def fetch_app_books_revenue(year: int, month: int):
 
     def _fetch_detail(inv_id):
         for attempt in range(4):
-            r = requests.get(f"{BOOKS_BASE}/invoices/{inv_id}", headers=books_headers(), params={
-                "organization_id": BOOKS_ORG_ID,
-            }, timeout=30)
+            try:
+                r = requests.get(f"{BOOKS_BASE}/invoices/{inv_id}", headers=books_headers(), params={
+                    "organization_id": BOOKS_ORG_ID,
+                }, timeout=30)
+            except (requests.ConnectionError, requests.Timeout):
+                # Retry rather than propagate: this runs inside a thread pool, so a
+                # single dropped connection on one of ~1k invoices used to raise out
+                # of fut.result() and abort the entire run after all prior work.
+                time.sleep(2 ** attempt)
+                continue
             if r.status_code == 429:
                 time.sleep(2 ** attempt)
                 continue
@@ -307,7 +349,9 @@ def _to_month_list(month_set, start_key, current_key):
 
 
 def main():
-    today       = date.today()
+    today       = MONTH_END or date.today()
+    if MONTH_END:
+        print(f"Finalising completed month {today:%Y-%m} (anchored on {today})")
     current_key = f"{today.year}-{today.month:02d}"
     start_key   = f"{START[0]}-{START[1]:02d}"
     now_iso     = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")

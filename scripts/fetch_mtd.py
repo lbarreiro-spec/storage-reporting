@@ -9,11 +9,19 @@ Dashboards managed queries storage_transport_monthly / storage_transport_yoy_mtd
 
 Usage:
   python3 fetch_mtd.py          # Current month start → today + YoY (past months left in Supabase)
+  python3 fetch_mtd.py 2026-07  # Finalise a COMPLETED month (full-month YoY, fees, daily revenue)
   python3 fetch_mtd.py 2025     # Full 2025 history (no YoY)
   python3 fetch_mtd.py 2024     # Full 2024 history (no YoY)
+
+  --skip-fees   Skip the invoice line-item fee scan. That scan fetches every invoice in
+                the month individually and dominates runtime (~35-50 min of a ~55 min
+                run) to produce two slow-moving numbers, so it is worth skipping when
+                re-running a month for its revenue figures. mtd_fees_monthly keeps
+                whatever it already held for the month.
 """
 
 import os
+import re
 import sys
 import json
 import time
@@ -63,7 +71,30 @@ HISTORY_START = date(2024, 1, 1)
 TODAY         = date.today()
 YESTERDAY     = TODAY - timedelta(days=1)
 
-YEAR_ARG = sys.argv[1] if len(sys.argv) > 1 else None
+SKIP_FEES = "--skip-fees" in sys.argv
+_POSITIONAL = [a for a in sys.argv[1:] if not a.startswith("-")]
+YEAR_ARG  = _POSITIONAL[0] if _POSITIONAL else None
+MONTH_ARG = None
+
+# A `YYYY-MM` argument finalises an already-completed month: run exactly the MTD code
+# path (month aggregate + fees + full YoY + daily revenue) but anchored on that month's
+# last day instead of today. A plain MTD run only ever looks at the calendar's current
+# month, so once the month rolls over the month that just ended keeps whatever partial
+# figures its final in-month run happened to capture — late invoices, payments that
+# landed on the last day, and the last day's daily-revenue bar are all missing.
+if YEAR_ARG and re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", str(YEAR_ARG).strip()):
+    MONTH_ARG = str(YEAR_ARG).strip()
+    _m_start  = date(int(MONTH_ARG[:4]), int(MONTH_ARG[5:7]), 1)
+    _m_end    = (_m_start + relativedelta(months=1)) - timedelta(days=1)
+    if _m_end >= TODAY:
+        sys.exit(f"❌ {MONTH_ARG} is not a completed month (ends {_m_end}) — "
+                 f"use a plain MTD run for the current month.")
+    # TODAY is only used as the invoice-fetch end date and the YoY `as_of` stamp;
+    # YESTERDAY is the anchor every month/YoY/daily calculation keys off.
+    TODAY     = _m_end
+    YESTERDAY = _m_end
+    YEAR_ARG  = None   # fall through to the normal MTD start-date + YoY/daily logic
+
 IS_MTD   = not YEAR_ARG or str(YEAR_ARG).strip().lower() == "mtd"
 
 def resolve_start():
@@ -147,6 +178,14 @@ def fetch_invoices(token, start, end=None, label=""):
                                         params=params, timeout=30)
                     if resp.status_code == 429:
                         time.sleep(15 * (attempt + 1))
+                        resp = None
+                        continue
+                    if resp.status_code == 401:
+                        # Access token expired mid-run. A history fetch pages for well
+                        # over the token's 1h life, so re-auth and retry the page instead
+                        # of aborting after everything already downloaded.
+                        print("   🔑 Access token expired, re-authenticating...")
+                        headers["Authorization"] = f"Zoho-oauthtoken {get_zoho_token()}"
                         resp = None
                         continue
                     if resp.status_code == 400:
@@ -250,14 +289,17 @@ def fetch_line_item_fees(invoices, token):
         for result in ex.map(fetch_detail, candidates):
             all_hits.extend(result)
 
-    monthly = {}
-    for bkt in build_month_buckets(START_DATE).values():
-        lbl = bkt["label"]
-        monthly[lbl] = {
-            "label": lbl,
+    # Only the anchor month is ever scanned (see `candidates` above), so only the anchor
+    # month may be reported. Seeding a bucket per month in the fetch range would have a
+    # history run (e.g. `fetch_mtd.py 2025`) upsert zeroed fee rows over every month it
+    # spans, wiping the real fee history for months it never looked at.
+    monthly = {
+        current_month: {
+            "label": current_month,
             **{f"{col_key}_count": 0   for _, col_key, _id in FEE_TARGETS},
             **{f"{col_key}_total": 0.0 for _, col_key, _id in FEE_TARGETS},
         }
+    }
 
     for hit in all_hits:
         mo = hit["month"]
@@ -608,14 +650,28 @@ def upsert(table, rows):
 # ─── MAIN ──────────────────────────────────────────────────────────────────────
 
 def main():
-    print(f"\n🚀 fetch_mtd.py — {'MTD (current month only, past months preserved in Supabase)' if IS_MTD else YEAR_ARG}")
+    if MONTH_ARG:
+        mode = f"FINALISE {MONTH_ARG} (completed month, anchored on {YESTERDAY})"
+    elif IS_MTD:
+        mode = "MTD (current month only, past months preserved in Supabase)"
+    else:
+        mode = YEAR_ARG
+    print(f"\n🚀 fetch_mtd.py — {mode}")
     print(f"   Period: {START_DATE} → {YESTERDAY}\n")
 
     token = get_zoho_token()
 
     invoices  = fetch_invoices(token, START_DATE, end=TODAY, label=f"{START_DATE} → {TODAY}")
     deals     = fetch_crm_deals(token)
-    fee_data  = fetch_line_item_fees(invoices, token)
+    # Fees are only scanned for the anchor month, so a history run has nothing to say
+    # about them — skip the (expensive) per-invoice line-item scan entirely rather than
+    # writing a row for a month the run isn't reporting on.
+    if SKIP_FEES:
+        print("⏭  Skipping invoice line-item fee scan (--skip-fees); "
+              "mtd_fees_monthly keeps its existing values.")
+        fee_data = []
+    else:
+        fee_data = fetch_line_item_fees(invoices, token) if IS_MTD else []
     monthly   = aggregate_monthly(invoices, deals)
     # NOTE: transport (Snowflake) is no longer fetched here. It is served live to the
     # dashboard by the AnyVan Dashboards managed queries storage_transport_monthly /
