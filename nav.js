@@ -224,8 +224,35 @@
     return true;
   }
 
+  // ---- LAYOUT GUARDS: shared CSS fixes, applied to every board -------------
+  // Lives here rather than in each board's <style> because this file is what
+  // makes the sidebar tall enough to need the first rule, and because a board
+  // republished from a stale copy would otherwise silently lose the fix.
+  //   .sidebar          the grouped nav is taller than 100vh on a laptop. With
+  //                     no scroll, the bottom groups — and the Hub link — are
+  //                     clipped and unreachable.
+  //   .main > *         where .main is a flex column, a child with overflow
+  //                     :auto resolves min-height to 0, so the default
+  //                     flex-shrink crushes it away. The data table rendered
+  //                     but had zero height (storage-monthly, 4 Aug 2026).
+  //                     Let .main scroll instead of squashing its children; a
+  //                     board that genuinely wants an inner scroll panel can
+  //                     opt out by putting class="av-scroll" on that child.
+  // Appended to <head> after the page's own <style>, so equal-specificity
+  // rules lose to these.
+  var GUARD_CSS = '.sidebar{overflow-y:auto}' +
+                  '.main > *:not(.av-scroll){flex-shrink:0}';
+
+  function injectLayoutGuards(){
+    if(document.getElementById('av-nav-layout-guards')) return;
+    var st = document.createElement('style');
+    st.id = 'av-nav-layout-guards';
+    st.textContent = GUARD_CSS;
+    (document.head || document.documentElement).appendChild(st);
+  }
+
   function renderAll(){
-    try{ renderSidebar(); renderHubSections(); renderSection(); renderHubGrid(); }
+    try{ injectLayoutGuards(); renderSidebar(); renderHubSections(); renderSection(); renderHubGrid(); }
     catch(e){ if(window.console) console.warn('[av-nav]', e); }
   }
 

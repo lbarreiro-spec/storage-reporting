@@ -26,6 +26,9 @@ body{display:flex;flex-direction:column;min-height:100vh;flex-direction:row}
   display:flex;flex-direction:column;
   padding:24px 0;flex-shrink:0;height:100vh;position:sticky;top:0;z-index:100;
   border-top:4px solid #ffc907;
+  /* nav.js injects ~28 links across 4 groups — taller than 100vh on a laptop.
+     Without this the bottom of the nav (incl. the Hub link) is clipped and unreachable. */
+  overflow-y:auto;
 }
 .sidebar-brand{padding:0 24px 24px;margin-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.08)}
 .sidebar-label{font-size:18px;font-weight:800;letter-spacing:-.02em;color:#fff;margin-bottom:2px}
@@ -70,6 +73,11 @@ body{display:flex;flex-direction:column;min-height:100vh;flex-direction:row}
 
 /* MAIN */
 .main{flex:1;display:flex;flex-direction:column;padding:28px 32px;gap:24px;overflow-y:auto}
+/* .main is a flex column, so its children shrink by default. .tbl-wrap has
+   overflow-x:auto, which makes its min-height resolve to 0 — it was being
+   crushed to zero height and the data table never appeared. Let .main scroll
+   instead of squashing its children. */
+.main > *{flex-shrink:0}
 
 .chart-header{display:flex;align-items:baseline;gap:16px}
 .chart-title{font-size:20px;font-weight:700;letter-spacing:-.01em;color:#002333}
@@ -127,6 +135,7 @@ td.cur{color:#002333;font-weight:600}
   </div>
   <a class="nav-link" href="/operations/storage-mtd">MTD Revenue</a>
   <a class="nav-link active" href="/operations/storage-monthly">Monthly Trends</a>
+  <a class="nav-link" href="/operations/storage-weekly">Weekly KPI</a>
   <a class="nav-link" href="/operations/storage-voice-activity">Voice Activity</a>
   <a class="nav-link" href="/operations/storage-daily-activity">Daily Activity</a>
   <a class="nav-link" href="/operations/storage-whatsapp">WhatsApp</a>
@@ -166,7 +175,7 @@ td.cur{color:#002333;font-weight:600}
   </div>
   <div class="legend" id="legend"></div>
   <div class="chart-wrap">
-    <canvas id="chart"></canvas>
+    <div style="position:relative;height:380px"><canvas id="chart"></canvas></div>
   </div>
   <div class="tbl-wrap">
     <table>
@@ -185,6 +194,14 @@ const DATA_URL = 'https://robbosd.github.io/storage-reporting/data/monthly.json'
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
+// Last-updated date + TIME, from the data file's publish time (local timezone, e.g. London).
+function fmtUpdated(s){
+  if(!s) return null
+  const d = new Date(s)
+  if(isNaN(d.getTime())) return null
+  return d.toLocaleString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})
+}
+
 // Year colour palette
 const YEAR_STYLES = {
   '2023': { color: 'rgba(156,163,175,0.7)',  border: 'rgba(156,163,175,0.7)',  width: 1.5 },
@@ -192,6 +209,15 @@ const YEAR_STYLES = {
   '2025': { color: 'rgba(16,103,153,0.85)',  border: 'rgba(16,103,153,0.85)',  width: 2 },
   '2026': { color: '#002333',                border: '#002333',                width: 2.5 },
 }
+
+// Manual forecast points — plotted as a dashed continuation of the year's
+// line to the forecast month, with a hollow marker. Keyed by metric key.
+// value is ex-VAT £ (same basis as the series). monthIdx is 0-based (6 = Jul).
+//
+// Empty: the Jul 2026 invoiced_plus_transport forecast (£460,000) was removed on
+// 3 Aug 2026 once July closed on an actual of £469,777. Add an entry back here when
+// forecasting a future month.
+const FORECASTS = {}
 
 let _data           = null
 let _chart          = null
@@ -246,6 +272,16 @@ function renderMetric(idx){
     legendEl.appendChild(el)
   })
 
+  // Forecast indicator (dashed) if this metric has a manual forecast point
+  const fcLegend = FORECASTS[m.key]
+  if(fcLegend && m.years.includes(fcLegend.year)){
+    const s = YEAR_STYLES[fcLegend.year] || YEAR_STYLES['2025']
+    const el = document.createElement('div')
+    el.className = 'legend-item' + (_hiddenYrs.has(fcLegend.year) ? ' faded' : '')
+    el.innerHTML = `<span style="display:inline-block;width:16px;border-top:2px dashed ${s.color}"></span><span>${fcLegend.year} forecast</span>`
+    legendEl.appendChild(el)
+  }
+
   // Chart datasets
   const latestYr = m.years[m.years.length - 1]
   const datasets = m.years.map(y => {
@@ -286,6 +322,46 @@ function renderMetric(idx){
     }
   })
 
+  // Manual forecast — dashed continuation to the forecast month
+  const fc = FORECASTS[m.key]
+  if(fc && m.years.includes(fc.year) && !_hiddenYrs.has(fc.year)){
+    const s = YEAR_STYLES[fc.year] || YEAR_STYLES['2025']
+    const anchorIdx = fc.monthIdx - 1
+    const fdata = new Array(12).fill(null)
+    const anchorVal = m.series[fc.year]?.[anchorIdx]  // last actual — anchors the dash
+    if(anchorVal != null) fdata[anchorIdx] = anchorVal
+    fdata[fc.monthIdx] = fc.value
+    const priorY = String(parseInt(fc.year) - 1)
+    datasets.push({
+      label: fc.year + ' forecast',
+      _forecast: true,
+      _fcIdx: fc.monthIdx,
+      data: fdata,
+      borderColor: s.border,
+      backgroundColor: 'transparent',
+      borderWidth: s.width,
+      borderDash: [5,4],
+      pointRadius:      (ctx) => ctx.dataIndex === fc.monthIdx ? 5 : 0,
+      pointHoverRadius: (ctx) => ctx.dataIndex === fc.monthIdx ? 7 : 0,
+      pointStyle: 'circle',
+      pointBackgroundColor: '#fff',
+      pointBorderColor: s.border,
+      pointBorderWidth: 2,
+      tension: 0,
+      spanGaps: true,
+      datalabels: {
+        display: (ctx) => ctx.dataIndex === fc.monthIdx,
+        anchor: 'end', align: 'top', offset: 6,
+        font: { size: 11, family: '-apple-system, BlinkMacSystemFont, sans-serif', weight: '700' },
+        color: s.border,
+        formatter: (value) => {
+          const pct = yoyPct(value, m.series[priorY]?.[fc.monthIdx])
+          return 'forecast ' + fmt(value, m.format) + (pct != null ? '  ' + fmtYoy(pct) : '')
+        },
+      },
+    })
+  }
+
   const tooltipLabel = (ctx) => {
     if(ctx.raw == null) return null
     const year = ctx.dataset.label
@@ -310,7 +386,7 @@ function renderMetric(idx){
       data: { labels: MONTHS, datasets },
       options: {
         responsive: true,
-        maintainAspectRatio: true,
+        maintainAspectRatio: false,
         layout: { padding: { top: 28 } },
         interaction: { mode: 'index', intersect: false },
         plugins: {
@@ -324,6 +400,7 @@ function renderMetric(idx){
             titleFont: { family: "-apple-system, sans-serif", size: 13, weight: '600' },
             bodyFont: { family: "'SF Mono', monospace", size: 13 },
             padding: 12,
+            filter: (item) => !item.dataset._forecast || item.dataIndex === item.dataset._fcIdx,
             callbacks: { label: tooltipLabel }
           }
         },
@@ -482,17 +559,18 @@ function renderRevenueChart(data){
 }
 
 async function load(){
-  let data
+  let data, lastMod = null
   try {
     const r = await fetch(DATA_URL + '?_=' + Date.now())
     if(!r.ok) throw new Error(r.status)
+    lastMod = r.headers.get('last-modified')
     data = await r.json()
   } catch(e) {
     document.getElementById('meta').textContent = 'Failed to load monthly.json'
     return
   }
   _data = data
-  document.getElementById('meta').textContent = 'updated ' + data.updated
+  document.getElementById('meta').textContent = 'updated ' + (fmtUpdated(lastMod) || data.updated)
 
   renderRevenueChart(data)
 
@@ -562,5 +640,6 @@ async function triggerRefresh(){
 
 load()
 </script>
+<script src="https://robbosd.github.io/storage-reporting/nav.js"></script>
 </body>
 </html>
