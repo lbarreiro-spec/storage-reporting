@@ -319,6 +319,12 @@ def fetch_app_books_revenue(year: int, month: int):
 
 
 def upsert(table: str, rows: list):
+    raise RuntimeError(
+        "Supabase has been retired (Aug 2026). This write is disabled.\n"
+        "Storage reporting now reads live from Snowflake via AV Dashboards managed\n"
+        "queries, and hand-entered data lives in AV Dashboards state.\n"
+        "See dashboards.anyvan.com/operations/storage-nav-config."
+    )
     if not rows:
         return
     resp = requests.post(

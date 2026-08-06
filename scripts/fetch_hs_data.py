@@ -92,6 +92,12 @@ def hs_count(filters: list) -> int:
 # ─── SUPABASE ──────────────────────────────────────────────────────────────────
 
 def upsert_team(rows: list):
+    raise RuntimeError(
+        "Supabase has been retired (Aug 2026). This write is disabled.\n"
+        "Storage reporting now reads live from Snowflake via AV Dashboards managed\n"
+        "queries, and hand-entered data lives in AV Dashboards state.\n"
+        "See dashboards.anyvan.com/operations/storage-nav-config."
+    )
     r = requests.post(
         f"{SUPABASE_URL}/rest/v1/hs_weekly_stats",
         headers=SUPABASE_HEADERS,
@@ -102,6 +108,12 @@ def upsert_team(rows: list):
 
 
 def upsert_agents(rows: list):
+    raise RuntimeError(
+        "Supabase has been retired (Aug 2026). This write is disabled.\n"
+        "Storage reporting now reads live from Snowflake via AV Dashboards managed\n"
+        "queries, and hand-entered data lives in AV Dashboards state.\n"
+        "See dashboards.anyvan.com/operations/storage-nav-config."
+    )
     r = requests.post(
         f"{SUPABASE_URL}/rest/v1/hs_agent_weekly_stats",
         headers=SUPABASE_HEADERS,

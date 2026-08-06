@@ -9,6 +9,14 @@ Tab GID: 1195893543
 Usage: python3 scripts/load_weekly_legacy.py
 """
 
+import sys
+sys.exit(
+    "Supabase has been retired (Aug 2026). This script is disabled.\n"
+    "The weekly board now lives in AV Dashboards state:\n"
+    "  dashboards.anyvan.com/operations/storage-weekly (state object 'weekly_board').\n"
+)
+
+
 import csv, io, os, re, sys
 import requests
 from datetime import date, timedelta

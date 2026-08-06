@@ -77,6 +77,11 @@ def load_doc():
 
 
 def save_doc(doc):
+    raise RuntimeError(
+        "Supabase has been retired (Aug 2026). This write is disabled.\n"
+        "The weekly board now lives in AV Dashboards state:\n"
+        "  dashboards.anyvan.com/operations/storage-weekly (state object 'weekly_board')."
+    )
     today = date.today().isoformat()
     doc["updated"] = today
     r = requests.patch(f"{SUPA_URL}/rest/v1/{TABLE}",

@@ -111,6 +111,12 @@ def query_voice(cur, date_str, voicetype_filter):
 # ─── SUPABASE ──────────────────────────────────────────────────────────────────
 
 def upsert_rows(rows):
+    raise RuntimeError(
+        "Supabase has been retired (Aug 2026). This write is disabled.\n"
+        "Storage reporting now reads live from Snowflake via AV Dashboards managed\n"
+        "queries, and hand-entered data lives in AV Dashboards state.\n"
+        "See dashboards.anyvan.com/operations/storage-nav-config."
+    )
     if not rows:
         return
     resp = requests.post(

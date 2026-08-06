@@ -177,6 +177,11 @@ def aggregate(deals):
 
 def rewrite_window(start: date, rows):
     """Delete every row from `start` onwards, then bulk-insert the fresh set."""
+    raise RuntimeError(
+        "Supabase has been retired (Aug 2026). This write is disabled.\n"
+        "Sales performance now reads live from Snowflake via the managed query\n"
+        "storage_sales_by_owner_v1 on dashboards.anyvan.com/operations/storage-sales-performance."
+    )
     # delete window
     dr = requests.delete(
         f"{SUPA_URL}/rest/v1/{TABLE}",

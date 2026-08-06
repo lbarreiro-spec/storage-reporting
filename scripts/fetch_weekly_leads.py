@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 """
+⚠️ DEPRECATED (2026-06-29) — DO NOT USE.
+The local HUBSPOT_TOKEN it needs is not in this repo's .env (only in GitHub Actions
+secrets), so this script can't run here. Total Leads is now pulled through the HubSpot
+MCP and patched in — see the /StorageWeekly skill. Kept only for the lead definition /
+epoch-window reference below. Run the weekly board via /StorageWeekly instead.
+
 Automate the "Total Leads" row on the Weekly KPI board (operations/storage-weekly).
 
 Source: HubSpot CRM API — same definition as fetch_hs_data.py's `leads_created`
@@ -87,6 +93,11 @@ def load_doc():
 
 
 def save_doc(doc):
+    raise RuntimeError(
+        "Supabase has been retired (Aug 2026). This write is disabled.\n"
+        "The weekly board now lives in AV Dashboards state:\n"
+        "  dashboards.anyvan.com/operations/storage-weekly (state object 'weekly_board')."
+    )
     today = date.today().isoformat()
     doc["updated"] = today
     r = requests.patch(f"{SUPA_URL}/rest/v1/{TABLE}",
