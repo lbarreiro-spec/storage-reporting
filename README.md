@@ -1,6 +1,6 @@
 # Storage Reporting
 
-Live dashboard: https://robbosd.github.io/storage-reporting/index.html
+Live dashboard: https://lbarreiro-spec.github.io/storage-reporting/index.html
 
 ## Claude Code Trigger
 

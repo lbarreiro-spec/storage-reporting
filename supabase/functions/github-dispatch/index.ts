@@ -14,7 +14,7 @@
 //   { op: 'latest_run' }             -> { id } of the most recent run
 //   { op: 'run_status', runId: N }   -> { status, conclusion }
 
-const REPO = "Robbosd/storage-reporting";
+const REPO = "lbarreiro-spec/storage-reporting";
 const DEFAULT_WORKFLOW = "fetch_mtd.yml";
 // Only workflows explicitly allow-listed here can be dispatched. Keeps this
 // public-anon-key proxy from being able to trigger arbitrary Actions.

@@ -2,10 +2,10 @@
  * AnyVan Storage Reporting — SHARED NAVIGATION  (section-aware, v2)
  * Single source of truth for: the hub SECTION TILES, each SECTION PAGE's board
  * grid, and every board's left SIDEBAR.
- * Hosted at https://robbosd.github.io/storage-reporting/nav.js
+ * Hosted at https://lbarreiro-spec.github.io/storage-reporting/nav.js
  *
  * Each storage board / hub / section page loads this once, before </body>:
- *   <script src="https://robbosd.github.io/storage-reporting/nav.js"></script>
+ *   <script src="https://lbarreiro-spec.github.io/storage-reporting/nav.js"></script>
  * and it will, depending on which containers the page has:
  *   - #av-hub-sections            -> render the 7 SECTION TILES (the hub)
  *   - #av-section-grid[data-section=N] -> render that section's BOARD CARDS
