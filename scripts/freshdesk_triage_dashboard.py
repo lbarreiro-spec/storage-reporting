@@ -15,6 +15,8 @@ Merge state lives LOCAL at ~/.anyvan/triage_feed.json (seeded once from the old 
 import json, sys, os
 from datetime import datetime, timezone
 from collections import Counter
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from triage_classify import theme_of, partner_of
 
 SRC='/tmp/triage_dashboard.json'
 OUT='/tmp/triage_dashboard.html'
@@ -39,6 +41,12 @@ else:
        'total':len(merged),'tickets':merged}
 
 tickets=d.get('tickets',[])
+
+# THEME + PARTNER classification (18 Jun) — keyword-derived, refreshed every run so the WHOLE
+# feed gets classified (no re-judge needed). A judge-emitted `theme` (if present) wins.
+for t in tickets:
+    t['partner']=partner_of(t)
+    if not t.get('theme'): t['theme']=theme_of(t)
 
 # Standing backlog (for the Slack summary block) — computed off IDLE if present, else age.
 def _metric(t): return t.get('idle_h') if t.get('idle_h') is not None else t.get('age_h')
@@ -71,6 +79,25 @@ try:
     if '📊 *Standing backlog' not in _txt and '🧑‍💻' in _txt:
         open(_SLK,'w').write(_txt.replace('🧑‍💻','\n'.join(_bl)+'\n\n🧑‍💻',1))
 except Exception: pass
+
+# --- Daily history snapshot (Stage 2, 18 Jun) → trend analytics. One row/day, latest run wins. ---
+HIST=os.path.expanduser('~/.anyvan/triage_history.jsonl')
+_day=((delta.get('generated_at') or '')[:10]) or datetime.now(timezone.utc).strftime('%Y-%m-%d')
+snap={'date':_day,'open':len(_open),
+      'red':backlog['red']['total'],'amber':backlog['amber']['total'],
+      'blue':backlog['blue']['total'],'green':backlog['green']['total'],
+      'resolved':d.get('resolved',0),'flagged':d.get('flagged',0),
+      'themes':dict(Counter(t.get('theme') for t in _open)),
+      'agents':dict(Counter((t.get('owner') or 'Unassigned') for t in _open))}
+hist=[]
+try:
+    if os.path.exists(HIST): hist=[json.loads(l) for l in open(HIST) if l.strip()]
+except Exception: hist=[]
+hist=[h for h in hist if h.get('date')!=snap['date']]+[snap]
+hist.sort(key=lambda h:h.get('date',''))
+try: open(HIST,'w').write('\n'.join(json.dumps(h) for h in hist)+'\n')
+except Exception: pass
+d['history']=hist[-60:]
 
 # Owners: this run's assignments win; else keep what the ticket already carried.
 OWNER={}
@@ -114,9 +141,13 @@ body{font-family:var(--sans);background:#f5f7fa;color:#111827;display:flex}
 .main{flex:1;height:100vh;overflow:auto}
 .wrap{max-width:1240px;margin:0 auto;padding:36px 40px}
 .head{margin-bottom:22px}
+.head-row{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
 .head .lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#41a5dd;font-weight:700;margin-bottom:6px}
 .head h1{font-size:26px;font-weight:800;color:#002333}
 .head p{font-size:13px;color:#6b7280;margin-top:8px;max-width:760px;line-height:1.5}
+.refresh{flex-shrink:0;display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;border:1px solid #d1d9e0;background:#fff;color:#002333;border-radius:9px;padding:9px 16px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.05);transition:background .12s,color .12s,border-color .12s}
+.refresh:hover{background:#002333;color:#fff;border-color:#002333}
+.refresh:active{transform:translateY(1px)}
 .sec{margin-bottom:28px}
 .sec-h{font-size:13px;font-weight:800;color:#002333;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
 .sec-h small{font-weight:600;text-transform:none;letter-spacing:0;color:#9ca3af;margin-left:8px}
@@ -171,16 +202,28 @@ tr:last-child td{border-bottom:none}
 </nav>
 <div class="main"><div class="wrap">
   <div class="head">
-    <div class="lbl">Storage · AI Ticket Triage</div>
-    <h1>Freshdesk Triage — Reporting</h1>
+    <div class="head-row">
+      <div>
+        <div class="lbl">Storage · AI Ticket Triage</div>
+        <h1>Freshdesk Triage — Reporting</h1>
+      </div>
+      <button class="refresh" onclick="location.reload(true)" title="Reload the board to pull the latest published triage run">&#8635; Refresh</button>
+    </div>
     <p>Open Storage tickets scored 🔴/🟠/🔵/🟢, by team member, queue and how long they've sat untouched. <span id="meta"></span></p>
   </div>
   <div class="sec"><div class="cards" id="cards"></div></div>
   <div class="sec"><div class="sec-h">By team member <small id="teamsub"></small></div><div class="card"><div id="team"></div></div></div>
   <div class="sec"><div class="sec-h">Ageing <small id="agesub"></small></div><div class="card" id="ageing"></div></div>
+  <div class="sec"><div class="sec-h">Trend <small>open backlog over time — builds as the daily run accumulates</small></div><div class="card" id="trend"></div></div>
+  <div class="sec"><div class="sec-h">Response &amp; SLA <small>first-response speed across open tickets</small></div><div class="card" id="sla"></div></div>
+  <div class="sec"><div class="sec-h">By theme <small>what the tickets are about, split by urgency</small></div><div class="card" id="thememx"></div></div>
   <div class="sec"><div class="grid2">
+    <div><div class="sec-h">By partner <small>facility / removals routing</small></div><div class="card"><div id="bypartner"></div></div></div>
     <div><div class="sec-h">By queue</div><div class="card"><div id="byqueue"></div></div></div>
+  </div></div>
+  <div class="sec"><div class="grid2">
     <div><div class="sec-h">By type (lane)</div><div class="card"><div id="bylane"></div></div></div>
+    <div><div class="sec-h">Customer vs partner</div><div class="card"><div id="bysource"></div></div></div>
   </div></div>
   <div class="sec"><div class="sec-h">Worklist <small>reds · awaiting-customer · flagged bounces</small></div>
     <div class="filters" id="filters"></div><div id="table"><div class="state">Loading…</div></div>
@@ -190,7 +233,7 @@ tr:last-child td{border-bottom:none}
 <script>
 const DATA=__DATA_JSON__;
 // consistent team colours used across every chart
-const TEAM_COLOUR={'Sage':'#2563eb','Emmanuel':'#16a34a','Theo J':'#ea580c','Shafwaan':'#7c3aed'};
+const TEAM_COLOUR={'Sage':'#2563eb','Emmanuel':'#16a34a','Theo J':'#ea580c','Shafwaan':'#7c3aed','Carla J':'#0d9488'};
 const RAG_COLOUR={red:'#dc2626',amber:'#d97706',blue:'#2563eb',green:'#16a34a'};
 const ORDER={red:0,blue:1,amber:2,green:3};
 function ownerColour(o){ if(!o||o==='—') return '#9ca3af'; return TEAM_COLOUR[o]||'#64748b'; }
@@ -279,6 +322,81 @@ function bucketTable(elId,keyFn,emptyLabel){
   document.getElementById(elId).innerHTML=`<table><tbody>${rows||'<tr><td class=state>none</td></tr>'}</tbody></table>`;
 }
 
+// RESPONSE & SLA — first-response speed across open tickets (+ per-agent)
+function sla(){
+  const el=document.getElementById('sla');
+  if(!OPEN.some(t=>t.responded!=null)){ el.innerHTML='<div class="state">⏱️ SLA data populates after the next enriched run.</div>'; return; }
+  const fr=OPEN.filter(t=>t.frt_h!=null).map(t=>+t.frt_h).sort((a,b)=>a-b);
+  const responded=OPEN.filter(t=>t.responded===true).length;
+  const awaiting=OPEN.filter(t=>t.responded===false).length;
+  const breached=OPEN.filter(t=>t.fr_breach).length;
+  const med=fr.length?fr[Math.floor(fr.length/2)]:0, avg=fr.length?fr.reduce((a,b)=>a+b,0)/fr.length:0;
+  const within24=OPEN.filter(t=>t.frt_h!=null&&+t.frt_h<=24).length;
+  const denom=responded+awaiting||1;
+  const tiles=[['Responded',`${responded} (${Math.round(100*responded/denom)}%)`,'#106799'],
+    ['Awaiting 1st reply',awaiting,'#d97706'],['Median 1st response',durLabel(med),'#111827'],
+    ['Avg 1st response',durLabel(avg),'#111827'],['Replied ≤24h',within24,'#16a34a'],
+    ['FR-SLA breached',breached,'#dc2626']];
+  const th=tiles.map(([l,v,c])=>`<div style="flex:1;min-width:120px"><div style="font-size:22px;font-weight:800;color:${c}">${v}</div><div style="color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-top:5px">${l}</div></div>`).join('');
+  const by={}; OPEN.forEach(t=>{const o=ownerLabel(t.owner); (by[o]=by[o]||[]).push(t);});
+  const names=Object.keys(by).filter(o=>o!=='Unassigned').sort((a,b)=>by[b].length-by[a].length);
+  const arows=names.map(o=>{
+    const ts=by[o], frs=ts.filter(t=>t.frt_h!=null).map(t=>+t.frt_h).sort((a,b)=>a-b);
+    const m=frs.length?frs[Math.floor(frs.length/2)]:null;
+    const aw=ts.filter(t=>t.responded===false).length, rp=ts.filter(t=>t.responded===true).length;
+    return `<tr><td class="who"><span class="dot" style="background:${ownerColour(o)}"></span>${esc(o)}</td>
+      <td class="num">${rp}/${ts.length}</td><td class="num ${aw?'stale':''}">${aw||'—'}</td><td class="num">${m!=null?durLabel(m):'—'}</td></tr>`;
+  }).join('');
+  el.innerHTML=`<div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:16px">${th}</div>
+    <table><thead><tr><th>Agent</th><th class="num">Responded</th><th class="num">Awaiting</th><th class="num">Median FRT</th></tr></thead><tbody>${arows}</tbody></table>`;
+}
+// TREND — open backlog (with red portion) per day; builds as snapshots accumulate
+function trend(){
+  const H=(DATA.history||[]); const el=document.getElementById('trend');
+  if(H.length<2){ el.innerHTML=`<div class="state">📈 Trend starts today — this fills in as the daily run logs a snapshot each day (currently <b>${H.length}</b> day${H.length===1?'':'s'} logged). Come back tomorrow.</div>`; return; }
+  const max=Math.max(1,...H.map(h=>h.open));
+  const bars=H.map(h=>{
+    const ph=Math.round(100*h.open/max), rp=Math.round(100*(h.red||0)/(h.open||1));
+    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0">
+      <div style="font-size:10px;color:#6b7280;font-weight:700">${h.open}</div>
+      <div style="height:120px;width:60%;max-width:30px;background:#eef1f4;border-radius:5px;display:flex;flex-direction:column-reverse;overflow:hidden" title="${h.date}: ${h.open} open, ${h.red||0} red">
+        <div style="height:${ph}%;background:#41a5dd;display:flex;flex-direction:column-reverse"><div style="height:${rp}%;background:#dc2626"></div></div></div>
+      <div style="font-size:9px;color:#9ca3af">${h.date.slice(5)}</div></div>`;
+  }).join('');
+  const f=H[0],l=H[H.length-1], dO=l.open-f.open, dR=(l.red||0)-(f.red||0);
+  el.innerHTML=`<div style="display:flex;align-items:flex-end;gap:6px;padding:4px 0">${bars}</div>
+    <div class="lgd" style="margin-top:10px"><span><span class="dot" style="background:#41a5dd"></span>Open backlog</span><span><span class="dot" style="background:#dc2626"></span>of which 🔴 red</span>
+    <span style="margin-left:auto;font-weight:600">Since ${f.date.slice(5)}: open ${dO>=0?'+':''}${dO} · reds ${dR>=0?'+':''}${dR}</span></div>`;
+}
+// THEME × RAG matrix — rows = themes by volume, cols = RAG counts + a mini stacked bar
+function themeMatrix(){
+  const by={}; OPEN.forEach(t=>{const k=t.theme||'Other / general'; (by[k]=by[k]||{red:0,amber:0,blue:0,green:0,_n:0}); by[k][t.rag]=(by[k][t.rag]||0)+1; by[k]._n++;});
+  const keys=Object.keys(by).sort((a,b)=>by[b]._n-by[a]._n);
+  const maxV=Math.max(1,...keys.map(k=>by[k]._n));
+  const rows=keys.map(k=>{
+    const r=by[k];
+    const mini=['red','amber','blue','green'].filter(x=>r[x]).map(x=>`<i style="width:${100*r[x]/r._n}%;background:${RAG_COLOUR[x]}"></i>`).join('');
+    return `<tr><td class="who" style="font-weight:600">${esc(k)}</td>
+      <td><div class="bar"><i style="width:${100*r._n/maxV}%;background:#41a5dd"></i></div></td>
+      <td class="num">${r._n} <span style="color:#9ca3af;font-weight:500">(${pct(r._n)}%)</span></td>
+      <td><div class="rag-mini">${mini}</div></td>
+      <td class="num" style="color:#dc2626">${r.red||0}</td>
+      <td class="num" style="color:#d97706">${r.amber||0}</td>
+      <td class="num" style="color:#2563eb">${r.blue||0}</td>
+      <td class="num" style="color:#16a34a">${r.green||0}</td></tr>`;
+  }).join('');
+  document.getElementById('thememx').innerHTML=`<table><thead><tr><th>Theme</th><th>Volume</th><th class="num">Open (%)</th><th>RAG split</th><th class="num">🔴</th><th class="num">🟠</th><th class="num">🔵</th><th class="num">🟢</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+// Customer-direct vs partner-routed split
+function sourceSplit(){
+  let cust=0,part=0; OPEN.forEach(t=>{ (t.partner==='Customer (direct)'?cust++:part++); });
+  const tot=cust+part||1;
+  document.getElementById('bysource').innerHTML=
+    `<div class="stk"><i style="width:${100*cust/tot}%;background:#41a5dd" title="Customer"></i><i style="width:${100*part/tot}%;background:#7c3aed" title="Partner"></i></div>
+     <div class="lgd"><span><span class="dot" style="background:#41a5dd"></span>Customer (direct): ${cust} (${Math.round(100*cust/tot)}%)</span>
+     <span><span class="dot" style="background:#7c3aed"></span>Partner-routed: ${part} (${Math.round(100*part/tot)}%)</span></div>`;
+}
+
 let FILTER='work';
 function worklist(){
   const owners=[...new Set(OPEN.map(t=>ownerLabel(t.owner)))].filter(o=>o!=='Unassigned').sort();
@@ -306,8 +424,10 @@ function worklist(){
   document.getElementById('foot').innerHTML=`Showing ${rows.length} of ${OPEN.length} open. Also tagged: <b>${ha}</b> 🟠 amber (batch verify) · <b>${hg}</b> 🟢 green. "Idle" = time since last touched. Run "storage triage" to refresh.`;
 }
 function setF(f){FILTER=f;worklist();}
-cards(); team(); ageing(); bucketTable('byqueue',t=>t.queue,'(no queue)'); bucketTable('bylane',t=>t.lane&&t.lane!=='none'?t.lane:'—','—'); worklist();
+cards(); team(); ageing(); trend(); sla(); themeMatrix(); bucketTable('bypartner',t=>t.partner,'Customer (direct)'); sourceSplit(); bucketTable('byqueue',t=>t.queue,'(no queue)'); bucketTable('bylane',t=>t.lane&&t.lane!=='none'?t.lane:'—','—'); worklist();
 </script>
+<!-- Shared storage-reporting nav: wipes the hardcoded fallback links above and regenerates the full board list + active state. EDIT nav.js (not this file) to change the sidebar. -->
+<script src="https://lbarreiro-spec.github.io/storage-reporting/nav.js"></script>
 </body></html>"""
 
 HTML=SHELL.replace('__DATA_JSON__',DATA_JS)

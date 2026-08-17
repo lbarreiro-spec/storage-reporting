@@ -33,8 +33,12 @@ Judgements JSON shape (produced by Claude after reading /tmp/triage_candidates.j
 
 Creds: env or ~/.anyvan/config.txt (FRESHDESK_API_KEY / FRESHDESK_DOMAIN).
 """
-import os, base64, json, time, sys, argparse
+import os, base64, json, time, sys, argparse, collections
 from datetime import datetime, timezone
+import warnings
+# Silence the cosmetic LibreSSL/urllib3 notice on macOS system Python (filter must be
+# registered by message BEFORE urllib3 is imported, else the notice fires during its import).
+warnings.filterwarnings("ignore", message="urllib3 v2 only supports OpenSSL.*")
 import requests
 
 cfg={}
@@ -368,11 +372,21 @@ def cmd_apply(infile,dry,no_close,notes):
     print(f"   lanes: log {lanes['log']}  reply {lanes['reply']}  action {lanes['action']}  none {lanes['none']}")
     print(f"dashboard -> {DASH_JSON}")
 
-ROSTER=[  # Storage ops team (June: all muddle in; July: route by element)
-    {'name':'Sage','fd':31026581073,'slack':'U08PQ0XNVN3'},
-    {'name':'Emmanuel','fd':31026362357,'slack':'U08EU0KTKRB'},
-    {'name':'Theo J','fd':31026525500,'slack':'U08LVMSUEHY'},
-    {'name':'Shafwaan','fd':31022287751,'slack':'U04SC2UNXS8'},
+# Storage ops team. HARDCODED deliberately: no single Freshdesk group contains all four
+# (Complaints is Shafwaan-only, Payments is empty), so there is nothing to look up.
+# 'name' is a STABLE KEY, not a label — it is persisted as the owner string in
+# ~/.anyvan/triage_feed.json, so renaming one orphans that agent's existing tickets and
+# assignall stops recognising them as owned. 'full' is the human name; change that freely.
+ROSTER=[
+    {'name':'Sage','full':'Sage I','fd':31026581073,'slack':'U08PQ0XNVN3'},
+    # Emmanuel (fd 31026362357) removed 1 Jul 2026 — agent 404 in Freshdesk (left/deactivated);
+    # was orphaning ~25% of tickets with 400 responder_id. See feedback_triage_roster_emmanuel_dead.
+    {'name':'Theo J','full':'Theo J','fd':31026525500,'slack':'U08LVMSUEHY'},
+    {'name':'Shafwaan','full':'Shafwaan Titus','fd':31022287751,'slack':'U04SC2UNXS8'},
+    # Carla Jacobs added 9 Jul 2026 (joined Ops team). Added to the 4 core Storage FD groups
+    # (Storage/Support/Warehouse/Redeliveries) so responder writes stick — NOT Complaints (Shafwaan-only)
+    # or Payments (empty group). See feedback_triage_assignall_group_membership.
+    {'name':'Carla J','full':'Carla Jacobs','fd':31023831625,'slack':'U058JGS23LZ'},
 ]
 ROSTER_FD={a['fd'] for a in ROSTER}
 INTEGRATION_AGENT=31006345803
@@ -530,16 +544,30 @@ def cmd_assignall(go):
     feed_by_id={t['id']:t for t in feed.get('tickets',[])}
     def m(t): return t.get('idle_h') if t.get('idle_h') is not None else (t.get('age_h') or 0)
     load={a['name']:0 for a in ROSTER}; pool=[]; skipped=0
+    # PER-QUEUE balance (29 Jul 2026): balancing on TOTAL load alone let agents silo into one queue
+    # (Support was Sage 46 / Carla 44 vs Theo 22 / Shafwaan 17). qload[(group_id,agent)] tracks load
+    # WITHIN each queue so every queue spreads across its members, tie-broken on overall load.
+    qload=collections.Counter()
     if go:
-        # LIVE refresh: source of truth for what's OPEN + who currently owns it (search-based, 429-safe)
-        print("refreshing LIVE open-list (search) so only genuinely-open + unowned tickets get assigned…",file=sys.stderr)
+        # LIVE refresh: source of truth for what's OPEN + who currently owns it.
+        # BULLETPROOF discovery (17 Jun): UNION search with the authoritative /api/v2/tickets LIST
+        # endpoint — search silently drops open tickets (same bug fixed for `fetch` 11 Jun), which
+        # left ~56 open tickets permanently unowned because assignall never saw them. List is
+        # DB-authoritative for responder_id; union = every open ticket gets an owner.
+        print("refreshing LIVE open-list (list ∪ search) so every genuinely-open + unowned ticket gets assigned…",file=sys.stderr)
+        live={t['id']:t for t in pull_open_list(days_back=30)}   # DB-authoritative for responder_id — wins
         for t in pull_open(None):
+            live.setdefault(t['id'],t)                            # search adds any extras the list window misses
+        for t in live.values():
             resp=t.get('responder_id')
-            if resp in fd2name: load[fd2name[resp]]+=1                       # already a roster agent's
+            if resp in fd2name:
+                load[fd2name[resp]]+=1                                       # already a roster agent's
+                qload[(t.get('group_id'),fd2name[resp])]+=1                   # …and their load IN THAT QUEUE
             elif resp and resp not in (INTEGRATION_AGENT,RESOLVE_RESPONDER): skipped+=1   # another human's — leave
             else:                                                            # unowned/integration → distribute
                 ft=feed_by_id.get(t['id'],{})
-                pool.append({'id':t['id'],'rag':ft.get('rag','amber'),'idle_h':hrs(pdt(t.get('updated_at')))})
+                pool.append({'id':t['id'],'rag':ft.get('rag','amber'),'idle_h':hrs(pdt(t.get('updated_at'))),
+                             'gid':t.get('group_id')})
     else:
         for t in [x for x in feed.get('tickets',[]) if not x.get('resolved')]:
             o=(t.get('owner') or '')
@@ -547,16 +575,53 @@ def cmd_assignall(go):
             elif o: skipped+=1
             else: pool.append({'id':t['id'],'rag':t.get('rag','amber'),'idle_h':m(t)})
     pool.sort(key=lambda t:(rank.get(t.get('rag'),9), -(t.get('idle_h') or 0)))   # reds first, oldest first
+    # GROUP-AWARE (28 Jul 2026): Freshdesk silently no-ops a responder write if that agent is not a
+    # member of the ticket's group — returns 200, responder stays null. Some Storage groups have a
+    # SINGLE member (Storage Complaints = Shafwaan, Storage Payments = Theo J), so a pure lowest-load
+    # pick guaranteed orphans. Restrict candidates to actual group members. NB /groups (list) does not
+    # return agent_ids — must GET each group individually.
+    gmembers={}
+    if go:
+        for gid in {t.get('gid') for t in pool if t.get('gid')}:
+            try:
+                g=requests.get(f"{BASE}/groups/{gid}",headers=HDR,timeout=30).json()
+                gmembers[gid]={fd for fd in (g.get('agent_ids') or []) if fd in fd2name}
+            except Exception: gmembers[gid]=set()
+    nogroup=[]
     assign={}
     for t in pool:
-        a=min(load,key=lambda n:load[n]); assign[t['id']]=a; load[a]+=1   # greedy → lowest load
+        cand=[fd2name[fd] for fd in gmembers.get(t.get('gid'),set())]
+        if not cand:                                   # unknown group or no roster member in it
+            if go and t.get('gid') and t['gid'] in gmembers: nogroup.append(t['id'])
+            cand=list(load)                            # fall back to whole roster
+        # lowest load IN THIS QUEUE among group members; ties broken on overall load
+        a=min(cand,key=lambda n:(qload[(t.get('gid'),n)],load[n]))
+        assign[t['id']]=a; load[a]+=1; qload[(t.get('gid'),a)]+=1
     print(f"{'[GO] ' if go else '[DRY] '}distributing {len(pool)} unowned across {len(ROSTER)} agents; {skipped} already owned by a human (left).")
     for a in ROSTER: print(f"  {a['name']:9} → {load[a['name']]} total")
+    if nogroup:
+        print(f"  ⚠️  {len(nogroup)} ticket(s) sit in a Freshdesk group with NO roster member — any")
+        print(f"      assignment will silently no-op until someone is added to that group: {nogroup[:12]}")
     if not go:
         print("\n(DRY — zero API calls. `assignall --go` refreshes live + writes, throttled.)"); return
-    # durable resume state (NOT /tmp) so a 429/stop/crash picks up where it left off
+    # Durable resume state (NOT /tmp) so a 429/stop/crash picks up where it left off.
+    # FIXED 28 Jul 2026 — this file used to be a PERMANENT cumulative ledger, which silently
+    # orphaned tickets: once an id was recorded it was never rewritten, so when Freshdesk cleared
+    # a responder (it UNASSIGNS an agent's tickets when that agent is deleted — Emmanuel, 1 Jul)
+    # the ticket came back into `pool` as unowned but got filtered straight out again. Result:
+    # "writing 0" while 63 open tickets sat permanently unowned. Live discovery is AUTHORITATIVE:
+    # if a ticket is in `pool` it is open + unowned right now and MUST be (re)written, whatever
+    # history says. Resume is therefore scoped to a single run via a freshness window.
     state_p=os.path.expanduser('~/.anyvan/triage_assignall_done.json')
-    done=set(json.load(open(state_p))) if os.path.exists(state_p) else set()
+    RESUME_WINDOW=6*3600            # only honour resume state from an unfinished recent pass
+    st={}
+    if os.path.exists(state_p):
+        try: st=json.load(open(state_p))
+        except Exception: st={}
+    if isinstance(st,list): st={'ts':0,'done':st}          # migrate legacy list format
+    resumable=(time.time()-(st.get('ts') or 0))<RESUME_WINDOW
+    done=set(st.get('done') or []) if resumable else set()
+    if done: print(f"  (resuming an unfinished pass from {int((time.time()-st['ts'])/60)}m ago — {len(done)} already written)",file=sys.stderr)
     todo=[(tid,nm) for tid,nm in assign.items() if tid not in done]
     fd=ThrottledFD(BASE,HDR,our_budget=300,reserve=1000)   # ≤300/min, yields if account busy
     print(f"writing {len(todo)} (responder-only, throttled ≤300/min, auto-yields + 429-retries)…")
@@ -566,9 +631,29 @@ def cmd_assignall(go):
         if r.status_code!=200:
             print(f"  !! #{tid} {r.status_code} {r.text[:80]}",file=sys.stderr); continue
         done.add(tid); n+=1
-        if n%25==0: json.dump(list(done),open(state_p,'w')); print(f"  …{n}/{len(todo)} (acct remaining {fd.remaining})",file=sys.stderr)
-    json.dump(list(done),open(state_p,'w'))
+        if n%25==0:
+            json.dump({'ts':time.time(),'done':list(done)},open(state_p,'w'))
+            print(f"  …{n}/{len(todo)} (acct remaining {fd.remaining})",file=sys.stderr)
+    json.dump({'ts':time.time(),'done':list(done)},open(state_p,'w'))
     print(f"assigned {n} this pass — {len(done)}/{len(assign)} done. ({fd.calls} API calls made.)")
+    # VERIFY LIVE (28 Jul 2026): the write returning 200 is not proof the responder stuck, and
+    # "writing 0" is not proof nothing is unowned. Re-read what we just wrote and say so plainly.
+    if assign:
+        print("verifying responders actually landed…",file=sys.stderr)
+        still=[]
+        for tid in assign:
+            r=fd.request('GET',f"/tickets/{tid}")
+            if r.status_code!=200: continue
+            t=r.json()
+            if t.get('status') in (2,3,6,7) and not t.get('responder_id'): still.append(tid)
+        if still:
+            print(f"\n⚠️  {len(still)} ticket(s) STILL OPEN AND UNOWNED after this pass — NOT covered:")
+            for tid in still[:40]: print(f"     #{tid}  https://{DOM}.freshdesk.com/a/tickets/{tid}")
+            if len(still)>40: print(f"     …and {len(still)-40} more")
+            print("   Writes returned 200 but the responder did not stick (check the agent is a member")
+            print("   of that ticket's Freshdesk group — assigning outside the group silently no-ops).")
+        else:
+            print("✅ verified: every open ticket in this pass has a responder.")
 
 def cmd_fetchall():
     """Pull EVERY open Storage ticket (ignores last-run state) with latest msg + direction
@@ -639,7 +724,20 @@ if __name__=='__main__':
     ap.add_argument('--in',dest='infile',default=None)
     ap.add_argument('--per',type=int,default=20); ap.add_argument('--all',dest='allflag',action='store_true')
     ap.add_argument('--go',action='store_true'); ap.add_argument('--days',type=int,default=4)
+    # DEGRADED MODE — the safe fallback when the AI judge (triage_judge.py) could not
+    # run. Tags and assigns, but never resolves and never notes: both of those assume
+    # something actually READ the ticket, and the cheap keyword rules only ever see
+    # subject lines. Falling back to keyword-only scoring would auto-resolve tickets
+    # nobody read (see #2144974: rules said green, the body was a chargeback + Trading
+    # Standards complaint). Equivalent to --no-close --no-notes, named so the intent
+    # is legible in a cron log.
+    ap.add_argument('--degraded',action='store_true',
+                    help='judge unavailable: tag and assign only, never resolve or note')
     a=ap.parse_args()
+    if a.degraded:
+        a.no_close=True; a.no_notes=True
+        print('[DEGRADED] AI judge unavailable: tagging only. '
+              'No auto-resolve, no notes.',file=sys.stderr)
     if a.mode=='summary': cmd_summary()
     elif a.mode=='fetch': cmd_fetch(a.limit,a.allflag,a.days)
     elif a.mode=='greens': cmd_greens(a.limit or 40)
